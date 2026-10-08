@@ -265,11 +265,13 @@ const EVH={
 function turnFoot(li,grew){ const d=li.dataset, ab=d.ab==='1';
   li.querySelector('.turnFt').innerHTML=`<span>${d.ops}件の操作</span><span>コンテキスト +${fmt(grew)}</span><span>${d.sec}秒</span>${ab?'<span>止めました</span>':''}`;
   li.querySelector('.fold .k').textContent=`${d.ops}件の操作 · +${fmt(grew)} · ${d.sec}秒${ab?' · 中断':''}`; }
-function liveEv(c,ev,replay){ try{ const f=EVH[ev.k]; if(f) f(c,ev,replay); }catch(err){ console.error(err); } tail(c); if(!replay){ scrollIf(c); dirty=true; } }
+// what counts as a message for the "新着" count while you read further up (a tool's row does not)
+const END_K=new Set(['turn','user','say','question','wait','cmd','compact','clear','end','resumed','note']);
+function liveEv(c,ev,replay){ try{ const f=EVH[ev.k]; if(f) f(c,ev,replay); }catch(err){ console.error(err); } tail(c); if(!replay){ scrollIf(c); if(END_K.has(ev.k)) endMark(c); dirty=true; } }
 function liveReplay(c,events){ c.log.innerHTML=''; c.cur=null; c.lis=new Map(); c.turnNo=0; c.role=''; c.usedSk=new Map();
   const was=LV.replaying; LV.replaying=true; for(const ev of events) liveEv(c,ev,true); LV.replaying=was; c.pendKey=null; renderPend(c);
   for(const a of LV.asks.values()) if(a.chan===c.id&&!a.decision){ const p=c.log.querySelector(`.perm[data-id="${cssq(a.id)}"]`); permBox(c,a.id,p?p.dataset.name:a.tool,p?p.dataset.input:a.input); }
-  if(sel===c.num) requestAnimationFrame(()=>{ $('chan').scrollTop=$('chan').scrollHeight; }); }
+  if(sel===c.num) requestAnimationFrame(()=>{ if(sel===c.num) toEnd(false); }); }
 function liveAsk(a){ LV.asks.set(a.id,a); const c=LV.byId.get(a.chan); if(!c) return;
   const p=c.log.querySelector(`.perm[data-id="${cssq(a.id)}"]`); permBox(c,a.id,p?p.dataset.name:a.tool,p?p.dataset.input:a.input);
   if(!LV.replaying&&sel!==c.num) toast('wait',`ch.${c.num} ${esc(c.name)} が承認を待っています`,`${esc(a.tool)}: ${esc(a.input)}（押すと開いて許可・拒否できます）`,c.num); }

@@ -5,8 +5,26 @@ const rid=()=>Math.random().toString(16).slice(2,10);
 function setStatus(c,st,now){ c.status=st; c.now=now; c.phaseAt=Date.now(); dirty=true; }
 function block(c,k,label){ const now=Date.now(), b=c.blocks[c.blocks.length-1]; if(b&&!b.e) b.e=now; c.blocks.push({s:now,e:null,k,label}); }
 function endBlock(c){ const b=c.blocks[c.blocks.length-1]; if(b&&!b.e) b.e=Date.now(); }
-function scrollIf(c){ if(sel!==c.num) return; const v=$('chan'); requestAnimationFrame(()=>{ if(v.scrollHeight-v.scrollTop-v.clientHeight<220) v.scrollTop=v.scrollHeight; }); }
-function add(c,html){ const li=document.createElement('li'); li.innerHTML=html; c.log.appendChild(li); tail(c); scrollIf(c); return li; }
+/* ================= following the latest: a channel read at its bottom stays there as things come in; read further up,
+   it stays put and a button takes you back down, lit with a count when messages came while you were up there ================= */
+const END_NEAR=80;                                   // this close to the bottom counts as reading the latest
+let stick=true, endNew=0, endGoing=0;
+const endGap=()=>{ const v=$('chan'); return v.scrollHeight-v.scrollTop-v.clientHeight; };
+function endDraw(){ const b=$('toEnd'), show=sel!==0&&!$('chan').hidden&&!stick;
+  b.hidden=!show; b.classList.toggle('new',show&&endNew>0);
+  $('toEndN').textContent= endNew>0? `新着 ${endNew>99?'99+':endNew}` : '';
+  b.setAttribute('aria-label', endNew>0? `新着 ${endNew} 件。いちばん下（最新）へ` : 'いちばん下（最新）へ'); }
+function toEnd(smooth){ const v=$('chan'); stick=true; endNew=0; endDraw();
+  if(smooth&&!reduce){ endGoing=Date.now(); v.scrollTo({top:v.scrollHeight,behavior:'smooth'}); } else { endGoing=0; v.scrollTop=v.scrollHeight; } }
+$('chan').addEventListener('scroll',()=>{ const near=endGap()<END_NEAR;
+  if(endGoing){ if(!near&&Date.now()-endGoing<1500) return; endGoing=0; }     // on its way down: not the person scrolling
+  if(near===stick&&!(near&&endNew)) return; stick=near; if(near) endNew=0; endDraw(); },{passive:true});
+['wheel','touchstart','pointerdown'].forEach(k=>$('chan').addEventListener(k,()=>{ endGoing=0; },{passive:true}));
+$('toEnd').addEventListener('click',()=>toEnd(true));
+function scrollIf(c){ if(sel!==c.num) return; requestAnimationFrame(()=>{ if(stick&&sel===c.num) $('chan').scrollTop=$('chan').scrollHeight; }); }
+/* a message came (Claude's text, a question, an approval, a prompt, a notice): counted while you are reading further up */
+function endMark(c){ if(sel!==c.num||stick||$('chan').hidden) return; endNew++; endDraw(); }
+function add(c,html){ const li=document.createElement('li'); li.innerHTML=html; c.log.appendChild(li); tail(c); scrollIf(c); endMark(c); return li; }
 /* what is waiting to be sent stays at the very bottom */
 function tail(c){ const p=c.pendLi; if(p&&p.isConnected&&c.log.lastElementChild!==p) c.log.appendChild(p); }
 /* the conversation as a messenger: you on the right in yellow; Claude on the left, under its framed icon */
@@ -79,7 +97,7 @@ async function perm(c,ev,ops,tid){
        <div class="pbtns"><button class="btn primary" type="button" data-ok>許可</button><button class="btn" type="button" data-no>拒否</button><span class="cd"></span></div>
        <p class="s">この画面で応答がなければ、ターミナルの確認ダイアログに切り替わります（実際は 2 分、デモでは 20 秒）。</p>`
     : `<b>承認待ち</b><p><code>${esc(ev.v)}: ${esc(ev.x)}</code></p><p class="s">ターミナルの確認ダイアログで許可してください。（デモでは 8 秒後に許可されます）</p><button class="linkbtn" type="button" data-set>この画面から承認できるようにする</button>`;
-  ops.after(p); scrollIf(c);
+  ops.after(p); scrollIf(c); endMark(c);
   setStatus(c,'wait',`承認待ち：<b>${esc(ev.v)}</b> <code>${esc(ev.x)}</code>${viaBrowser?' · 開いて承認できます':''}`); block(c,'wait',ev.x);
   if(sel!==c.num) toast('wait',`ch.${c.num} ${esc(c.name)} が承認を待っています`,`${esc(ev.v)}: ${esc(ev.x)}（押すと開きます）`,c.num);
   let r='ok';
@@ -117,7 +135,7 @@ async function demoAsk(c,ev,ops,tid){
   const q={id:rid(),qs:ev.ask.qs}, li=document.createElement('li'); li.className='op k-tool';
   li.innerHTML=`<span class="num"></span><span class="v">AskUserQuestion</span><span class="x">${esc(q.qs[0].q)}</span><span class="r"></span>`; ops.appendChild(li);
   let answer=null; const card=qCard(q,async a=>{ await sleep(500); answer=a; });
-  ops.after(card); scrollIf(c);
+  ops.after(card); scrollIf(c); endMark(c);
   c.ask=q.id; setStatus(c,'wait',`質問：<b>${esc(q.qs[0].q)}</b>`); block(c,'wait',q.qs[0].q);
   if(sel!==c.num) toast('ask',`ch.${c.num} ${esc(c.name)} が質問しています`,`${esc(q.qs[0].q)}（押すと開いて答えられます）`,c.num);
   for(let i=0;i<150&&!answer&&tid===c.turnId;i++) await sleep(300);      // about 30 s (paused time not counted), then the terminal answers
@@ -133,7 +151,7 @@ async function turn(c,T,text,byUser,files){
   li.innerHTML=`${foldHTML(num,t0,esc(strip(text)),'進行中')}
     <div class="full">${youHTML(text,byUser?'この画面から':'ターミナルから',t0,filesHTML(files))}<div class="flow">${aiHead(c,t0)}<ul class="ops"></ul><div class="ans"></div></div><div class="turnFt"></div></div>`;
   foldBind(li);
-  c.log.appendChild(li); tail(c); scrollIf(c);
+  c.log.appendChild(li); tail(c); scrollIf(c); endMark(c);
   const ops=li.querySelector('.ops'), ans=li.querySelector('.ans'), st={ops:0,tok:0};
   c.ops=[]; setStatus(c,'work','依頼を受け取りました'); block(c,'work',strip(text)); spend(c,1.2,true,st);
   await sleep(900); if(tid!==c.turnId) return;
@@ -144,7 +162,7 @@ async function turn(c,T,text,byUser,files){
       if(r==='no'){ const d=document.createElement('li'); d.className='op denied'; d.innerHTML=`<span class="num"></span><span class="v">${esc(ev.v)}</span><span class="x">${esc(ev.x)}</span><span class="r">拒否のため実行せず</span>`; ops.appendChild(d); await sleep(600); continue; } }
     await op(c,ev,ops,st,tid,false); }
   if(tid!==c.turnId) return;
-  c.active=null; setStatus(c,'work','返答を書いています');
+  c.active=null; setStatus(c,'work','返答を書いています'); endMark(c);
   await typeInto(ans,(byUser?'（デモのため、実際の返答の代わりに用意した作業を再生しています）':'')+T.answer,c,tid);
   if(tid!==c.turnId) return;
   spend(c,.6+strip(T.answer).length/400,true,st);
@@ -364,8 +382,9 @@ function stopTurn(c){ if(c.status!=='work'&&c.status!=='wait') return; c.turnId+
 function select(n){ if(n!==0&&!chN(n)) return; const changed=n!==sel; sel=n;
   const swap=()=>{ if(sel!==n) return;
     CH.forEach(c=>{ c.log.hidden= c.num!==n; });
-    $('wall').hidden= n!==0; $('chan').hidden= n===0; $('ctl').hidden= n===0; $('ctl0').hidden= n!==0; closePal(); askFit();
-    if(n){ renderOsd(chN(n)); requestAnimationFrame(()=>{ $('chan').scrollTop=$('chan').scrollHeight; }); }
+    $('wall').hidden= n!==0; $('chan').hidden= n===0; $('ctl').hidden= n===0; $('ctl0').hidden= n!==0; closePal();
+    stick=true; endNew=0; endDraw(); askFit();          // a channel opens at its latest
+    if(n){ renderOsd(chN(n)); requestAnimationFrame(()=>{ if(sel===n) toEnd(false); }); }
     else { $('sfog').style.setProperty('--fog','0'); $('screen').classList.remove('off'); renderWall(); renderGuide(); }
     if(rtab==='D') renderDetail(true); if(rtab==='S') renderSkills(true); };
   if(changed&&!reduce){ const w=$('wipe'), c=chN(n); $('wipeN').textContent= n===0? 'ch.0' : `ch.${n}`; $('wipeS').textContent= n===0? '全チャンネル' : c.name;
@@ -479,8 +498,8 @@ $('ask').addEventListener('keydown',e=>{
 $('ask').addEventListener('blur',()=>setTimeout(()=>{ if(document.activeElement!==$('ask')) closePal(); },120));
 $('bCmd').addEventListener('click',()=>{ if(pal.open&&pal.mode==='cmd'){ closePal(); return; } if(!$('ask').value.startsWith('/')) $('ask').value='/'; $('ask').focus(); pal.i=0; openPal(); askFit(); });
 $('ctl').addEventListener('submit',e=>{ e.preventDefault(); const c=chN(sel), v=$('ask').value.trim(); if(!c||!v||c.status==='off') return;
-  if(v.startsWith('/')){ const m=v.slice(1).match(/^(\S+)\s*([\s\S]*)$/); if(!m) return; if(queueCmd(c,m[1],m[2].trim())){ $('ask').value=''; closePal(); askFit(); } return; }
-  sendText(c,v); $('ask').value=''; closePal(); askFit(); ctlHint(); });
+  if(v.startsWith('/')){ const m=v.slice(1).match(/^(\S+)\s*([\s\S]*)$/); if(!m) return; if(queueCmd(c,m[1],m[2].trim())){ $('ask').value=''; closePal(); askFit(); toEnd(false); } return; }
+  sendText(c,v); $('ask').value=''; closePal(); askFit(); ctlHint(); toEnd(false); });       // what you send is at the bottom: so are you
 
 /* the message box grows with what is typed, a line at a time, up to a share of the window; past that it scrolls inside.
    The screen above gives up the room it takes (down to a floor), and a channel read to its end stays at its end */
@@ -488,7 +507,7 @@ const ASK_MIN=46;
 function askFit(){ const a=$('ask'), root=document.documentElement;
   if($('ctl').hidden){ root.style.setProperty('--askGrow','0px'); return; }
   const max=Math.round(Math.max(120,Math.min(innerHeight*(innerWidth<=620? .3 : .36),360)));
-  const view=$('chan'), atEnd=!view.hidden&&view.scrollHeight-view.scrollTop-view.clientHeight<40;
+  const view=$('chan'), atEnd=!view.hidden&&stick;
   a.style.height='auto'; const want=Math.max(ASK_MIN,a.scrollHeight+2), h=Math.min(want,max);
   a.style.height=h+'px'; a.style.overflowY= want>max? 'auto' : 'hidden';
   root.style.setProperty('--askGrow',Math.max(0,h-ASK_MIN)+'px');
@@ -528,28 +547,36 @@ function qCard(q,send){ const d=document.createElement('div'); d.className='qcar
   d.innerHTML=`<div class="qhd"><b>Claude からの質問</b><span class="s">${one?'押すとすぐ答えます':'選んでから「答える」を押します'}。ターミナルでも答えられ、先に答えた方が使われます。</span></div>
     ${q.qs.map((x,i)=>`<fieldset class="qq" data-i="${i}"><legend>${x.h?`<span class="qh">${esc(x.h)}</span>`:''}<span class="qt">${esc(x.q||'（質問）')}</span>${x.multi?'<small>いくつでも選べます</small>':''}</legend>
       ${x.opts.length?`<div class="qopts">${x.opts.map((o,k)=>`<button type="button" class="qo" data-k="${k}" aria-pressed="false"><b>${esc(o.l)}</b>${o.d?`<small>${esc(o.d)}</small>`:''}</button>`).join('')}</div>`:''}
-      <input class="qin" type="text" maxlength="2000" placeholder="${x.opts.length?'ほかの答えを書く（選択肢にないとき）':'答えを書く'}" aria-label="${esc(x.q)}：${x.opts.length?'ほかの答え':'答え'}"></fieldset>`).join('')}
+      <textarea class="qin" rows="1" maxlength="2000" placeholder="${x.opts.length?'ほかの答えを書く（選択肢にないとき · Shift+Enter で改行）':'答えを書く（Shift+Enter で改行）'}" aria-label="${esc(x.q)}：${x.opts.length?'ほかの答え':'答え'}（Enter で答える、Shift+Enter で改行）"></textarea></fieldset>`).join('')}
     <div class="qft">${one?'':'<button class="btn primary" type="button" data-send disabled>答える</button>'}<span class="qst" role="status"></span></div>`;
   const S=q.qs.map(()=>({pick:new Set(),text:''})), sendB=d.querySelector('[data-send]'), st=d.querySelector('.qst');
   const ready=()=>S.every(s=>s.pick.size||s.text.trim());
   const draw=()=>{ d.querySelectorAll('.qq').forEach((f,i)=>f.querySelectorAll('.qo').forEach(b=>b.setAttribute('aria-pressed',String(S[i].pick.has(+b.dataset.k))))); if(sendB) sendB.disabled=!ready(); };
-  const go=async()=>{ if(!ready()||d.classList.contains('busy')) return; d.classList.add('busy'); d.querySelectorAll('button,input').forEach(b=>b.disabled=true); st.className='qst'; st.textContent='送っています…';
+  const go=async()=>{ if(!ready()||d.classList.contains('busy')) return; d.classList.add('busy'); d.querySelectorAll('button,.qin').forEach(b=>b.disabled=true); st.className='qst'; st.textContent='送っています…';
     try{ await send(S.map(s=>({pick:[...s.pick].sort((a,b)=>a-b),text:s.text.trim()}))); if(!d.classList.contains('done')) st.textContent='送りました。ターミナルの質問が閉じるのを待っています…'; }
-    catch(err){ d.classList.remove('busy'); d.querySelectorAll('button,input').forEach(b=>b.disabled=false); draw(); st.className='qst bad'; st.textContent=`送れませんでした（${err.message}）`; } };
+    catch(err){ d.classList.remove('busy'); d.querySelectorAll('button,.qin').forEach(b=>b.disabled=false); draw(); st.className='qst bad'; st.textContent=`送れませんでした（${err.message}）`; } };
   d.querySelectorAll('.qq').forEach((f,i)=>{ const x=q.qs[i], s=S[i], inp=f.querySelector('.qin');
     f.querySelectorAll('.qo').forEach(b=>b.addEventListener('click',()=>{ const k=+b.dataset.k;
-      if(x.multi){ s.pick.has(k)? s.pick.delete(k) : s.pick.add(k); } else { s.pick=new Set([k]); s.text=''; inp.value=''; }
+      if(x.multi){ s.pick.has(k)? s.pick.delete(k) : s.pick.add(k); } else { s.pick=new Set([k]); s.text=''; inp.value=''; qFit(inp); }
       draw(); if(one) go(); }));
-    inp.addEventListener('input',()=>{ s.text=inp.value; if(!x.multi&&s.text.trim()) s.pick.clear(); draw(); });
-    inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.isComposing){ e.preventDefault(); go(); } }); });
+    inp.addEventListener('input',()=>{ s.text=inp.value; if(!x.multi&&s.text.trim()) s.pick.clear(); draw(); qFit(inp); });
+    // Enter answers, as the box did when it was one line; Shift+Enter starts a new line
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); go(); } }); });
   if(sendB) sendB.addEventListener('click',go);
   d._picks=S; return d; }
+/* a written answer wraps instead of running off the box: it grows a line at a time, up to five, and scrolls inside past
+   that (CSS does it where the browser sizes a box to its text, field-sizing; elsewhere it is measured here) */
+const Q_FIELD=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
+function qFit(t){ if(Q_FIELD||!t.offsetParent) return;
+  if(!t.value){ t.style.height=''; return; }
+  t.style.height='auto'; const max=parseFloat(getComputedStyle(t).maxHeight)||130;
+  t.style.height=Math.min(t.scrollHeight+2,max)+'px'; }
 // the question was answered (here or in the terminal), or closed without an answer
-function qDone(d,ev){ if(!d||d.classList.contains('done')) return; d.classList.remove('busy'); d.classList.add('done'); d.querySelectorAll('button,input').forEach(b=>b.disabled=true);
+function qDone(d,ev){ if(!d||d.classList.contains('done')) return; d.classList.remove('busy'); d.classList.add('done'); d.querySelectorAll('button,.qin').forEach(b=>b.disabled=true);
   const A=ev.answers||{}, qs=[...d.querySelectorAll('.qq')];
   qs.forEach(f=>{ const t=f.querySelector('.qt').textContent, a=A[t]; const got=a!=null? String(a).split(', ') : [];
     f.querySelectorAll('.qo').forEach(b=>{ if(got.includes(b.querySelector('b').textContent)) b.setAttribute('aria-pressed','true'); });
-    const inp=f.querySelector('.qin'); if(a!=null&&!f.querySelector('.qo[aria-pressed="true"]')) inp.value=a; if(!inp.value) inp.hidden=true;
+    const inp=f.querySelector('.qin'); if(a!=null||!inp.value) inp.hidden=true; else qFit(inp);    // the answer line below shows it whole
     if(a!=null){ let r=f.querySelector('.qa'); if(!r){ r=document.createElement('p'); r.className='qa'; f.appendChild(r); } r.innerHTML=`<span>答え</span>${esc(a)}`; } });
   const st=d.querySelector('.qst'); st.className='qst'+(ev.err?' bad':' ok');
   st.textContent= ev.err? '答えずに閉じられました（ターミナルで取り消したか、止めました）' : ev.by==='screen'? 'この画面で答えました' : 'ターミナルで答えました';

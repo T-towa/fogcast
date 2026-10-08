@@ -12,13 +12,20 @@ cfg={'hasCompletedOnboarding':True,'theme':'dark','numStartups':5,'customApiKeyR
      'projects':{WORK:{'hasTrustDialogAccepted':True,'hasCompletedProjectOnboarding':True,'allowedTools':[]}}}
 json.dump(cfg,open(os.path.join(HOME,'.claude.json'),'w'))
 stub=subprocess.Popen(['node',os.path.join(S,'..','ziptest',os.environ.get('STUB','stub-api.mjs'))],env={**os.environ,'STUB_PORT':str(STUB),'STUB_DELAY_MS':'1500','STUB_LOG':os.path.join(T,'stub.log')})
+# FAKE_IDE=<port>: a stand-in for the VS Code extension (fake-ide.mjs), with its lock file in this HOME; its requests go to t/ide.log
+IDE=None; IDELOG=os.path.join(T,'ide.log'); T0=time.time()
+if os.environ.get('FAKE_IDE'):
+    if os.path.exists(IDELOG): os.remove(IDELOG)
+    IDE=subprocess.Popen(['node',os.path.join(S,'fake-ide.mjs')],env={**os.environ,'IDE_PORT':os.environ['FAKE_IDE'],'IDE_HOME':HOME,'IDE_WORK':WORK,'IDE_LOG':IDELOG})
 time.sleep(.6)
 COLS,ROWS=110,42
 screen=pyte.Screen(COLS,ROWS); stream=pyte.ByteStream(screen)
 env={'HOME':HOME,'PATH':(os.environ.get('EXTRA_PATH','')+':' if os.environ.get('EXTRA_PATH') else '')+'/opt/node22/bin:/usr/local/bin:/usr/bin:/bin','TERM':'xterm-256color','LANG':'C.UTF-8','COLUMNS':str(COLS),'LINES':str(ROWS),
      **({'WSL_DISTRO_NAME':os.environ['FAKE_WSL']} if os.environ.get('FAKE_WSL') else {}),
      'ANTHROPIC_API_KEY':KEY,'ANTHROPIC_BASE_URL':f'http://127.0.0.1:{STUB}','FOGCAST_PORT':str(PORT),'FOGCAST_HOME':FH,'DISABLE_AUTOUPDATER':'1',
-     **{k:v for k,v in os.environ.items() if k.startswith('PROBE_')}}
+     **{k:v for k,v in os.environ.items() if k.startswith('PROBE_')},
+     # EXTRA_ENV="CLAUDE_CODE_SSE_PORT=4391 TERM_PROGRAM=vscode": more of the terminal's environment, as VS Code's would have it
+     **dict(kv.split('=',1) for kv in os.environ.get('EXTRA_ENV','').split() if '=' in kv)}
 pid,fd=pty.fork()
 if pid==0:
     os.chdir(WORK)
@@ -79,7 +86,7 @@ try:
             lines=[l for l in lines if l.strip()]
             print(f'===== {title} ====='); print('\n'.join(lines[-int(n):])); print()
         elif kind=='type': send(arg)
-        elif kind=='enter': send('\r')
+        elif kind=='enter': send('\r'); print(f'[+{time.time()-T0:.1f}s] enter')
         elif kind=='key': send({'tab':'\t','esc':'\x1b','ctrlx':'\x18','down':'\x1b[B','up':'\x1b[A','right':'\x1b[C','left':'\x1b[D','space':' '}[arg])
         elif kind=='chan':
             m=snapshot(); ch=m['chans'][-1]
@@ -116,6 +123,13 @@ try:
             # the probe plugin's notes, from where the last look left off
             pth=os.path.join(T,'probe.log'); txt=open(pth).read() if os.path.exists(pth) else ''
             print('----- probe.log -----'); print(txt[getattr(sys.modules[__name__],'_logpos',0):].rstrip()); globals()['_logpos']=len(txt)
+        elif kind=='ide':
+            # what the stand-in VS Code was asked since the last look, with the time since this run started
+            txt=open(IDELOG).read().splitlines() if os.path.exists(IDELOG) else []
+            at=globals().get('_idepos',0); globals()['_idepos']=len(txt)
+            print('----- ide.log -----')
+            for l in txt[at:]:
+                ms,_,rest=l.partition(' '); print(f'  [+{int(ms)/1000-T0:.1f}s] {rest}')
         elif kind=='api':
             path,_,body=arg.partition(' ')
             print('api',path,'->',api(path,json.loads(body or '{}')))
@@ -184,7 +198,7 @@ try:
             elif kind=='answer':
                 print('answer ->',api('/api/ui/question',{'chan':ch['id'],'id':ch.get('ask'),'answers':json.loads(arg)}))
             else:
-                print('send ->',api('/api/ui/send',{'chan':ch['id'],'text':arg,'local':'lid-term'}))
+                print(f'[+{time.time()-T0:.1f}s] send ->',api('/api/ui/send',{'chan':ch['id'],'text':arg,'local':'lid-term'}))
         elif kind=='pair':
             # the screen side: read nothing from the terminal, type what the person would read
             code=None
@@ -198,3 +212,4 @@ finally:
     try: os.kill(pid,signal.SIGTERM)
     except Exception: pass
     stub.kill()
+    if IDE: IDE.terminate()

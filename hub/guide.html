@@ -214,7 +214,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
 <body>
 <div class="page" lang="ja">
   <header class="cover">
-    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.5.3</span></div>
+    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.5.4</span></div>
     <h1><span class="mark">FOGCAST</span><span class="ja">霧読み</span></h1>
     <p class="lead">Claude Code を何本ものターミナルで動かしているときに、すべての会話・道具の呼び出し・使用量を、ブラウザの 1 画面にまとめて映す Mod です。画面から依頼を送る、<code>/</code> のコマンドを実行する、ツールの実行を許可する、といった操作もできます。</p>
     <dl class="facts">
@@ -266,7 +266,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <div class="cmd"><code>node -v &amp;&amp; claude --version</code><button class="copy" type="button">コピー</button></div></li>
           <li><b class="t">zip を解凍して、ホームフォルダに置く</b>
             <p>ダウンロードフォルダにある場合は、次のコマンドで <code>~/fogcast</code> ができます。</p>
-            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.5.3.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.5.4.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>Finder でダブルクリックして、できた <code>fogcast</code> フォルダをホームフォルダに移してもかまいません。中にある <code>.claude-plugin</code> は見えないフォルダなので、中身だけを選ばずにフォルダごと移してください。</p></li>
           <li><b class="t">マーケットプレイスとして追加する</b>
             <div class="cmd"><code>claude plugin marketplace add ~/fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -293,7 +293,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td>画面</td><td>Windows のブラウザで見ます。<code>/fog</code> で Windows の既定のブラウザが開きます（0.1.2 から）。WSL2 は localhost を Windows に転送するので、<code>http://127.0.0.1:4317</code> で届きます。</td></tr>
           </tbody>
         </table></div>
-        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.5.3.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
+        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.5.4.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
         <p class="note"><span class="lb">お知らせ</span><span>Windows のブラウザでつながらないときは、PowerShell で <code>wsl --shutdown</code> を実行してから WSL を開き直すと直ることがあります。</span></p>
       </section>
 
@@ -341,6 +341,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <h3>見る</h3>
             <p class="muted"><kbd>0</kbd> で全チャンネル、<kbd>1</kbd>〜<kbd>9</kbd> でそのチャンネル。タイルや番組表の帯を押しても開きます。</p>
             <p class="muted">会話はメッセージアプリと同じ並びです。あなたの依頼は右の黄色い吹き出し（「ターミナルから」「この画面から」と、どこから送ったかの印つき）、Claude の返答は左の白い吹き出しで、そのあいだの黒い枠に道具の呼び出しが並びます。ターンの頭の見出し（ターン番号・時刻・依頼の 1 行目）を押すと「たたむ ▴」「ひらく ▾」で開け閉めできます。今のターンと、その前の 2 ターンは開いたままで、それより前のターンは新しいターンが始まると自動で畳まれます。手で開け閉めしたターンは、そのままにします。</p>
+            <p class="muted">会話のいちばん下を見ているあいだは、新しいメッセージが来ると、そのまま下へ進みます。上に戻って読んでいるあいだは、何が来ても画面は動きません。代わりに右下に <b>↓</b> のボタンが出て、そのあいだに届いたメッセージ（依頼・Claude の返答・質問・承認待ち・お知らせ）があると、黄色の「新着 2」のように数が出ます。押すと、いちばん下（最新）に戻ります。自分で下までスクロールしても消えます。この画面から送ったときと、チャンネルを切り替えたときは、いちばん下から始まります。</p>
             <p class="muted">1 ターンは、あなたが 1 回送ってから、Claude が返答し終えて入力待ちに戻るまでです。道具の呼び出し、承認、Claude からの質問への回答は、そのターンの中に入ります。返答が終わってから送った修正は、次のターンになります。Claude の作業中にターミナルで送った修正は、Claude Code が作業の区切りで Claude に渡すので、同じターンの中に「作業中にターミナルから」の吹き出しで出ます（Claude がもう最後の返答を書いているときは区切りがないので、返答のあとに次のターンとして始まります）。</p>
             <h3>送る</h3>
             <p class="muted">送信欄に書いて <kbd>Enter</kbd>（改行は <kbd>Shift</kbd>+<kbd>Enter</kbd>）。そのターミナルで入力したのと同じ扱いです。送った文は押した瞬間に会話のいちばん下に出て、ターミナルに渡ると「まもなく始まります」、Claude が作業中なら「順番待ち · 今の作業が終わると始まります」と出ます。ターンが始まると、そのターンの吹き出しに置き換わります。送れなかったときは赤くなり、「もう一度送る」「消す」が出ます。ほかの画面（スマホなど）から送ったものも、同じように並びます。</p>
@@ -381,7 +382,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
               <li>作業中に選ぶと、今のターンが終わってから切り替わります。ターミナルで切り替えたときも、見出しと会話の欄に出ます。</li>
             </ul>
             <h3>Claude の質問に答える</h3>
-            <p class="muted">Claude が選択肢で質問してくると（ターミナルに選ぶ画面が出るとき）、そのチャンネルに質問のカードが出て、タイルは「回答待ち」になります。選択肢を押すと答えになります。質問が 1 つで 1 つだけ選ぶものは、押した時点で送ります。いくつも選べるものや質問が複数あるものは、選んでから「答える」を押します。選択肢にないときは「ほかの答え」に書きます。</p>
+            <p class="muted">Claude が選択肢で質問してくると（ターミナルに選ぶ画面が出るとき）、そのチャンネルに質問のカードが出て、タイルは「回答待ち」になります。選択肢を押すと答えになります。質問が 1 つで 1 つだけ選ぶものは、押した時点で送ります。いくつも選べるものや質問が複数あるものは、選んでから「答える」を押します。選択肢にないときは「ほかの答え」に書きます。長い答えは欄の中で折り返し、書いた分だけ 5 行まで広がって、それより長いと欄の中でスクロールします。<kbd>Enter</kbd> で答え、<kbd>Shift</kbd>+<kbd>Enter</kbd> で改行します（改行はそのまま Claude に渡ります）。</p>
             <p class="muted">ターミナルの選ぶ画面も同時に開いていて、先に答えた方が使われ、もう一方は閉じます。画面から答えると、ターミナルにも「User answered Claude's questions」と答えが残り、Claude にはターミナルで答えたのと同じ形で渡ります。承認の設定（オン・オフ）に関係なく使えます。</p>
             <h3>止める・圧縮する</h3>
             <p class="muted">「停止」は今のターンを中断します。「圧縮」は会話を要約してコンテキストを空けます（作業中なら、ターンが終わってから）。</p>
@@ -470,6 +471,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td><code>claude plugin disable fogcast@fogcast --scope local</code></td><td>今いるプロジェクトだけでオフにします。</td></tr>
             <tr><td><code>claude plugin enable fogcast@fogcast --scope local</code></td><td>オフにしたプロジェクトで、オンに戻します。</td></tr>
             <tr><td><code>claude --plugin-dir ~/fogcast</code></td><td>インストールせず、そのセッションだけで試します。</td></tr>
+            <tr><td><code>CLAUDE_CODE_AUTO_CONNECT_IDE=false claude</code></td><td>VS Code とつながずに起動します。VS Code で隠したターミナルが、送るたびに開くのを止めます（「困ったときは」を参照）。</td></tr>
             <tr><td><code>node ~/fogcast/hub/hub.mjs --stop</code></td><td>受け皿（画面のサーバー）をすぐ止めます。次に <code>claude</code> を起動すると、自動で起動します。</td></tr>
           </tbody>
         </table></div>
@@ -491,7 +493,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>新しい版に更新する</h3>
         <ol class="steps">
           <li><b class="t">新しい zip で <code>~/fogcast</code> を上書きする</b>
-            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.5.3.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.5.4.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>ファイル名は受け取った版に合わせてください。</p></li>
           <li><b class="t">版を更新する</b>
             <div class="cmd"><code>claude plugin update fogcast@fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -528,6 +530,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td class="w">画面に「ui.html が見つかりません」</td><td><code>~/fogcast</code> を動かしたり消したりしていないか。フォルダを戻してから <code>node ~/fogcast/hub/hub.mjs --stop</code> を実行し、<code>claude</code> を起動し直します。</td></tr>
             <tr><td class="w">チャンネルに「報告が途絶えました」</td><td>そのターミナルが閉じたか、20 秒以上応答がありません。ターミナルが動いていれば、すぐ元に戻ります。</td></tr>
             <tr><td class="w">終わったチャンネルを消したい</td><td>そのチャンネルを開いて「チャンネルを消す」、またはまとめて全チャンネルの見出しの「終了したチャンネルを片付ける」。セッションは残るので、「＋ 追加」の過去のセッションから続きを始められます。</td></tr>
+            <tr><td class="w">VS Code で隠したターミナルが、送るたびに開く</td><td>Claude Code が VS Code とつながっているとき（VS Code のターミナルで <code>claude</code> を起動したとき）に、Claude Code の側で起きることです。Claude Code は依頼を受けるたびに、VS Code に「Claude の差分のタブを閉じて」と頼み、VS Code の拡張機能（Claude Code for VS Code）はそのあと、ターミナルを表に出します。この画面から送ったときだけでなく、ターミナルで送ったときも同じです（ターミナルが見えているので気づかないだけです）。Fogcast の側からは止められません。開かないようにするには、VS Code とつながずに起動します。<div class="cmd"><code>CLAUDE_CODE_AUTO_CONNECT_IDE=false claude</code><button class="copy" type="button">コピー</button></div>こうして起動したあいだは、VS Code での差分の表示、VS Code で選んでいる行の受け渡し、VS Code のエラー表示（診断）の受け渡しが使えません。あとから <code>/ide</code> でつなぐこともできます（つなぐと、また開くようになります）。</td></tr>
             <tr><td class="w">送った文が「順番待ち」のまま</td><td>Claude が作業中のターミナルは、今のターンが終わってから始めます。急ぐときは「停止」で今のターンを止めます。ターミナルが終了すると「送れませんでした」になり、「もう一度送る」か「消す」を選べます。</td></tr>
             <tr><td class="w">質問のカードが出ない</td><td>Claude が選択肢の画面で質問したとき（AskUserQuestion）に出ます。返答の文章の中で「1. A案 2. B案」のように聞いているときはカードになりません。送信欄に答えを書いて送ってください。ツールを使ってよいかの確認は承認で、「設定」から画面でも許可・拒否できるようにできます。</td></tr>
             <tr><td class="w">新しく入れたスキルが出ない</td><td>動いているセッションには、<code>/reload-skills</code> を実行するか <code>claude</code> を起動し直すまで入りません。グローバルのスキルは、呼び出されるまでコミュには出ません（「スキル」のタブの「グローバル」には出ます）。</td></tr>
@@ -551,7 +554,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>仕様</h3>
         <div class="tbl"><table>
           <tbody>
-            <tr><td>版</td><td>0.5.3</td></tr>
+            <tr><td>版</td><td>0.5.4</td></tr>
             <tr><td>必要なもの</td><td>Claude Code 2.1.290 以降（Mod が使える版）、Node.js 18 以上</td></tr>
             <tr><td>日付の区切り</td><td>画面（ブラウザ）の時計に合わせます。WSL の時計が Windows と違う地域になっていても、カレンダーと連続日数は画面の日付で数えます（0.3.0 から）。</td></tr>
             <tr><td>確かめた環境</td><td>Linux。WSL は、Windows のブラウザを開くところを Linux 上で見立てて確かめました。macOS とネイティブの Windows はまだ確かめていません。</td></tr>
@@ -577,7 +580,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
     </main>
   </div>
 
-  <footer><span>Fogcast（霧読み）0.5.3 取扱説明書</span><span>画面の左上の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
+  <footer><span>Fogcast（霧読み）0.5.4 取扱説明書</span><span>画面の左上の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
 </div>
 <script>
 (function(){
