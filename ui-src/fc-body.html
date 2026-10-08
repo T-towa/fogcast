@@ -1,0 +1,135 @@
+
+<canvas id="sky" aria-hidden="true"></canvas>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="bRow"><h1 class="mark">FOGCAST</h1><button class="lvChip" id="lvChip" type="button" hidden><b>Lv</b><span id="lvN">1</span><i class="xp" aria-hidden="true"><i id="lvXp"></i></i></button></div>
+      <div class="rx" id="rx"><i></i><span id="rxTxt">受信中</span><span class="demo">DEMO</span><button class="pz" type="button" id="bPause" aria-pressed="false">一時停止</button><a class="tool" id="bGuide" href="/guide" target="_blank" rel="noopener" hidden>使い方</a></div>
+    </div>
+    <nav class="dial" aria-label="チャンネル">
+      <button class="knob" id="knob" type="button" aria-label="次のチャンネルへ回す" title="次のチャンネル"><span class="kn"><i></i></span></button>
+      <div class="chs" id="chs" role="tablist" aria-label="チャンネル一覧"></div>
+    </nav>
+    <button class="hud" id="hud" type="button" aria-label="天気予報を開く">
+      <span class="d"><b id="hDate">--/--</b><i id="hDow">-</i></span>
+      <span class="w" id="hWx"></span>
+      <span class="t"><b id="hTod">--</b><span id="hLim">5時間枠 --%</span><span id="hLim7">週の枠 --%</span></span>
+    </button>
+  </header>
+
+  <main class="main">
+    <section class="tv glass" aria-label="テレビ">
+      <div class="screen" id="screen">
+        <div class="fogl" id="sfog" aria-hidden="true"></div>
+        <div class="view" id="wall">
+          <div class="wallHead"><span class="tag">全チャンネル</span><span class="sum" id="wSum"></span></div>
+          <div class="tiles" id="tiles"></div>
+          <div class="guide">
+            <div class="gHead"><span class="tag teal">番組表</span><span class="s">直近 60 分。帯は 1 ターン、黄色の縞は承認待ち。帯を押すとそのチャンネルへ。</span></div>
+            <div class="gGrid" id="guide"></div>
+          </div>
+        </div>
+        <div class="view" id="chan" hidden>
+          <div class="osd" id="osd"></div>
+          <div id="logs"></div>
+          <div class="live" id="live"></div>
+        </div>
+        <div class="glare" aria-hidden="true"></div>
+        <div class="wipe" id="wipe" aria-hidden="true"><span class="band"><b id="wipeN"></b><small id="wipeS"></small></span></div>
+        <div class="osdBig" id="osdBig" aria-hidden="true"></div>
+        <div class="cutin" id="cutin" aria-hidden="true"></div>
+      </div>
+      <form class="ctl" id="ctl" hidden autocomplete="off">
+        <div class="pal" id="pal" hidden>
+          <div class="palhd"><span class="tag teal">コマンド</span><span class="s" id="palSub">このチャンネルで使えるもの</span></div>
+          <ul id="palList" role="listbox" aria-label="コマンド"></ul>
+          <div class="palft">↑↓ で選ぶ · Enter で入れる · Esc で閉じる</div>
+        </div>
+        <textarea id="ask" rows="1" aria-label="このチャンネルに送る文" aria-autocomplete="list" aria-controls="palList" aria-expanded="false" placeholder="このチャンネルに送る（Enter で送信、Shift+Enter で改行）"></textarea>
+        <div class="btns">
+          <button class="btn" type="button" id="bCmd" aria-label="コマンドの一覧を開く"><b>/</b> コマンド</button>
+          <button class="btn primary" type="submit" id="bSend">送信</button>
+          <button class="btn" type="button" id="bStop">停止</button>
+          <button class="btn" type="button" id="bCompact">圧縮</button>
+          <button class="btn danger" type="button" id="bForget" hidden>チャンネルを消す</button>
+        </div>
+        <div class="ctlFoot"><div class="hint" id="ctlHint">送った文は、そのターミナルで入力したのと同じ扱いになります。「/」で始めると組み込みのコマンドやスキルを実行できます。作業中に送ると、終わってから始まります。</div><button class="setBtn" type="button" id="bSetCh"><span class="in"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg><span class="l"><b>設定</b><small class="setSt">画面で承認<em class="pill">オフ</em></small></span></span></button></div>
+      </form>
+      <div class="ctl0" id="ctl0"><span class="tips" id="ctl0Tips"><span><kbd>0</kbd>〜<kbd>9</kbd> でチャンネル切り替え</span><span class="apTip">承認はターミナルの確認ダイアログで行います</span><span>タイルを押すとそのチャンネルを開きます</span></span><button class="setBtn" type="button" id="bSet"><span class="in"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg><span class="l"><b>設定</b><small class="setSt">画面で承認<em class="pill">オフ</em></small></span></span></button></div>
+    </section>
+
+    <aside class="rail glass" aria-label="予報・コミュ・スキル・詳細">
+      <div class="rtabs" role="tablist" aria-label="パネル">
+        <button class="rt" type="button" role="tab" id="tF" aria-controls="pF" aria-selected="true"><span>天気予報</span></button>
+        <button class="rt" type="button" role="tab" id="tL" aria-controls="pL" aria-selected="false"><span>コミュ</span></button>
+        <button class="rt" type="button" role="tab" id="tS" aria-controls="pS" aria-selected="false"><span>スキル</span></button>
+        <button class="rt" type="button" role="tab" id="tD" aria-controls="pD" aria-selected="false"><span>詳細</span></button>
+      </div>
+      <section class="pane" id="pF" role="tabpanel" aria-labelledby="tF"></section>
+      <section class="pane" id="pL" role="tabpanel" aria-labelledby="tL" hidden>
+        <div class="blk">
+          <h3>コミュ<small>全セッション通算の使用回数でランクが上がります</small></h3>
+          <div class="dctl">
+            <input id="dq" type="search" placeholder="名前で絞り込み" aria-label="名前で絞り込み" autocomplete="off">
+            <select id="ds" aria-label="並べ替え"><option value="uses">よく使う順</option><option value="kind">種類ごと</option><option value="recent">最近使った順</option><option value="rank">ランク順</option><option value="cost">毎回の負担が大きい順</option><option value="name">名前順</option></select>
+            <div class="seg" id="dview" role="group" aria-label="表示"><button type="button" data-v="card" aria-pressed="true">カード</button><button type="button" data-v="list" aria-pressed="false">一覧</button></div>
+          </div>
+          <div class="filters" id="filters">
+            <button class="fbtn" type="button" data-k="all" aria-pressed="true">すべて</button>
+            <button class="fbtn" type="button" data-k="tool" aria-pressed="false">ツール</button>
+            <button class="fbtn" type="button" data-k="skill" aria-pressed="false">スキル</button>
+            <button class="fbtn" type="button" data-k="agent" aria-pressed="false">エージェント</button>
+            <button class="fbtn" type="button" data-k="mcp" aria-pressed="false">MCP</button>
+            <button class="fbtn" type="button" data-k="unused" aria-pressed="false">使っていない</button>
+          </div>
+          <p class="note" id="deckCount"></p>
+          <details class="how"><summary>カードの割り当て</summary><p class="note">大アルカナ 22 枚は中心になるもの（組み込みのツールなど）に固定で割り当てます。ほかは種類ごとのスート（スキル＝金貨、エージェント＝剣、MCP＝聖杯、ツール＝棒）を、よく使うものから 14 枚ずつ。入りきらないものは「一覧」にだけ並び、よく使うようになれば空いたカードが回ってきます。一度付いたカードは 30 日間変わりません。</p></details>
+        </div>
+        <div class="deck" id="deck"></div>
+        <p class="note" id="deckNote"></p>
+        <div class="dlist" id="dlist" hidden></div>
+        <div class="blk" id="unused"></div>
+        <p class="note">いま動いているカードは光ります。カードや行を押すと、最近の使用とどのチャンネルで使ったかが見られます。</p>
+      </section>
+      <section class="pane" id="pS" role="tabpanel" aria-labelledby="tS" hidden></section>
+      <section class="pane" id="pD" role="tabpanel" aria-labelledby="tD" hidden></section>
+    </aside>
+  </main>
+
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetT"></div></div>
+<div class="co" id="co" hidden role="dialog" aria-modal="true" aria-labelledby="coName" tabindex="-1">
+  <div class="coBg" aria-hidden="true"></div>
+  <div class="coTop">
+    <div class="coHead">
+      <button class="coBack" type="button" id="coBack"><span>◀ 戻る</span></button>
+      <h2 class="coTitle"><span>コミュ</span></h2>
+      <span class="coSub" id="coSub"></span>
+      <span class="coKeys">↑↓・ホイール・ドラッグで回す　Esc で戻る</span>
+    </div>
+    <div class="coFilRow">
+      <div class="coFil" id="coFil" role="group" aria-label="種類で絞り込む"></div>
+      <label class="coSort"><span class="vh">並べ替え</span><select id="coSort"><option value="uses">よく使う順</option><option value="kind">種類ごと</option><option value="recent">最近使った順</option><option value="rank">ランク順</option><option value="cost">毎回の負担が大きい順</option><option value="name">名前順</option></select></label>
+    </div>
+  </div>
+  <div class="coBody">
+    <div class="coInfo" id="coInfo"></div>
+    <div class="coCard"><div class="card" id="coBig"><span class="face"><span class="num" id="coNum"></span><canvas id="coArt"></canvas><span class="nc">カードなし</span><span class="ar" id="coAr"></span></span></div></div>
+  </div>
+  <div class="coWheel" id="coWheel">
+    <canvas id="coRing" aria-hidden="true"></canvas>
+    <div class="coNav" id="coNav"><button class="coB" type="button" id="coPrev" aria-label="前のカード">▲</button><span class="coPos" id="coPos" aria-hidden="true"></span><button class="coB" type="button" id="coNext" aria-label="次のカード">▼</button></div>
+  </div>
+  <p class="vh" id="coSay" aria-live="polite"></p>
+</div>
+<div class="stv" id="stv" hidden role="dialog" aria-modal="true" aria-labelledby="stvT" tabindex="-1">
+  <div class="stvBg" aria-hidden="true"></div>
+  <div class="stvTop">
+    <button class="coBack" type="button" id="stvBack"><span>◀ 戻る</span></button>
+    <h2 class="coTitle" id="stvT"><span>ステータス</span></h2>
+    <span class="coSub" id="stvSub"></span>
+    <span class="coKeys">Esc で戻る</span>
+  </div>
+  <div class="stvBody" id="stvBody"></div>
+</div>

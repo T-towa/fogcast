@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>Fogcast 取扱説明書</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DotGothic16&family=JetBrains+Mono:wght@400;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: the instruction manual of a night-time TV set. A cover, then numbered chapters in one reading
+   column; an index rail on wide screens, a chip bar on narrow ones. Terminals are drawn dark in both themes,
+   since that is how they look. Light = a foggy morning, dark = the screen's rainy night. */
+:root{
+  --bg:#eceff0; --paper:#f8f9f8; --ink:#15161b; --mute:#4b525b; --faint:#79818a; --line:rgba(21,22,27,.13);
+  --yolk:#ffd931; --yolk-ink:#15110a; --teal:#3fe6d6; --teal-ink:#03130f; --link:#00756b; --alarm:#b5361d;
+  --term:#090b12; --term-ink:#ece8dc; --term-mute:#959ca5; --term-line:rgba(236,232,220,.14);
+  --lift:0 1px 0 rgba(255,255,255,.8) inset,0 12px 32px rgba(18,22,30,.07);
+  --f-disp:"Dela Gothic One","Hiragino Sans","Noto Sans JP",sans-serif;
+  --f-osd:"DotGothic16",ui-monospace,"SFMono-Regular",monospace;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --skew:-9deg;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#07080d; --paper:#10131b; --ink:#f3efe2; --mute:rgba(243,239,226,.72); --faint:rgba(243,239,226,.48); --line:rgba(243,239,226,.12);
+  --link:#3fe6d6; --alarm:#ff7a63; --lift:0 1px 0 rgba(255,255,255,.07) inset,0 18px 40px rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#07080d; --paper:#10131b; --ink:#f3efe2; --mute:rgba(243,239,226,.72); --faint:rgba(243,239,226,.48); --line:rgba(243,239,226,.12);
+  --link:#3fe6d6; --alarm:#ff7a63; --lift:0 1px 0 rgba(255,255,255,.07) inset,0 18px 40px rgba(0,0,0,.4); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.85 var(--f-body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%}
+a{color:var(--link);text-underline-offset:3px}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--line);padding:.08em .38em;border-radius:5px;overflow-wrap:anywhere}
+h1,h2,h3{text-wrap:balance}
+:focus-visible{outline:2px solid var(--yolk);outline-offset:2px}
+
+.page{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:20px 64px}
+.tag{display:inline-block;font:400 13px/1.55 var(--f-disp);letter-spacing:.06em;color:var(--yolk-ink);background:var(--yolk);padding:1px 12px 0;transform:skewX(var(--skew));box-shadow:3px 3px 0 #000}
+.tag.teal{background:var(--teal);color:var(--teal-ink)}
+
+/* ---- cover ---- */
+.cover{position:relative;overflow:hidden;border-radius:26px;padding:clamp(22px,4vw,44px);background:var(--term);color:var(--term-ink);box-shadow:var(--lift);isolation:isolate}
+.cover::before{content:"";position:absolute;inset:0;z-index:-1;background:
+  radial-gradient(70% 90% at 92% 0%,rgba(63,230,214,.20),transparent 60%),
+  radial-gradient(60% 80% at 0% 110%,rgba(255,217,49,.16),transparent 62%),
+  repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 4px)}
+.cover .top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.cover .ver{font:400 14px/1 var(--f-osd);color:var(--teal);letter-spacing:.08em}
+.cover h1{margin:18px 0 6px;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px}
+.cover .mark{font:400 clamp(44px,9vw,92px)/.95 var(--f-disp);letter-spacing:.02em;color:var(--yolk);text-shadow:4px 4px 0 #000}
+.cover .ja{font:400 clamp(18px,2.6vw,26px)/1.2 var(--f-disp);letter-spacing:.12em}
+.cover .lead{margin:10px 0 0;max-width:46em;color:rgba(236,232,220,.86);font-size:15.5px}
+.cover .lead code{background:rgba(236,232,220,.12)}
+.facts{margin:24px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.facts div{padding:12px 14px;border:1px solid var(--term-line);border-radius:14px;background:rgba(255,255,255,.03);min-width:0}
+.facts dt{font-size:11.5px;letter-spacing:.08em;color:var(--term-mute)}
+.facts dd{margin:2px 0 0;font-weight:500}
+.facts dd code{background:rgba(236,232,220,.1);color:var(--yolk)}
+
+/* ---- index + chapters ---- */
+.body{display:grid;grid-template-columns:minmax(0,1fr);gap:28px;margin-top:28px}
+.body > *{min-width:0}
+@media (min-width:1060px){.body{grid-template-columns:220px minmax(0,1fr);gap:44px;align-items:start}}
+.index{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;margin-inline:-16px;padding:10px 16px;background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.index ol{list-style:none;margin:0;padding:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.index ol::-webkit-scrollbar{display:none}
+.index a{display:flex;gap:8px;align-items:baseline;white-space:nowrap;text-decoration:none;color:var(--mute);font-size:13px;padding:6px 11px;border-radius:999px;border:1px solid var(--line)}
+.index a b{font:400 12px/1 var(--f-osd);color:var(--faint)}
+.index a[aria-current="true"]{color:var(--yolk-ink);background:var(--yolk);border-color:var(--yolk)}
+.index a[aria-current="true"] b{color:var(--yolk-ink)}
+@media (min-width:1060px){
+  .index{top:calc(env(safe-area-inset-top,0px) + 20px);margin:0;padding:0;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;border:0}
+  .index ol{flex-direction:column;gap:2px;overflow:visible}
+  .index a{border:0;border-radius:10px;padding:7px 12px;font-size:13.5px}
+  .index .lab{display:block;margin:0 0 10px 12px;font-size:11.5px;letter-spacing:.1em;color:var(--faint)}
+}
+.index .lab{display:none}
+main{min-width:0;display:grid;gap:56px}
+section{min-width:0;scroll-margin-top:calc(env(safe-area-inset-top,0px) + 70px)}
+@media (min-width:1060px){section{scroll-margin-top:calc(env(safe-area-inset-top,0px) + 24px)}}
+.ch{display:flex;align-items:center;gap:14px;margin:0 0 14px}
+.ch .no{flex:none;display:grid;place-items:center;width:40px;height:40px;font:400 22px/1 var(--f-osd);color:var(--yolk-ink);background:var(--yolk);transform:skewX(var(--skew));box-shadow:3px 3px 0 #000}
+.ch h2{margin:0;font:400 clamp(22px,3vw,28px)/1.25 var(--f-disp);letter-spacing:.04em}
+section > p,section > .say{max-width:44em;margin:0 0 14px;color:var(--ink)}
+h3{margin:26px 0 10px;font:700 17px/1.4 var(--f-body)}
+.muted{color:var(--mute)}
+
+/* notes, as manuals mark them */
+.note{display:flex;gap:10px;align-items:flex-start;max-width:46em;margin:12px 0;font-size:14px;color:var(--mute)}
+.note .lb{flex:none;margin-top:3px;font:700 11.5px/1.5 var(--f-body);letter-spacing:.06em;padding:0 8px;border-radius:5px;color:var(--teal-ink);background:var(--teal)}
+.note.warn .lb{color:var(--yolk-ink);background:var(--yolk)}
+
+/* what it does */
+.does{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:2px;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:var(--line)}
+.does div{padding:14px 16px;background:var(--paper);min-width:0}
+.does b{display:block;font-size:14.5px}
+.does span{display:block;font-size:13.5px;color:var(--mute);line-height:1.7}
+
+/* steps: a real order */
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:14px;counter-reset:st}
+.steps > li{counter-increment:st;position:relative;padding:16px 16px 16px 60px;border-radius:18px;background:var(--paper);border:1px solid var(--line);box-shadow:var(--lift);min-width:0}
+.steps > li::before{content:counter(st);position:absolute;left:16px;top:15px;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;font:400 16px/1 var(--f-osd);background:var(--ink);color:var(--bg)}
+.steps b.t{display:block;font-size:15.5px;margin-bottom:2px}
+.steps p{margin:4px 0;color:var(--mute);font-size:14px}
+
+/* commands, with a copy button */
+.cmd{display:flex;align-items:center;gap:10px;margin:10px 0 4px;padding:10px 10px 10px 14px;border-radius:12px;background:var(--term);color:var(--term-ink);min-width:0}
+.cmd code{flex:1;min-width:0;background:none;padding:0;font-size:13.5px;color:var(--term-ink);white-space:pre-wrap;overflow-wrap:anywhere}
+.cmd code::before{content:"$ ";color:var(--term-mute)}
+.cmd.in code::before{content:"> ";color:var(--yolk)}
+.copy{flex:none;font:500 12px/1 var(--f-body);color:var(--term-ink);background:rgba(255,255,255,.08);border:1px solid var(--term-line);border-radius:8px;padding:7px 10px;cursor:pointer}
+.copy:hover{background:rgba(255,255,255,.16)}
+.copy.done{color:var(--yolk-ink);background:var(--yolk);border-color:var(--yolk)}
+
+/* names of the parts */
+.parts{margin:0;display:grid;gap:16px}
+.scr{position:relative;display:grid;gap:8px;padding:12px;border-radius:18px;background:var(--term);color:var(--term-ink);font-size:11px;line-height:1.4;box-shadow:var(--lift)}
+.scr .r{position:relative;border:1px solid var(--term-line);border-radius:10px;padding:15px 10px 8px;background:rgba(255,255,255,.03);min-width:0}
+.sTop{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.sCtlFoot{display:flex;align-items:center;gap:10px;padding-top:6px}
+.sCtlFoot .h{flex:1 1 0;width:0;min-width:0;font-size:10px;color:var(--term-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr .r.sSet{display:flex;align-items:center;gap:8px;padding:11px 12px 6px;background:#000;border-color:var(--yolk)}
+.sSet .g{font:700 12px/1 var(--f-body);letter-spacing:.12em;color:#fff}
+.sSet small{display:flex;align-items:center;gap:5px;font-size:9.5px;color:#d9d4c4;white-space:nowrap}
+.sSet small i{font-style:normal;font-weight:800;padding:2px 6px 1px;border-radius:999px;background:#3d4250;color:#f3efe2}
+.sMark{font:400 15px/1 var(--f-disp);color:var(--yolk);padding:0 4px}
+.sBrand{display:grid;gap:12px;justify-items:start}
+.sRow{display:flex;align-items:center;gap:10px}
+.sTools{display:flex;gap:5px;padding-left:4px}
+.sTools i{font-style:normal;font-size:10.5px;line-height:1;padding:3px 7px;border:1px solid var(--term-line);color:var(--term-mute)}
+.scr .r.sLv{padding:10px 8px 5px;font:400 12px/1 var(--f-disp);color:#fff;background:#000;border-color:var(--yolk);white-space:nowrap}
+.sDial{display:flex;gap:4px;align-items:center}
+.sDial i{font:400 11px/1 var(--f-osd);font-style:normal;padding:4px 7px;border-radius:999px;border:1px solid var(--term-line)}
+.sDial i.on{background:var(--yolk);color:var(--yolk-ink);border-color:var(--yolk)}
+.sHud{white-space:nowrap;color:var(--term-mute)}
+.sMain{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:8px}
+.sTv{display:grid;gap:7px;min-height:150px;align-content:start}
+.sTiles{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.sTiles i{height:30px;border-radius:6px;background:rgba(63,230,214,.16);border:1px solid rgba(63,230,214,.3)}
+.sTiles i.w{background:repeating-linear-gradient(135deg,rgba(255,217,49,.35) 0 5px,rgba(255,217,49,.12) 5px 10px);border-color:rgba(255,217,49,.5)}
+.sBars{display:grid;gap:4px}
+.sBars i{display:block;height:6px;border-radius:3px;background:rgba(236,232,220,.16)}
+.sCtl{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:auto}
+.sCtl span{padding:3px 7px;border-radius:6px;border:1px solid var(--term-line);color:var(--term-mute)}
+.sCtl span.p{background:var(--yolk);color:var(--yolk-ink);border-color:var(--yolk)}
+.sCtl .f{flex:1 1 90px;color:var(--term-mute)}
+.sRail{display:grid;gap:6px;align-content:start}
+.sRail .tb{display:flex;gap:4px;flex-wrap:wrap}
+.sRail .tb span{padding:2px 6px;border-radius:5px;border:1px solid var(--term-line);color:var(--term-mute)}
+.sRail .tb span.on{color:var(--teal-ink);background:var(--teal);border-color:var(--teal)}
+.sCards{display:flex;gap:4px}
+.sCards i{width:16px;height:24px;border-radius:3px;background:linear-gradient(160deg,rgba(255,217,49,.6),rgba(255,217,49,.15));border:1px solid rgba(255,217,49,.6)}
+.n{position:absolute;top:-9px;left:-7px;z-index:2;display:grid;place-items:center;min-width:22px;height:22px;padding:0 5px;font:400 13px/1 var(--f-osd);color:var(--yolk-ink);background:var(--yolk);transform:skewX(var(--skew));box-shadow:2px 2px 0 #000}
+.legend{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:10px 22px}
+.legend li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;min-width:0}
+.legend .k{display:grid;place-items:center;height:22px;font:400 13px/1 var(--f-osd);color:var(--yolk-ink);background:var(--yolk);transform:skewX(var(--skew));box-shadow:2px 2px 0 #000;margin-top:3px}
+.legend b{display:block;font-size:14.5px}
+.legend span{display:block;font-size:13.5px;color:var(--mute);line-height:1.7}
+
+/* the terminal, as it shows the code */
+.tm{display:grid;gap:7px;padding:12px 14px 14px;border-radius:16px;background:var(--term);color:var(--term-mute);font:12.5px/1.5 var(--f-mono);box-shadow:var(--lift);max-width:640px;min-width:0}
+.tm .tt{display:flex;gap:6px;align-items:center;font:11px/1 var(--f-body);color:var(--term-mute)}
+.tm .tt i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.18)}
+.tm .tt span{margin-left:6px}
+.tm .row{display:flex;gap:10px;align-items:center;min-width:0}
+.tm .band{flex:1;min-width:0;display:grid;gap:3px;padding:7px 10px;border:1.5px solid var(--yolk);border-radius:10px;color:var(--term-ink);box-shadow:0 0 0 3px rgba(255,217,49,.12)}
+.tm .band .h{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;color:var(--yolk);font-weight:600}
+.tm .band .code{background:var(--yolk);color:var(--yolk-ink);padding:0 7px;border-radius:3px;letter-spacing:.06em}
+.tm .band .s{color:var(--term-mute);font-size:11.5px}
+.tm .band .btn{justify-self:start;color:var(--term-ink);font-size:11.5px}
+.tm .prompt{display:flex;gap:8px;align-items:center;padding:5px 10px;border:1px solid var(--term-line);border-radius:8px;color:var(--term-ink)}
+.tm .prompt .cur{width:8px;height:15px;background:var(--term-ink);animation:blink 1.1s steps(1) infinite}
+.tm .sl{flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm .sl b{color:var(--yolk);font-weight:600}
+.tm .here{flex:none;font:400 12px/1.4 var(--f-disp);color:var(--yolk-ink);background:var(--yolk);padding:1px 8px 0;transform:skewX(var(--skew));box-shadow:2px 2px 0 #000}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.tm .prompt .cur{animation:none}}
+
+/* tables */
+.tbl{overflow-x:auto;border-radius:16px;border:1px solid var(--line);background:var(--paper)}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+th,td{text-align:left;vertical-align:top;padding:11px 14px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{font-size:12px;letter-spacing:.06em;color:var(--mute);font-weight:500;background:color-mix(in srgb,var(--line) 45%,transparent)}
+td:first-child{white-space:nowrap}
+td.w{white-space:normal;width:34%}
+kbd{font:600 12px/1 var(--f-mono);padding:3px 6px;border-radius:6px;border:1px solid var(--line);border-bottom-width:2px;background:var(--paper);color:var(--ink)}
+
+.rules{margin:10px 0 0;padding-left:1.2em;display:grid;gap:6px;max-width:46em;color:var(--mute);font-size:14px}
+.tm .here{font-size:12.5px}
+@media (max-width:640px){
+  .tbl table{min-width:0}
+  .tbl thead{display:none}
+  .tbl table,.tbl tbody,.tbl tr,.tbl td{display:block;width:auto}
+  .tbl tr{padding:11px 14px;border-bottom:1px solid var(--line)}
+  .tbl tr:last-child{border-bottom:0}
+  .tbl td,.tbl td:first-child{padding:2px 0;border:0;white-space:normal}
+  .tbl td:first-child{font-weight:700}
+  .tbl td.w{width:auto}
+  .tbl td[data-l]::before{content:attr(data-l);margin-right:8px;font-size:12px;font-weight:500;color:var(--mute)}
+  .sTop{grid-template-columns:auto minmax(0,1fr)}
+  .sHud{grid-column:1/-1}
+  .tm .sl{white-space:normal}
+}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:18px;align-items:start}
+.split > div{min-width:0}
+footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--faint);display:flex;flex-wrap:wrap;gap:6px 18px}
+</style>
+</head>
+<body>
+<div class="page" lang="ja">
+  <header class="cover">
+    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.4.0</span></div>
+    <h1><span class="mark">FOGCAST</span><span class="ja">霧読み</span></h1>
+    <p class="lead">Claude Code を何本ものターミナルで動かしているときに、すべての会話・道具の呼び出し・使用量を、ブラウザの 1 画面にまとめて映す Mod です。画面から依頼を送る、<code>/</code> のコマンドを実行する、ツールの実行を許可する、といった操作もできます。</p>
+    <dl class="facts">
+      <div><dt>画面</dt><dd><code>http://127.0.0.1:4317</code></dd></div>
+      <div><dt>開くコマンド</dt><dd><code>/fog</code>（Claude Code の中で）</dd></div>
+      <div><dt>必要なもの</dt><dd>Claude Code 2.1.290 以降、Node.js 18 以上</dd></div>
+    </dl>
+  </header>
+
+  <div class="body">
+    <nav class="index" aria-label="目次">
+      <span class="lab">目次</span>
+      <ol>
+        <li><a href="#does" aria-current="true"><b>1</b>できること</a></li>
+        <li><a href="#setup"><b>2</b>準備する</a></li>
+        <li><a href="#parts"><b>3</b>各部の名前</a></li>
+        <li><a href="#use"><b>4</b>使いかた</a></li>
+        <li><a href="#approve"><b>5</b>画面から承認する</a></li>
+        <li><a href="#commands"><b>6</b>コマンド早見表</a></li>
+        <li><a href="#update"><b>7</b>更新する・外す</a></li>
+        <li><a href="#trouble"><b>8</b>困ったときは</a></li>
+        <li><a href="#spec"><b>9</b>安全と仕様</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <section id="does" aria-labelledby="h-does">
+        <div class="ch"><span class="no">1</span><h2 id="h-does">できること</h2></div>
+        <div class="does">
+          <div><b>全チャンネル</b><span>ターミナルごとの今の状態（作業中・承認待ち・入力待ち・終了）と、直近 60 分の番組表。</span></div>
+          <div><b>会話</b><span>メッセージアプリのように、あなたの依頼は右、Claude の返答は左に。道具の呼び出しはその間にまとまり、ターンごとに畳めます。</span></div>
+          <div><b>操作</b><span>画面から送信（押した瞬間に会話に出ます）、<code>/</code> でコマンドやスキルを実行、停止、圧縮。Claude が選択肢で質問してきたら、ボタンで答えられます。</span></div>
+          <div><b>天気予報</b><span>5 時間枠と週の枠が、今のペースでいつ上限に届くか。カレンダーの日付を押すと、その日の記録も。</span></div>
+          <div><b>ステータス</b><span>使いはじめた日からの記録で、あなたの Lv と 5 つの能力が育ちます。FOGCAST の横の「Lv」から開きます。</span></div>
+          <div><b>コミュ</b><span>ツール・スキル・エージェント・MCP の使用回数とランクをカードで。スキルとエージェントは、それぞれの説明（description）も。</span></div>
+          <div><b>スキル</b><span>使ったスキルと、読み込んだスキルをローカル（プロジェクト）とグローバル（どこでも）に分けて。</span></div>
+          <div><b>承認</b><span>承認待ちを知らせます。設定でつなぐと、画面から許可・拒否もできます。</span></div>
+          <div><b>ステータスライン</b><span>ターミナルの入力欄の下に、チャンネル番号・コンテキスト・使用枠・料金を 1 行で。</span></div>
+          <div><b>コンテキストを使わない</b><span>会話や道具の結果は書き換えず、毎回のコンテキストにも何も足しません。</span></div>
+        </div>
+      </section>
+
+      <section id="setup" aria-labelledby="h-setup">
+        <div class="ch"><span class="no">2</span><h2 id="h-setup">準備する</h2></div>
+        <p>最初に 1 回だけ行います。コマンドはどのフォルダで実行してもかまいません（<code>cd ~/fogcast</code> は不要です）。</p>
+        <ol class="steps">
+          <li><b class="t">必要なものを確かめる</b>
+            <p>Node.js は 18 以上、Claude Code は 2.1.290 以降が必要です。</p>
+            <div class="cmd"><code>node -v &amp;&amp; claude --version</code><button class="copy" type="button">コピー</button></div></li>
+          <li><b class="t">zip を解凍して、ホームフォルダに置く</b>
+            <p>ダウンロードフォルダにある場合は、次のコマンドで <code>~/fogcast</code> ができます。</p>
+            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.4.0.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <p>Finder でダブルクリックして、できた <code>fogcast</code> フォルダをホームフォルダに移してもかまいません。中にある <code>.claude-plugin</code> は見えないフォルダなので、中身だけを選ばずにフォルダごと移してください。</p></li>
+          <li><b class="t">マーケットプレイスとして追加する</b>
+            <div class="cmd"><code>claude plugin marketplace add ~/fogcast</code><button class="copy" type="button">コピー</button></div></li>
+          <li><b class="t">インストールする</b>
+            <div class="cmd"><code>claude plugin install fogcast@fogcast</code><button class="copy" type="button">コピー</button></div>
+            <p>ユーザー全体に入るので、どのフォルダ、どのターミナルで起動した <code>claude</code> にも入ります。</p></li>
+          <li><b class="t">claude を起動し直す</b>
+            <p>動いているセッションには途中から入りません。一度終了して、作業するプロジェクトのフォルダで <code>claude</code> を起動します。入力欄の下に <code>Fogcast ch.1 …</code> と出れば準備完了です。</p></li>
+          <li><b class="t">画面を開く</b>
+            <div class="cmd in"><code>/fog</code><button class="copy" type="button">コピー</button></div>
+            <p>ブラウザで画面が開きます。<code>/fog</code> の結果の下には鍵つきの URL（<code>#k=</code> 付き）も 1 行で出るので、開かなかったときはそれを押してください（VS Code のターミナルなら Ctrl+クリック）。2 回目からは同じブラウザで <code>http://127.0.0.1:4317</code> を開くだけで使えます。</p></li>
+        </ol>
+        <p class="note warn"><span class="lb">ご注意</span><span><code>~/fogcast</code> は、インストールしたあとも Claude Code が起動のたびに読み込みます。消したり、別の場所に移したりしないでください。</span></p>
+        <p class="note"><span class="lb">お知らせ</span><span>インストールせずに試すだけなら、<code>claude --plugin-dir ~/fogcast</code> で起動します。そのセッションだけで有効です。</span></p>
+
+        <h3 id="wsl">Windows で WSL を使っているとき</h3>
+        <p class="muted">Claude Code を WSL の中で動かしているなら、上の手順をすべて WSL のターミナルで行います（VS Code なら、左下が「WSL」になっているウィンドウのターミナル）。違うのは次の 4 つです。</p>
+        <div class="tbl"><table>
+          <thead><tr><th>ところ</th><th>WSL では</th></tr></thead>
+          <tbody>
+            <tr><td>置き場所</td><td>WSL の中のホームフォルダ <code>/home/&lt;WSLのユーザー名&gt;/fogcast</code> に置きます（<code>echo ~</code> で出る場所の中）。Windows 側のフォルダ（<code>C:\Users\…</code>）には置きません。エクスプローラーからは <code>\\wsl.localhost\Ubuntu\home\&lt;WSLのユーザー名&gt;</code> に見えます（Ubuntu の部分はディストリの名前）。</td></tr>
+            <tr><td>zip の場所</td><td>Windows のダウンロードフォルダは、WSL からは <code>/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads</code> です。名前は <code>ls /mnt/c/Users</code> で確かめられます。<code>unzip</code> が無いときは <code>sudo apt install unzip</code> で入れます。</td></tr>
+            <tr><td>Node.js</td><td>WSL の中に 18 以上が必要です。Ubuntu 22.04 の apt で入るものは 12 で古いので、nvm などで LTS 版を入れます。</td></tr>
+            <tr><td>画面</td><td>Windows のブラウザで見ます。<code>/fog</code> で Windows の既定のブラウザが開きます（0.1.2 から）。WSL2 は localhost を Windows に転送するので、<code>http://127.0.0.1:4317</code> で届きます。</td></tr>
+          </tbody>
+        </table></div>
+        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.4.0.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
+        <p class="note"><span class="lb">お知らせ</span><span>Windows のブラウザでつながらないときは、PowerShell で <code>wsl --shutdown</code> を実行してから WSL を開き直すと直ることがあります。</span></p>
+      </section>
+
+      <section id="parts" aria-labelledby="h-parts">
+        <div class="ch"><span class="no">3</span><h2 id="h-parts">各部の名前</h2></div>
+        <figure class="parts">
+          <div class="scr" aria-hidden="true">
+            <div class="sTop">
+              <span class="sBrand"><span class="sRow"><span class="sMark">FOGCAST</span><span class="r sLv"><b class="n">7</b>Lv 3</span></span><span class="sTools"><i>使い方</i></span></span>
+              <div class="r sDial"><b class="n">1</b><i>0</i><i class="on">1</i><i>2</i><i>3</i><i>＋</i></div>
+              <div class="r sHud"><b class="n">2</b>10/07 · 5h 44% · 7d 68%</div>
+            </div>
+            <div class="sMain">
+              <div class="r sTv"><b class="n">3</b>
+                <div class="sTiles"><i></i><i class="w"></i><i></i><i></i></div>
+                <div class="sBars"><i style="width:70%"></i><i style="width:45%"></i><i style="width:82%"></i></div>
+                <div class="r sCtl"><b class="n">4</b><span class="f">ch.1 に送る…</span><span>/ コマンド</span><span class="p">送信</span><span>停止</span><span>圧縮</span></div>
+                <div class="sCtlFoot"><span class="h">送った文は、そのターミナルで入力したのと同じ扱い…</span><span class="r sSet"><b class="n">6</b><b class="g">設定</b><small>画面で承認<i>オフ</i></small></span></div>
+              </div>
+              <div class="r sRail"><b class="n">5</b>
+                <div class="tb"><span class="on">天気予報</span><span>コミュ</span><span>スキル</span><span>詳細</span></div>
+                <div class="sBars"><i style="width:60%"></i><i style="width:85%"></i></div>
+                <div class="sCards"><i></i><i></i><i></i><i></i></div>
+              </div>
+            </div>
+          </div>
+          <ol class="legend">
+            <li><span class="k">1</span><span><b>ダイヤル</b><span><kbd>0</kbd> は全チャンネル、<kbd>1</kbd>〜<kbd>9</kbd> は各ターミナルです。右端の「＋ 追加」で、新しいチャンネルの始め方と過去のセッションの再開コマンドが出ます。</span></span></li>
+            <li><span class="k">2</span><span><b>天気予報の窓</b><span>日付と、5 時間枠・週の枠の今の割合。押すと右の「天気予報」を開きます。</span></span></li>
+            <li><span class="k">3</span><span><b>テレビ</b><span>全チャンネルのタイルと番組表（帯は 1 ターン、黄色の縞は承認待ち）。チャンネルを選ぶと、その会話を映します。ブラウザの窓が横 1181px・縦 620px 以上あれば、ページ全体はスクロールせずに 1 画面に収まり、会話やレールはそれぞれの中でスクロールします。</span></span></li>
+            <li><span class="k">4</span><span><b>送信欄</b><span>チャンネルを開いたときに出ます。送信、<code>/</code> コマンド、停止、圧縮。下の行には、次の入力の提案や、選んだコマンドの引数が出ます。終了したチャンネルでは「チャンネルを消す」になります。</span></span></li>
+            <li><span class="k">5</span><span><b>レール</b><span>「天気予報」「コミュ」「スキル」「詳細」の 4 つのタブです。高さはテレビとそろいます。</span></span></li>
+            <li><span class="k">6</span><span><b>設定</b><span>テレビのいちばん下の右端のボタンです（全チャンネルではヒントの行、チャンネルを開いているときは送信欄の下）。この画面から承認するかどうかを切り替えます。ボタンの右側に今の状態が出ます（オフ／入力待ち＝合言葉の入力待ち／未接続＝オンだがこの画面はまだつないでいない／オン）。この説明書は、FOGCAST の下の行の「使い方」から開けます。</span></span></li>
+            <li><span class="k">7</span><span><b>Lv</b><span>あなたの Lv と、次の Lv までの EXP のバー。押すとステータス画面が開きます。</span></span></li>
+          </ol>
+        </figure>
+      </section>
+
+      <section id="use" aria-labelledby="h-use">
+        <div class="ch"><span class="no">4</span><h2 id="h-use">使いかた</h2></div>
+        <div class="split">
+          <div>
+            <h3>チャンネルを増やす</h3>
+            <p class="muted">VS Code で新しいターミナルを開き、<code>claude</code> を起動するだけです。自動で ch.2、ch.3… として並びます。同じリポジトリで並行して作業するときは、<code>git worktree</code> で作業フォルダを分けるとファイルの変更がぶつかりません。</p>
+            <h3>見る</h3>
+            <p class="muted"><kbd>0</kbd> で全チャンネル、<kbd>1</kbd>〜<kbd>9</kbd> でそのチャンネル。タイルや番組表の帯を押しても開きます。</p>
+            <p class="muted">会話はメッセージアプリと同じ並びです。あなたの依頼は右の黄色い吹き出し（「ターミナルから」「この画面から」と、どこから送ったかの印つき）、Claude の返答は左の白い吹き出しで、そのあいだの黒い枠に道具の呼び出しが並びます。ターンの頭の見出し（ターン番号・時刻・依頼の 1 行目）を押すと「たたむ ▴」「ひらく ▾」で開け閉めできます。今のターンと、その前の 2 ターンは開いたままで、それより前のターンは新しいターンが始まると自動で畳まれます。手で開け閉めしたターンは、そのままにします。</p>
+            <p class="muted">1 ターンは、あなたが 1 回送ってから、Claude が返答し終えて入力待ちに戻るまでです。道具の呼び出し、承認、Claude からの質問への回答は、そのターンの中に入ります。返答が終わってから送った修正は、次のターンになります。Claude の作業中にターミナルで送った修正は、Claude Code が作業の区切りで Claude に渡すので、同じターンの中に「作業中にターミナルから」の吹き出しで出ます（Claude がもう最後の返答を書いているときは区切りがないので、返答のあとに次のターンとして始まります）。</p>
+            <h3>送る</h3>
+            <p class="muted">送信欄に書いて <kbd>Enter</kbd>（改行は <kbd>Shift</kbd>+<kbd>Enter</kbd>）。そのターミナルで入力したのと同じ扱いです。送った文は押した瞬間に会話のいちばん下に出て、ターミナルに渡ると「まもなく始まります」、Claude が作業中なら「順番待ち · 今の作業が終わると始まります」と出ます。ターンが始まると、そのターンの吹き出しに置き換わります。送れなかったときは赤くなり、「もう一度送る」「消す」が出ます。ほかの画面（スマホなど）から送ったものも、同じように並びます。</p>
+            <h3>次の入力の提案</h3>
+            <p class="muted">Claude Code は返答のあと、入力欄に「次はこれを打つとよさそう」という文を薄く出します。同じ文が、空の送信欄にも薄く出て、下の行に「次の提案」として並びます。<kbd>Tab</kbd>（または <kbd>→</kbd>）か「入れる（Tab）」で送信欄に入ります（送るのは <kbd>Enter</kbd> を押したときです）。ターミナルで何か打つか、次のターンが始まると消えます。</p>
+            <h3>コマンドを実行する</h3>
+            <p class="muted"><kbd>/</kbd> を押すと、そのターミナルで使えるコマンド（組み込み・スキル・プラグイン・MCP）の一覧が出ます。コマンドを選ぶと、送信欄の下にそのコマンドの引数（例 <code>/model [model]</code>）が、ターミナルと同じ書き方で出ます。<code>/model</code> のように選択画面が出るものは、ターミナル側に出ます。<code>/clear</code> は確認してから実行します。</p>
+            <h3>Claude の質問に答える</h3>
+            <p class="muted">Claude が選択肢で質問してくると（ターミナルに選ぶ画面が出るとき）、そのチャンネルに質問のカードが出て、タイルは「回答待ち」になります。選択肢を押すと答えになります。質問が 1 つで 1 つだけ選ぶものは、押した時点で送ります。いくつも選べるものや質問が複数あるものは、選んでから「答える」を押します。選択肢にないときは「ほかの答え」に書きます。</p>
+            <p class="muted">ターミナルの選ぶ画面も同時に開いていて、先に答えた方が使われ、もう一方は閉じます。画面から答えると、ターミナルにも「User answered Claude's questions」と答えが残り、Claude にはターミナルで答えたのと同じ形で渡ります。承認の設定（オン・オフ）に関係なく使えます。</p>
+            <h3>止める・圧縮する</h3>
+            <p class="muted">「停止」は今のターンを中断します。「圧縮」は会話を要約してコンテキストを空けます（作業中なら、ターンが終わってから）。</p>
+            <h3>ステータス</h3>
+            <p class="muted">FOGCAST の横の「Lv」を押すと、ステータス画面が開きます（<kbd>Esc</kbd> で戻ります）。0.3.0 を入れた日から数え始め、あなた全体の Lv、5 つの能力、今日の EXP、日ごとの EXP、記録（作業した日・連続日数・ターン・トークン・料金・使った道具の種類）が並びます。Lv が上がると、画面に一度だけ知らせます（ターミナルには出しません）。</p>
+            <ul class="rules">
+              <li><b>量</b>：やり終えたターン 1 回で +10 EXP、トークン 1 万ごとに +1。1 日 400 まで。</li>
+              <li><b>習慣</b>：その日はじめてターンをやり終えると +50。続けて作業した日は 1 日ごとに +10 ずつ上乗せ（+70 まで）。</li>
+              <li><b>初めて</b>：ツール・スキル・エージェント・MCP を初めて使うと +30。</li>
+              <li><b>Lv</b>：Lv n から n+1 までに 100 × n EXP。最高は Lv 99。</li>
+              <li><b>能力</b>：調査（Read・Grep・Web 検索など）、構築（Edit・Write）、実行（Bash など）、段取り（サブエージェント・タスク・計画）、拡張（スキル・MCP）。道具を 1 回使うごとに 1 pt（サブエージェントは 3 pt、スキルは 2 pt）で、10・50・200・600・1500 pt でランク 1〜5。</li>
+            </ul>
+          </div>
+          <div>
+            <h3>天気予報</h3>
+            <p class="muted">5 時間枠と週の枠の今の割合、今のペース、リセット時の予報、上限に届く時刻を出します。値は Claude の応答が返るたびに届くので、最初の応答のあとに出ます（API キーで使っている場合は使用枠がないので出ません）。</p>
+            <p class="muted">週のカレンダーは、これまでの日と今日に、その日に使った週の枠の割合が出ます。押すとその日の記録（週の枠・ターン数・トークン・料金、チャンネル別の内訳、よく使ったツールやスキル）が開きます。先の日は、今のペースでの天気だけです（1 日 9% 未満が晴れ、18% 以上が雨、上限に届く日が霧）。日ごとの記録は 0.2.0 から、受け皿が動いているあいだの分を 35 日ぶん残します。</p>
+            <h3>コミュ</h3>
+            <p class="muted">使ったツール・スキル・エージェント・MCP がカードになり、全セッション通算の使用回数でランクが上がります。カードを押すと右端の輪の画面になり、<kbd>↑</kbd><kbd>↓</kbd>・ホイール・ドラッグで回して、<kbd>Esc</kbd> で戻ります。種類で絞り込めて、よく使う順・種類ごと・最近使った順・ランク順・毎回の負担が大きい順・名前順で並べ替えられます。</p>
+            <p class="muted">「このカードについて」には、スキルなら SKILL.md の <code>description</code>、エージェントなら定義ファイルの <code>description</code> が、改行も含めてそのまま出ます。Claude Code の一覧から読むもので、Claude のコンテキストは使いません（本文は読みません）。組み込みのエージェントとツールには、Fogcast の短い説明が出ます。</p>
+            <p class="muted">コミュに加わるのは、次のときです。</p>
+            <ul class="rules">
+              <li><b>ツール</b>：初めて使ったとき。</li>
+              <li><b>ローカルのスキルとエージェント</b>（そのプロジェクトの <code>.claude</code> にあるもの）と <b>MCP</b>：読み込んだときに未使用（カードなし）で「一覧」に並び、初めて使ったときにカードが付きます。</li>
+              <li><b>グローバルのスキルとエージェント</b>（<code>~/.claude</code>・プラグイン・組み込み）：呼び出されたときに初めて加わります。呼ばれないものは「スキル」のタブにだけ並びます。</li>
+              <li><b>カード</b>：Claude 本体・Read・Edit・Bash・組み込みのエージェントなど決まった 22 個は大アルカナ。そのほかは初めて使った順に、種類ごとの組（スキルは金貨、エージェントは剣、MCP は聖杯、ツールは棒）から 14 枚ずつ配られ、それより後のものはカードなしで「一覧」に並びます。</li>
+            </ul>
+            <h3>スキル</h3>
+            <p class="muted">選んでいるチャンネル（全チャンネルのときは全部）のスキルを、3 つのタブで出します。「使った」はこのセッションで呼び出された回数と時刻、「ローカル」はプロジェクトの <code>.claude/skills</code>、「グローバル」は <code>~/.claude/skills</code>・プラグイン・組み込みのスキルです。ローカルとグローバルには、毎回のコンテキストに入る名前と説明のおおよそのトークン数も出ます。<code>disable-model-invocation: true</code> のスキル（<code>/</code> から手で実行するだけのもの）は「手動のみ · 0」と出ます。実行するまで Claude には渡らないので、毎回のコンテキストを使いません。</p>
+            <p class="muted">新しく入れたスキルは、動いているセッションでは <code>/reload-skills</code> を実行するか、<code>claude</code> を起動し直すと読み込まれ、Fogcast もそのとき（ほかに 5 ターンごと）に読み直します。初めて呼び出されると「〜を初めて使いました」と出て、カードが配られます（ランク 1）。</p>
+            <h3>詳細</h3>
+            <p class="muted">コンテキストの内訳、起動時に読み込んだもの（CLAUDE.md・スキル（ローカル／グローバル）・エージェント・MCP）、ターンごとの増え方、変更したファイル、タスク、サブエージェント、続きから始めるコマンド。</p>
+            <h3>終わったチャンネル</h3>
+            <p class="muted">ターミナルを閉じたチャンネルや、報告が途絶えたチャンネルは「終了」になり、12 時間は画面に残ります。いらないものは、そのチャンネルを開いて送信欄の右の「チャンネルを消す」か、全チャンネルの見出しの「終了したチャンネルを片付ける」で、すぐ消せます（動いているチャンネルは消せません）。消えるのは画面の表示だけで、Claude Code のセッションは残ります。「＋ 追加」の過去のセッションから <code>claude --resume …</code> をコピーして、続きから始められます。報告が途絶えただけのターミナルが戻ってきたときは、新しいチャンネルとしてまた並びます。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="approve" aria-labelledby="h-approve">
+        <div class="ch"><span class="no">5</span><h2 id="h-approve">画面から承認する</h2></div>
+        <p>初期設定はオフで、ツールを実行する前の確認はターミナルで行います。オンにすると、その確認を画面でも許可・拒否できます。オンにするときは、ターミナルに出る<b>合言葉</b>を画面に入力して、ブラウザをつなぎます。</p>
+        <ol class="steps">
+          <li><b class="t">「設定」で「この画面から承認する」をオンにする</b>
+            <p>テレビのいちばん下の右端にある「設定」から開きます（全チャンネルではヒントの行の右、チャンネルを開いているときは送信欄の下の右）。ボタンに、今オンかオフかが出ています。</p></li>
+          <li><b class="t">ターミナルで合言葉を見る</b>
+            <p>つながっているすべてのターミナルの<b>入力欄のすぐ上</b>に、黄色い枠で出ます。入力欄の下のステータスラインにも出ます。どのターミナルの合言葉も同じです。</p>
+            <div class="tm" role="img" aria-label="ターミナルの表示例：入力欄の上の黄色い枠に合言葉、入力欄の下のステータスラインにも合言葉">
+              <div class="tt"><i></i><i></i><i></i><span>ターミナル（表示例）</span></div>
+              <div>⏺ テストを直しました。</div>
+              <div class="row"><div class="band"><div class="h"><span>Fogcast  ブラウザ承認の合言葉</span><span class="code">4821-0937</span></div><span class="s">ブラウザの Fogcast の画面（設定 → ブラウザから承認）に入力してください。あと約 5 分で使えなくなります。</span><span class="btn">心当たりがなければ [ 取り消す ]</span></div><span class="here">ここ</span></div>
+              <div class="prompt"><span>&gt;</span><i class="cur"></i></div>
+              <div class="row"><div class="sl">Fogcast ch.1 · <b>合言葉 4821-0937</b>（Fogcast の画面に入力） · ctx 41% · 5h 44%</div><span class="here">ここにも</span></div>
+            </div></li>
+          <li><b class="t">画面に入力して「つなぐ」</b>
+            <p>ターミナルに「ブラウザとつながりました」と出れば、オンになっています。</p></li>
+          <li><b class="t">承認待ちを画面で許可・拒否する</b>
+            <p>承認待ちになると、画面のそのチャンネルに「許可」「拒否」が出ます。ターミナルの入力欄の上には「Fogcast の画面で承認を待っています」と出て、「ここで確認する」でいつでもターミナルの確認ダイアログに戻せます。</p></li>
+        </ol>
+        <ul class="rules">
+          <li>Claude からの質問（選択肢）への回答は承認とは別で、この設定に関係なく画面から答えられます（「使いかた」の「Claude の質問に答える」）。</li>
+          <li>合言葉は 5 分間だけ使えます。期限が切れたときや 5 回間違えたときは、画面の「合言葉を出し直す」で新しいものを出します。</li>
+          <li>心当たりのない合言葉が出たら、ターミナルの枠の「取り消す」を押してください。</li>
+          <li>画面で 2 分応答がないとき、画面を閉じているとき、組織の設定で確認が必須になっているツールは、ターミナルの確認ダイアログで承認します。</li>
+          <li>合言葉はターミナルの画面にだけ出て、Claude（モデル）が読む会話には入りません。</li>
+          <li>オフにするときは、「設定」のスイッチを切ります。つないだブラウザはすべて外れます。</li>
+        </ul>
+      </section>
+
+      <section id="commands" aria-labelledby="h-commands">
+        <div class="ch"><span class="no">6</span><h2 id="h-commands">コマンド早見表</h2></div>
+        <h3>Claude Code の中</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>コマンド</th><th>すること</th></tr></thead>
+          <tbody>
+            <tr><td><code>/fog</code></td><td>画面をブラウザで開きます（WSL では Windows のブラウザ）。結果の下に鍵つきの URL も出て、押すとつながった状態で開けます。その URL はあなたの画面にだけ出て、Claude が読む結果の 1 行や会話の記録には入りません。</td></tr>
+          </tbody>
+        </table></div>
+        <h3>ターミナル（シェル）</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>コマンド</th><th>すること</th></tr></thead>
+          <tbody>
+            <tr><td><code>claude plugin marketplace add ~/fogcast</code></td><td>Fogcast のフォルダをマーケットプレイスとして追加します。</td></tr>
+            <tr><td><code>claude plugin install fogcast@fogcast</code></td><td>インストールします（ユーザー全体）。</td></tr>
+            <tr><td><code>claude plugin update fogcast@fogcast</code></td><td>フォルダを新しい版に入れ替えたあと、版を更新します。</td></tr>
+            <tr><td><code>claude plugin list</code></td><td>入っているプラグインと、オン・オフを確かめます。</td></tr>
+            <tr><td><code>claude plugin disable fogcast@fogcast --scope local</code></td><td>今いるプロジェクトだけでオフにします。</td></tr>
+            <tr><td><code>claude plugin enable fogcast@fogcast --scope local</code></td><td>オフにしたプロジェクトで、オンに戻します。</td></tr>
+            <tr><td><code>claude --plugin-dir ~/fogcast</code></td><td>インストールせず、そのセッションだけで試します。</td></tr>
+            <tr><td><code>node ~/fogcast/hub/hub.mjs --stop</code></td><td>受け皿（画面のサーバー）をすぐ止めます。次に <code>claude</code> を起動すると、自動で起動します。</td></tr>
+          </tbody>
+        </table></div>
+        <h3>画面のキー</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>キー</th><th>すること</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>0</kbd>〜<kbd>9</kbd></td><td>チャンネルを切り替えます（<kbd>0</kbd> は全チャンネル）。</td></tr>
+            <tr><td><kbd>/</kbd></td><td>開いているチャンネルのコマンドの一覧を出します。<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> で入れ、<kbd>Esc</kbd> で閉じます。</td></tr>
+            <tr><td><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>送信 / 改行。</td></tr>
+            <tr><td><kbd>↑</kbd><kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd></td><td>カードの画面で輪を回します。ホイールとドラッグでも回ります。</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>カードの画面や設定を閉じます。</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section id="update" aria-labelledby="h-update">
+        <div class="ch"><span class="no">7</span><h2 id="h-update">更新する・外す</h2></div>
+        <h3>新しい版に更新する</h3>
+        <ol class="steps">
+          <li><b class="t">新しい zip で <code>~/fogcast</code> を上書きする</b>
+            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.4.0.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <p>ファイル名は受け取った版に合わせてください。</p></li>
+          <li><b class="t">版を更新する</b>
+            <div class="cmd"><code>claude plugin update fogcast@fogcast</code><button class="copy" type="button">コピー</button></div></li>
+          <li><b class="t">各ターミナルの claude を起動し直す</b>
+            <p>前の版の受け皿が動いていたら、新しい版のターミナルが自動で止めて、新しい受け皿を起動します。</p></li>
+        </ol>
+        <h3>プロジェクトごとにオフにする</h3>
+        <p class="muted">オフにしたいプロジェクトのフォルダで実行します。そのプロジェクトの <code>.claude/settings.local.json</code> に書かれ、ほかのプロジェクトはそのままです。</p>
+        <div class="cmd"><code>claude plugin disable fogcast@fogcast --scope local</code><button class="copy" type="button">コピー</button></div>
+        <h3>外す</h3>
+        <ol class="steps">
+          <li><b class="t">アンインストールする</b>
+            <div class="cmd"><code>claude plugin uninstall fogcast@fogcast</code><button class="copy" type="button">コピー</button></div></li>
+          <li><b class="t">マーケットプレイスから外す</b>
+            <div class="cmd"><code>claude plugin marketplace remove fogcast</code><button class="copy" type="button">コピー</button></div></li>
+          <li><b class="t">受け皿を止める</b>
+            <div class="cmd"><code>node ~/fogcast/hub/hub.mjs --stop</code><button class="copy" type="button">コピー</button></div></li>
+          <li><b class="t">フォルダを消す</b>
+            <p><code>~/fogcast</code>（本体）と <code>~/.fogcast</code>（鍵と記録）を削除します。</p></li>
+        </ol>
+      </section>
+
+      <section id="trouble" aria-labelledby="h-trouble">
+        <div class="ch"><span class="no">8</span><h2 id="h-trouble">困ったときは</h2></div>
+        <div class="tbl"><table>
+          <thead><tr><th>こんなとき</th><th>確かめること</th></tr></thead>
+          <tbody>
+            <tr><td class="w">合言葉がどこにも見当たらない</td><td>そのターミナルの入力欄のすぐ上と、入力欄の下のステータスラインを見てください。出ていなければ、そのターミナルの <code>claude</code> を 0.1.1 以降にしてから起動し直したか（0.1.0 のまま動いているターミナルには、通知で 1 分ほど出るだけです）、5 分たっていないかを確かめ、画面の「合言葉を出し直す」を押します。</td></tr>
+            <tr><td class="w">入力欄の下に Fogcast が出ない</td><td>インストールしたあとに <code>claude</code> を起動し直したか。<code>claude plugin list</code> で fogcast@fogcast が enabled か。そのプロジェクトでオフにしていないか。</td></tr>
+            <tr><td class="w"><code>Fogcast 未接続</code> のまま</td><td><code>node -v</code> で Node.js 18 以上が入っているか。node が PATH にないときは、環境変数 <code>FOGCAST_NODE</code> に node の場所を指定します。ポート 4317 を別のプログラムが使っているときは通知が出るので、<code>FOGCAST_PORT</code> で別の番号にします。</td></tr>
+            <tr><td class="w"><code>/fog</code> でブラウザが開かない</td><td><code>/fog</code> の結果の下に出る鍵つきの URL（<code>#k=</code> 付き）をブラウザで開いてください。WSL では Windows の既定のブラウザを開きます（0.1.2 から）。2 回目からは同じブラウザで <code>http://127.0.0.1:4317</code> だけで開けます。</td></tr>
+            <tr><td class="w">画面は開くのに、ターミナルの様子が映らない</td><td>画面に「まだこの画面はつながっていません」と出ていれば、鍵のない URL（<code>http://127.0.0.1:4317</code> だけ）で開いた、初めてのブラウザです。ターミナルで <code>/fog</code> を実行するか、<code>/fog</code> の結果の下に出る鍵つきの URL を開いてください。鍵はブラウザに保存されるので、次からはアドレスだけで開けます。<code>127.0.0.1</code> と <code>localhost</code> は別のアドレスとして扱われるので、いつも同じ方で開いてください。ターミナルの入力欄の下が <code>Fogcast 未接続</code> のときは、上の「<code>Fogcast 未接続</code> のまま」を見てください。</td></tr>
+            <tr><td class="w">承認の「許可」「拒否」が画面に出ない</td><td>「設定」で「オン · このブラウザとつながっています」になっているか。組織の設定で確認が必須のツールは、ターミナルでだけ承認できます。</td></tr>
+            <tr><td class="w">画面に「ui.html が見つかりません」</td><td><code>~/fogcast</code> を動かしたり消したりしていないか。フォルダを戻してから <code>node ~/fogcast/hub/hub.mjs --stop</code> を実行し、<code>claude</code> を起動し直します。</td></tr>
+            <tr><td class="w">チャンネルに「報告が途絶えました」</td><td>そのターミナルが閉じたか、20 秒以上応答がありません。ターミナルが動いていれば、すぐ元に戻ります。</td></tr>
+            <tr><td class="w">終わったチャンネルを消したい</td><td>そのチャンネルを開いて「チャンネルを消す」、またはまとめて全チャンネルの見出しの「終了したチャンネルを片付ける」。セッションは残るので、「＋ 追加」の過去のセッションから続きを始められます。</td></tr>
+            <tr><td class="w">送った文が「順番待ち」のまま</td><td>Claude が作業中のターミナルは、今のターンが終わってから始めます。急ぐときは「停止」で今のターンを止めます。ターミナルが終了すると「送れませんでした」になり、「もう一度送る」か「消す」を選べます。</td></tr>
+            <tr><td class="w">質問のカードが出ない</td><td>Claude が選択肢の画面で質問したとき（AskUserQuestion）に出ます。返答の文章の中で「1. A案 2. B案」のように聞いているときはカードになりません。送信欄に答えを書いて送ってください。ツールを使ってよいかの確認は承認で、「設定」から画面でも許可・拒否できるようにできます。</td></tr>
+            <tr><td class="w">新しく入れたスキルが出ない</td><td>動いているセッションには、<code>/reload-skills</code> を実行するか <code>claude</code> を起動し直すまで入りません。グローバルのスキルは、呼び出されるまでコミュには出ません（「スキル」のタブの「グローバル」には出ます）。</td></tr>
+            <tr><td class="w">カレンダーの日付を押しても「記録はありません」</td><td>日ごとの記録は 0.2.0 から、受け皿が動いているあいだの分だけを残します。それより前の日は、使った割合だけが出ます。</td></tr>
+            <tr><td class="w">画面を閉じたり、PC を再起動したりすると記録は消える？</td><td>ブラウザの画面を閉じても、受け皿が動いているあいだは会話も数字もそのままで、開き直せば元どおりです。日ごとの記録（カレンダー）・ステータス（Lv・能力・記録）・コミュの回数・使用枠の読み取り・終わったセッションの再開コマンドは <code>~/.fogcast/state.json</code> に保存されるので、受け皿が止まっても、PC を再起動しても残ります。会話の本文とチャンネルごとの数字は受け皿のメモリにだけあるので、受け皿が止まると消えます（動いているターミナルの分は、つながり直したときに送り直されます）。その日の合計は、カレンダーの「今日」で見られます。</td></tr>
+            <tr><td class="w">Lv が上がらない、ステータスが出ない</td><td>EXP は、ターミナルの Fogcast が受け皿につながっているあいだの、やり終えたターン・作業した日・初めて使った道具から入ります。途中で止めたターンは量に数えません。数え始めは 0.3.0 を入れた日からです。FOGCAST の横に「Lv」が出ていないときは、画面がまだ受け皿につながっていません。</td></tr>
+            <tr><td class="w">天気予報が出ない</td><td>最初の応答が返ってから出ます。API キーで使っている場合は、使用枠がないので出ません。</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section id="spec" aria-labelledby="h-spec">
+        <div class="ch"><span class="no">9</span><h2 id="h-spec">安全と仕様</h2></div>
+        <h3>安全について</h3>
+        <ul class="rules">
+          <li>受け皿は <code>127.0.0.1</code> だけで待ち受け、ほかのホスト名やほかのサイトからの呼び出しは断ります（DNS リバインディング対策を含みます）。</li>
+          <li>画面と Mod は <code>~/.fogcast/token</code> の鍵で受け皿とやりとりします（本人だけが読めるファイル）。鍵は URL の <code>#</code> の後ろで画面に渡すので、サーバーのログや Referer には残りません。</li>
+          <li>画面からの承認は初期設定でオフです。オンにしても、ターミナルにだけ出る合言葉を入れたブラウザしか承認できません。</li>
+          <li>鍵を持つと画面と同じことができます。Claude に <code>~/.fogcast</code> を読ませたり、<code>127.0.0.1:4317</code> へ送信させたりする操作は許可しないでください。</li>
+        </ul>
+        <h3>仕様</h3>
+        <div class="tbl"><table>
+          <tbody>
+            <tr><td>版</td><td>0.4.0</td></tr>
+            <tr><td>必要なもの</td><td>Claude Code 2.1.290 以降（Mod が使える版）、Node.js 18 以上</td></tr>
+            <tr><td>日付の区切り</td><td>画面（ブラウザ）の時計に合わせます。WSL の時計が Windows と違う地域になっていても、カレンダーと連続日数は画面の日付で数えます（0.3.0 から）。</td></tr>
+            <tr><td>確かめた環境</td><td>Linux。WSL は、Windows のブラウザを開くところを Linux 上で見立てて確かめました。macOS とネイティブの Windows はまだ確かめていません。</td></tr>
+            <tr><td>画面</td><td><code>http://127.0.0.1:4317</code>（この説明書は <code>/guide</code>）</td></tr>
+            <tr><td>コンテキストへの影響</td><td>毎回のコンテキストに足すものはありません（<code>claude plugin details</code> で約 0 トークン）。増えるのは、コマンドの一覧の <code>/fog</code> 1 行と、<code>/fog</code> を実行したときの結果 1 行だけです。読み込んだスキル・エージェント・MCP の一覧と、スキルやエージェントの説明、コマンドの引数、次の入力の提案は、Claude Code の手元の情報から読むだけで、モデルには送りません。画面から答えた質問は、ターミナルで答えたときと同じ答えとして Claude に渡ります。</td></tr>
+            <tr><td>受け皿の終了</td><td>ターミナルも画面もつながっていない状態が 20 分続くと、自動で終わります。次に <code>claude</code> を起動すると、自動で起動します。</td></tr>
+            <tr><td>保存するもの</td><td><code>~/.fogcast/</code> に、鍵（token）、state.json（コミュの使用回数と最近の使用（カードごとに直近 20 回の、依頼の書き出しや道具の入力の要約）、使用枠の読み取り、日ごとの記録（ターン数・トークン・料金、チャンネル名ごとの内訳、使ったものの回数。35 日ぶん）、ステータス（EXP・能力・記録）、終わったセッションの再開 ID と最初の依頼の書き出し）、hub.log。会話の本文（返答や道具の結果の全文）と、送ってまだ始まっていない文は受け皿のメモリにだけ置き、ファイルには書きません。</td></tr>
+          </tbody>
+        </table></div>
+        <h3>環境変数</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>名前</th><th>既定</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr><td><code>FOGCAST_PORT</code></td><td data-l="既定"><code>4317</code></td><td>受け皿のポート</td></tr>
+            <tr><td><code>FOGCAST_NODE</code></td><td data-l="既定"><code>node</code></td><td>Node.js の場所（PATH にないとき）</td></tr>
+            <tr><td><code>FOGCAST_HOME</code></td><td data-l="既定"><code>~/.fogcast</code></td><td>鍵と記録の置き場所</td></tr>
+            <tr><td><code>FOGCAST_HEADLESS</code></td><td data-l="既定">なし</td><td><code>1</code> にすると <code>claude -p</code> の実行も映します</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+    </main>
+  </div>
+
+  <footer><span>Fogcast（霧読み）0.4.0 取扱説明書</span><span>画面の左上の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
+</div>
+<script>
+(function(){
+  // copy buttons: the command next to each one
+  document.querySelectorAll('.copy').forEach(function(b){
+    b.addEventListener('click',function(){
+      var code=b.parentNode.querySelector('code'), text=code?code.textContent:'';
+      var done=function(label){ b.textContent=label; b.classList.add('done'); setTimeout(function(){ b.textContent='コピー'; b.classList.remove('done'); },1600); };
+      var select=function(){ try{ var r=document.createRange(); r.selectNodeContents(code); var s=getSelection(); s.removeAllRanges(); s.addRange(r); done('選択しました'); }catch(e){} };
+      try{ navigator.clipboard.writeText(text).then(function(){ done('コピーしました'); },select); }catch(e){ select(); }
+    });
+  });
+  // the index follows the chapter in view
+  try{
+    var links={}; document.querySelectorAll('.index a').forEach(function(a){ links[a.getAttribute('href').slice(1)]=a; });
+    var mark=function(id){ for(var k in links) links[k].setAttribute('aria-current',String(k===id)); var a=links[id]; if(a&&a.scrollIntoView&&innerWidth<1060){ var ol=a.closest('ol'); ol.scrollTo({left:a.offsetLeft-16,behavior:'smooth'}); } };
+    var io=new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting) mark(e.target.id); }); },{rootMargin:'-20% 0px -70% 0px'});
+    document.querySelectorAll('main section').forEach(function(s){ io.observe(s); });
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

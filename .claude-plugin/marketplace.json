@@ -1,0 +1,13 @@
+{
+  "name": "fogcast",
+  "description": "Fogcast（霧読み）: Claude Code の全ターミナルを 1 つのブラウザ画面に映す Mod",
+  "owner": {
+    "name": "fogcast"
+  },
+  "plugins": [
+    {
+      "name": "fogcast",
+      "source": "./"
+    }
+  ]
+}

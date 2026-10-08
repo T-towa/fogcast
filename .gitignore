@@ -1,0 +1,9 @@
+# written by Claude Code each time it loads the mod from this folder
+.claude-plugin/types/
+node_modules/
+__pycache__/
+*.zip
+# what the dev harnesses write while they run
+dev/term/t/
+dev/term/fakebin/opened.txt
+dev/e2e/*.png

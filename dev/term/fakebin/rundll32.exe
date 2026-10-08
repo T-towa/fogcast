@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "$@" >> "/tmp/claude-0/-home-claude/799e4518-7722-51e1-bd2f-c3fa3b975b03/scratchpad/term/fakebin/opened.txt"
