@@ -243,10 +243,17 @@ h1,h2,h3{text-wrap:balance}
 
 /* channel view */
 .osd{position:sticky;top:-16px;margin:-16px -18px 12px;padding:14px 18px 12px;z-index:3;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;
-  background:linear-gradient(180deg,rgba(7,11,20,.97) 70%,rgba(7,11,20,0))}
+  background:linear-gradient(180deg,rgba(7,11,20,.97) calc(100% - 12px),rgba(7,11,20,0))}
 .osd .n{font:32px/1 var(--f-osd);color:var(--teal);text-shadow:0 0 12px rgba(63,230,214,.55),2px 2px 0 #000}
 .osd .nm{font-family:var(--f-disp);font-size:20px;line-height:1.1;transform:skewX(var(--skew))}
-.osd .meta{font-size:12.5px;color:var(--mute);min-width:0}
+/* the role, folder and branch give way first: the pickers and the numbers stay on the line */
+.osd .meta{font-size:12.5px;color:var(--mute);flex:1 1 140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* the model and the effort: each opens its picker */
+.osd .picks{display:inline-flex;gap:6px;flex:none}
+.osdPick{font:600 12px/1 var(--f-body);padding:5px 10px 4px;border-radius:999px;border:1px solid rgba(63,230,214,.45);background:rgba(63,230,214,.08);color:var(--ink);cursor:pointer;white-space:nowrap}
+.osdPick b{font-weight:700;color:var(--teal)}
+.osdPick:hover{background:rgba(63,230,214,.16)}
+.osdPick:disabled{opacity:.4;cursor:default}
 .osd .right{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:12px;color:var(--mute)}
 .osd .right b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
 .log{list-style:none;margin:0;padding:0 0 8px;display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
@@ -447,7 +454,7 @@ h1,h2,h3{text-wrap:balance}
 @keyframes tin{from{opacity:0;transform:translateX(30px)}}
 .scrim{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(3,4,8,.62);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .sheet{--r:26px;border-radius:var(--r);border:1px solid var(--rim);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 30px 80px rgba(0,0,0,.6);width:min(780px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:20px;display:grid;gap:14px;align-content:start;background:linear-gradient(160deg,rgba(32,36,50,.98),rgba(11,13,21,.99))}
-.sheet h2{margin:0;font-family:var(--f-disp);font-weight:400;font-size:20px;line-height:1.3;letter-spacing:.04em}
+.sheet h2{margin:0;font-family:var(--f-disp);font-weight:400;font-size:20px;line-height:1.3;letter-spacing:.04em;word-break:auto-phrase;text-wrap:pretty}
 .sheet .sub{margin:0;font-size:12.5px;color:var(--mute);line-height:1.7}
 .sheet h3{margin:4px 0 0;font:700 14.5px/1.35 var(--f-body);letter-spacing:.04em}
 .sheet .hd{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -464,6 +471,31 @@ h1,h2,h3{text-wrap:balance}
 .past li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
 .past li small{grid-column:1;color:var(--faint);font-size:11.5px}
 .past li .btns{grid-row:1/3;grid-column:2}
+
+/* ---------- pickers: /resume, /model and /effort, chosen here ---------- */
+.sheet.pick{width:min(720px,100%)}
+.psearch{width:100%;box-sizing:border-box;padding:9px 12px;border-radius:12px;border:1px solid var(--rim);background:rgba(0,0,0,.25);color:var(--ink);font:500 13.5px/1.4 var(--f-body)}
+.psearch:focus{outline:2px solid var(--teal);outline-offset:1px}
+.plist{list-style:none;margin:0;padding:0 2px 0 0;display:grid;gap:8px;max-height:min(52vh,460px);overflow:auto;scrollbar-width:thin}
+.plist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px;align-items:center;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+.plist li.on{border-color:rgba(63,230,214,.5);background:rgba(63,230,214,.06)}
+.plist .pt{display:grid;gap:1px;min-width:0}
+.plist .pt b{font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plist .pt span{font-size:12px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plist small{grid-column:1;color:var(--faint);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plist .btns{grid-row:1/3;grid-column:2}
+.plist li.pempty,p.pempty{display:block;margin:0;color:var(--mute);font-size:12.5px;border-style:dashed}
+.pbusy,.pcur{font-size:11.5px;color:var(--mute);white-space:nowrap}
+.pcur{color:var(--teal);font-weight:700}
+.pnote{margin:0;font-size:12.5px;line-height:1.7;color:var(--yolk);padding:8px 12px;border-radius:12px;background:rgba(255,217,49,.07);border:1px solid rgba(255,217,49,.25)}
+.eff{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.eff button{display:grid;gap:2px;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--rim);background:rgba(255,255,255,.04);color:var(--ink);cursor:pointer;font-family:var(--f-body)}
+.eff button:hover{background:rgba(255,255,255,.09)}
+.eff button.on{border-color:var(--teal);background:rgba(63,230,214,.1)}
+.eff b{font-weight:700;font-size:14px}
+.eff code{font-size:11px;color:var(--teal)}
+.eff small{font-size:11.5px;color:var(--mute);line-height:1.5}
+@media (max-width:620px){ .plist li{grid-template-columns:minmax(0,1fr)} .plist .btns{grid-row:auto;grid-column:1} .eff{grid-template-columns:repeat(2,minmax(0,1fr))} }
 .vh{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 
 /* ---------- コミュ: a card, opened (the overlay with the wheel at the right edge) ---------- */
@@ -629,6 +661,14 @@ h1,h2,h3{text-wrap:balance}
 .cmdo pre{margin:0;font:12px/1.7 var(--f-mono);white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
 .cmdo p{margin:0;font-size:12.5px;color:var(--mute);line-height:1.7}
 .cmdo.panel{background:rgba(147,180,255,.05);border-color:rgba(147,180,255,.28)}
+/* where a conversation was swapped (/resume), and the last exchanges of the one returned to */
+.sys.res{border-style:solid;border-color:rgba(63,230,214,.45);background:rgba(63,230,214,.06)}
+.histBox{border:1px dashed rgba(255,255,255,.16);border-radius:14px;padding:9px 12px}
+.histBox summary{cursor:pointer;display:flex;gap:4px 10px;align-items:baseline;flex-wrap:wrap;font-size:12.5px;color:var(--mute)}
+.histBox summary b{color:var(--ink);font-weight:600}
+.histIn{display:grid;gap:12px;margin-top:10px;opacity:.88}
+.po .kd.k-pick{color:var(--teal);border-color:rgba(63,230,214,.45);background:rgba(63,230,214,.08)}
+.po .kd.k-term{color:var(--faint);border-style:dashed}
 
 /* ---------- approvals from the browser ---------- */
 .pbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
@@ -762,6 +802,16 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 .flow > .ans code{background:rgba(22,19,13,.08);color:#16130d}
 .flow > .ans b{color:#000}
 .flow > .ans pre{background:#14110c;color:var(--ink);border-color:transparent}
+/* tables in Claude's words and in a command's markdown: scroll sideways inside, never the page */
+.mdt{margin:6px 0;max-width:100%;overflow-x:auto}
+.mdt table{border-collapse:collapse;font-size:12.5px;line-height:1.55;min-width:50%}
+.mdt th,.mdt td{padding:4px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.1);white-space:nowrap}
+.mdt th{font-weight:700;border-bottom-color:rgba(63,230,214,.45)}
+.mdt td:not(:first-child){font-variant-numeric:tabular-nums}
+.flow > .ans .mdt th,.flow > .ans .mdt td{border-bottom-color:rgba(22,19,13,.16)}
+.flow > .ans .mdt th{border-bottom-color:rgba(22,19,13,.55)}
+.cmdmd{font-size:12.5px;line-height:1.7;color:var(--ink);overflow-wrap:anywhere}
+.cmdmd .mdt{margin:4px 0 8px}
 .flow > .ops{margin:0;padding:7px 11px;max-width:min(100%,780px);border:1px solid rgba(255,255,255,.08);border-left:3px solid rgba(63,230,214,.5);border-radius:10px;background:rgba(0,0,0,.3)}
 .flow > .you{margin-left:-54px;width:calc(100% + 54px)}
 .flow > .sys{margin-left:-54px}
@@ -1015,6 +1065,7 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
   .screen{height:70vh;min-height:430px}
   .view{padding:14px 12px 16px}
   .osd{margin:-14px -12px 10px;padding:12px}
+  .osd .right .tk{display:none}   /* the rail's 今日の使用量 has them; the status stays on one line */
   .live{margin:10px -12px -16px;padding:10px 12px 12px}
   .op{grid-template-columns:5.6em minmax(0,1fr) auto}
   .op .num{display:none}

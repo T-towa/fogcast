@@ -17,12 +17,13 @@
 import http from 'node:http'
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
 import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, renameSync, statSync, appendFileSync } from 'node:fs'
+import { readdir, stat, open } from 'node:fs/promises'
 import { homedir, platform } from 'node:os'
-import { join, dirname, basename } from 'node:path'
+import { join, dirname, basename, isAbsolute } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
-export const VERSION = '0.4.0'
+export const VERSION = '0.5.0'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ARGS = process.argv.slice(2)
 const PORT = Number(process.env.FOGCAST_PORT) || 4317
@@ -128,6 +129,10 @@ function nameFor(cwd, id) {
   if (!taken.includes(base)) return base
   for (let i = 2; ; i++) if (!taken.includes(`${base}-${i}`)) return `${base}-${i}`
 }
+const absPath = p => { p = str(p, 1000); return p && isAbsolute(p) ? p : '' }
+// what the screen's pickers offer: the /config Model row's options, the levels /effort takes
+const modelsOf = m => m && Array.isArray(m.options) ? { options: m.options.filter(o => typeof o === 'string' && /^[\w.:[\]-]{1,60}$/.test(o)).slice(0, 40), value: str(m.value, 60) } : null
+const effortsOf = a => (Array.isArray(a) ? a : []).filter(x => typeof x === 'string' && /^[a-z]{2,20}$/.test(x)).slice(0, 12)
 function makeChan(id, h) {
   const c = {
     id, num: freeNum(id), name: nameFor(h.cwd, id), cwd: str(h.cwd, 1000), root: str(h.root, 1000), branch: str(h.branch, 200), model: str(h.model, 100),
@@ -136,6 +141,8 @@ function makeChan(id, h) {
     agents: [], ops: [], active: null, loaded: h.loaded || null, commands: Array.isArray(h.commands) ? h.commands.slice(0, 400) : [], breakdown: h.breakdown || null,
     turn: null, waits: new Map(), queue: [], events: [], seq: 0, turnNo: 0, viaScreen: new Set(),
     q: null, pending: [], suggest: '',
+    // the conversation's file and its folder (the project's other conversations, for /resume), its name, effort and model choices
+    tp: absPath(h.tp), tdir: absPath(h.tdir), title: '', effort: str(h.effort, 20), models: modelsOf(h.models), efforts: effortsOf(h.efforts),
   }
   if (Array.isArray(h.breakdown)) c.ctx.tokens = h.breakdown.reduce((a, b) => a + num(b && b.v), 0)
   if (h.loaded && num(h.loaded.window)) c.ctx.window = num(h.loaded.window)
@@ -149,11 +156,11 @@ function pub(c) {
     status: c.status, now: c.now, since: c.since, startedAt: c.startedAt, endedAt: c.endedAt, ctx: c.ctx, usd: c.usd, tok: c.tok, perTurn: c.perTurn,
     blocks: c.blocks, tasks: c.tasks, files: c.files, agents: c.agents, ops: c.ops, active: c.active,
     turn: c.turn && { id: c.turn.id, t0: c.turn.t0, ops: c.turn.ops }, turnNo: c.turnNo,
-    ask: c.q ? c.q.id : null, pending: c.pending, suggest: c.suggest,
+    ask: c.q ? c.q.id : null, pending: c.pending, suggest: c.suggest, effort: c.effort, title: c.title,
   }
 }
 // what the terminal loaded at start: sent with the channel's first view and when it changes
-const meta = c => ({ loaded: c.loaded, commands: c.commands, breakdown: c.breakdown })
+const meta = c => ({ loaded: c.loaded, commands: c.commands, breakdown: c.breakdown, models: c.models, efforts: c.efforts })
 function setStatus(c, st, text, t = now()) { if (c.status !== st) c.since = t; c.status = st; c.now = text }
 function block(c, k, label, t = now()) { const b = c.blocks[c.blocks.length - 1]; if (b && !b.e) b.e = t; c.blocks.push({ s: t, e: null, k, label: str(label, 80) }); trimBlocks(c) }
 function endBlock(c, t = now()) { const b = c.blocks[c.blocks.length - 1]; if (b && !b.e) b.e = t }
@@ -452,7 +459,59 @@ function apply(c, ev) {
     }
     case 'agentEnd': { const a = c.agents.find(x => x.id === ev.id); if (a) a.st = ev.stopped ? 'stop' : 'done'; break }
     case 'skill': { const l = link(ev.link); if (l) use(l.id, c, ev.args || '', '', t); break }
-    case 'cmd': e.name = str(ev.name, 80); e.args = str(ev.args, 400); e.text = str(ev.text, 6000); break
+    case 'cmd': e.name = str(ev.name, 80); e.args = str(ev.args, 400); e.text = str(ev.text, 6000); e.run = str(ev.run, 40) || undefined; e.via = ev.via === 'screen' ? 'screen' : undefined; break
+    case 'cmdOut': {
+      // the line a command printed ("Set model to …") after its row was told: it fills that run's row if the row has none.
+      // One whose run is not known here stands on its own
+      e.name = str(ev.name, 80); e.text = str(ev.text, 6000); e.args = str(ev.args, 400) || undefined; e.via = ev.via === 'screen' ? 'screen' : undefined
+      if (!e.text) return null
+      const run = str(ev.run, 40)
+      if (run) for (let i = c.events.length - 1, n = 0; i >= 0 && n < 400; i--, n++) {
+        const x = c.events[i]
+        if (x.k === 'cmd' && x.run === run) { if (x.text || x.out) return null; x.out = e.text; e.ref = x.seq; break }
+      }
+      break
+    }
+    case 'model': {
+      e.from = str(ev.from, 100); e.to = str(ev.to, 100); e.src = str(ev.src, 20); if (e.to) c.model = e.to; else return null
+      // the picker's mark follows what was asked for, when it is one of its choices
+      const asked = str(ev.asked, 60); delete e.asked
+      // (a replay leaves it: the hello that comes with it says what is set now)
+      if (asked && !replaying && c.models && c.models.options.includes(asked) && c.models.value !== asked) { c.models.value = asked; broadcast({ type: 'chan', chan: { ...pub(c), ...meta(c) } }) }
+      break
+    }
+    case 'skillCmd': {
+      // a built-in command that turned out to be a skill: the screen runs it as a turn from now on
+      const x = c.commands.find(y => y && y.name === ev.name)
+      if (x && !x.skill) { x.skill = true; if (!replaying) broadcast({ type: 'chan', chan: { ...pub(c), ...meta(c) } }) }
+      return null
+    }
+    case 'resumed': {
+      // /resume in the terminal (or from this screen): the conversation is swapped, the terminal goes on
+      const from = str(ev.from, 100) || c.sid, sid = str(ev.sid, 100)
+      if (!sid) return null
+      if (from && from !== sid) { c.sid = from; remember(c, 'resume') }          // the one left behind can be resumed in turn
+      c.sid = sid; c.title = str(ev.title, 200)
+      // a conversation never named goes by what it began with, as its past entry here has it
+      const was = c.title ? null : S.past.find(p => p.id === sid)
+      const tp = absPath(ev.tp); if (tp && basename(tp) === `${sid}.jsonl`) { c.tp = tp; c.tdir = dirname(tp) }
+      for (const [, lt] of c.liveTools || []) if (lt.link) live(lt.link, c, false)
+      c.liveTools = new Map(); c.waits.clear(); askGoneAll(c); c.q = null; c.suggest = ''
+      c.perTurn = []; c.tasks = []; c.files = {}; c.agents = []; c.ops = []; c.turn = null; c.active = null
+      c.endedAt = null; c.resume = null; c.endedByMod = false
+      if (!replaying) { S.past = S.past.filter(p => p.id !== sid); markSave() }   // it is open again
+      endBlock(c, t); setStatus(c, 'idle', '入力待ち', t)
+      e.from = from; e.sid = sid; e.title = c.title; e.src = ev.source === 'fork' ? 'fork' : 'resume'; delete e.tp; delete e.source
+      if (was && was.title) e.label = str(was.title, 200)
+      break
+    }
+    case 'hist': {
+      // the last exchanges of the conversation just resumed, read from its file: shown above where it goes on
+      e.sid = str(ev.sid, 100); e.more = Math.max(0, num(ev.more)); e.partial = !!ev.partial; e.label = str(ev.label, 200) || undefined
+      e.items = (Array.isArray(ev.items) ? ev.items : []).slice(-20).map(x => ({ u: str(x && x.u, 1500), a: str(x && x.a, 4000), t: num(x && x.t) }))
+      if (!e.items.length) return null
+      break
+    }
     case 'compact': { const l = link({ id: 'compact', kind: 'core', label: '圧縮', src: '組み込み' }); use(l.id, c, ev.trigger === 'auto' ? '自動' : '手動', '', t); break }
     case 'turnEnd': {
       const u = ev.usage || {}
@@ -476,7 +535,7 @@ function apply(c, ev) {
     case 'clear': {
       if (c.sid) remember(c, 'clear')
       { const l = link({ id: 'clear', kind: 'core', label: 'リセット', src: '組み込み' }); use(l.id, c, '', '', t) }
-      c.sid = str(ev.sid, 100); c.perTurn = []; c.tasks = []; c.files = {}; c.agents = []; c.ops = []; c.turnNo = 0
+      c.sid = str(ev.sid, 100); c.title = ''; c.perTurn = []; c.tasks = []; c.files = {}; c.agents = []; c.ops = []; c.turnNo = 0
       setStatus(c, 'idle', '入力待ち', t)
       break
     }
@@ -499,7 +558,12 @@ function apply(c, ev) {
       broadcast({ type: 'chan', chan: { ...pub(c), ...meta(c) } })
       return null
     }
-    case 'info': if (ev.branch != null) c.branch = str(ev.branch, 200); if (ev.model) c.model = str(ev.model, 100); if (ev.sid) c.sid = str(ev.sid, 100); return null
+    case 'info': {
+      if (ev.branch != null) c.branch = str(ev.branch, 200); if (ev.model) c.model = str(ev.model, 100); if (ev.sid) c.sid = str(ev.sid, 100)
+      if (ev.effort != null) c.effort = str(ev.effort, 20)
+      const tp = absPath(ev.tp); if (tp) { c.tp = tp; c.tdir = dirname(tp) }
+      return null
+    }
     case 'desc': { const l = S.links[str(ev.id, 120)]; if (l && typeof ev.desc === 'string' && ev.desc.trim() && l.desc !== str(ev.desc, 1500)) { l.desc = str(ev.desc, 1500); changedLinks.add(l.id); markSave() } return null }
     case 'suggest': c.suggest = str(ev.text, 400); return null
     case 'did': {
@@ -523,10 +587,105 @@ function applyTask(c, x) {
 }
 const esc = t => String(t).replace(/[<>&"]/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[ch]))
 function remember(c, reason) {
-  const first = c.events.find(e => e.k === 'turn' && e.text)
+  // the conversation's first prompt since this terminal last switched conversations (its name, when it was given one)
+  // (or for one this terminal resumed, what that conversation began with)
+  let first = null, began = null
+  for (let i = c.events.length - 1; i >= 0; i--) { const e = c.events[i]; if (e.k === 'resumed' || e.k === 'clear') { if (e.k === 'resumed') began = e; break } if (e.k === 'turn' && e.text) first = e }
+  const was = began && (began.title || began.label)
   S.past = S.past.filter(p => p.id !== (c.resume || c.sid))
-  S.past.unshift({ id: c.resume || c.sid, cwd: c.cwd, name: c.name, title: first ? str(first.text, 60) : '', endedAt: now(), reason: str(reason, 20) })
+  S.past.unshift({ id: c.resume || c.sid, cwd: c.cwd, name: c.name, title: c.title ? str(c.title, 60) : was ? str(was, 60) : first ? str(first.text, 60) : '', endedAt: now(), reason: str(reason, 20) })
   S.past = S.past.slice(0, 30); markSave()
+}
+
+/* ---------------- the project's conversations on disk: what /resume can return to ---------------- */
+// a terminal still on an earlier version of the mod (until its claude is restarted) does not know these requests
+const atLeast = (v, min) => { const a = String(v || '0').split('.').map(Number), m = min.split('.').map(Number); for (let i = 0; i < 3; i++) if ((a[i] || 0) !== (m[i] || 0)) return (a[i] || 0) > (m[i] || 0); return true }
+const canPick = c => atLeast(c.mod, '0.5.0')
+const OLD_MOD = 'このターミナルの Fogcast は前の版です。ターミナルで claude を起動し直すと使えます。'
+// Claude Code keeps each conversation as <session id>.jsonl, one folder per project; the mod says which folder (its own
+// conversation's file is in it). Only files named like a conversation are read, and only their beginning and end.
+const isSid = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''))
+const convDir = c => absPath(c.tdir) || (absPath(c.tp) ? dirname(c.tp) : '')
+async function readRange(fh, pos, len) { const buf = Buffer.alloc(len); const { bytesRead } = await fh.read(buf, 0, len, pos); return buf.subarray(0, bytesRead).toString('utf8') }
+function rows(text, cutAtStart) {
+  const lines = text.split('\n'); if (cutAtStart) lines.shift()        // a read that starts mid-file starts mid-line
+  const out = []; for (const l of lines) { if (!l.trim()) continue; try { out.push(JSON.parse(l)) } catch {} }
+  return out
+}
+/** What the person typed in a row: not a command's row, a reminder or a tool's result. */
+function promptOf(r) {
+  if (!r || r.type !== 'user' || r.isMeta || !r.message || r.message.role !== 'user') return ''
+  const m = r.message.content
+  const t = typeof m === 'string' ? m : Array.isArray(m) ? m.filter(b => b && b.type === 'text').map(b => b.text || '').join('\n') : ''
+  return /^\s*</.test(t) ? '' : t.trim()
+}
+function answerOf(r) {
+  // the engine's own placeholder rows ("No response requested." after a command) are not Claude's answers
+  if (!r || r.type !== 'assistant' || !r.message || !Array.isArray(r.message.content) || r.message.model === '<synthetic>') return ''
+  return r.message.content.filter(b => b && b.type === 'text').map(b => b.text || '').join('\n').trim()
+}
+const PEEK = 128 * 1024
+/** A conversation as the resume list shows it: its name (if it was given one), its first and last prompts. */
+async function peek(path, size) {
+  const fh = await open(path, 'r')
+  try {
+    const head = await readRange(fh, 0, Math.min(size, PEEK)), cut = size > PEEK
+    const tail = cut ? await readRange(fh, size - PEEK, PEEK) : head
+    let first = '', title = '', last = ''
+    for (const r of rows(head, false)) { if (!first) first = promptOf(r); if (r.type === 'custom-title' && r.customTitle) title = r.customTitle }
+    for (const r of rows(tail, cut)) { if (r.type === 'custom-title' && r.customTitle) title = r.customTitle; if (r.type === 'last-prompt' && r.lastPrompt) last = r.lastPrompt }
+    return { first, title, last }
+  } finally { await fh.close() }
+}
+async function sessionsOf(c) {
+  const dir = convDir(c); if (!dir) return null
+  let names
+  try { names = (await readdir(dir)).filter(n => n.endsWith('.jsonl') && isSid(n.slice(0, -6))) } catch { return null }
+  const files = (await Promise.all(names.map(async n => { try { const s = await stat(join(dir, n)); return s.isFile() ? { id: n.slice(0, -6), size: s.size, t: s.mtimeMs } : null } catch { return null } })))
+    .filter(Boolean).sort((a, b) => b.t - a.t).slice(0, 80)
+  // a conversation open in another terminal is marked: resuming it here would have two terminals write one file
+  const openIn = new Map([...chans.values()].filter(x => x !== c && x.status !== 'off' && x.sid).map(x => [x.sid, x]))
+  const out = []
+  for (const f of files) {
+    if (f.id === c.sid) continue
+    let info; try { info = await peek(join(dir, `${f.id}.jsonl`), f.size) } catch { continue }
+    if (!info.first && !info.title) continue        // nothing was asked in it
+    const o = openIn.get(f.id)
+    out.push({ id: f.id, title: str(info.title, 200), first: str(info.first, 300), last: str(info.last, 300), t: Math.round(f.t), size: f.size, ...(o ? { open: { num: o.num, name: o.name } } : {}) })
+    if (out.length >= 50) break
+  }
+  return { cwd: c.cwd, sessions: out }
+}
+/** The last exchanges of a conversation, read from the end of its file. */
+async function histOf(path) {
+  const s = await stat(path), len = Math.min(s.size, 768 * 1024)
+  const fh = await open(path, 'r')
+  let text; try { text = await readRange(fh, s.size - len, len) } finally { await fh.close() }
+  const items = []
+  for (const r of rows(text, s.size > len)) {
+    const p = promptOf(r)
+    if (p) { items.push({ u: p, a: '', t: Date.parse(r.timestamp) || 0 }); continue }
+    const a = answerOf(r)
+    if (!a) continue
+    if (!items.length) items.push({ u: '', a: '', t: Date.parse(r.timestamp) || 0 })
+    const it = items[items.length - 1]; it.a = it.a ? `${it.a}\n\n${a}` : a
+  }
+  const keep = items.slice(-20)
+  return { items: keep, more: items.length - keep.length, partial: s.size > len }
+}
+/** After a resume: the conversation's last exchanges join the channel, above where it goes on. */
+function loadHist(c, sid) {
+  const dir = convDir(c); if (!dir || !isSid(sid)) return
+  const path = join(dir, `${sid}.jsonl`)
+  Promise.all([histOf(path), stat(path).then(s => peek(path, s.size)).catch(() => null)]).then(([h, info]) => {
+    if (c.sid !== sid || chans.get(c.id) !== c) return
+    // a conversation never named goes by what it began with: the resume's row takes it, for the screen and for later
+    let label
+    const r = [...c.events].reverse().find(x => x.k === 'resumed' && x.sid === sid)
+    if (r && !r.title) { label = str(info && (info.title || info.first), 200) || r.label; if (label) r.label = label }
+    const e = apply(c, { k: 'hist', sid, ...h, label, t: now() })
+    if (e) { broadcast({ type: 'ev', chan: c.id, ev: e }); chanDirty.add(c.id) }
+  }).catch(err => log('could not read the resumed conversation:', err.message))
 }
 
 /* ---------------- the screen's streams ---------------- */
@@ -623,6 +782,11 @@ const routes = {
     if (!c || c.status === 'off') { if (c) chans.delete(id); c = makeChan(id, b) }
     else Object.assign(c, { cwd: str(b.cwd, 1000) || c.cwd, branch: str(b.branch, 200) || c.branch, model: str(b.model, 100) || c.model, sid: str(b.sid, 100) || c.sid })
     if (b.mod) c.mod = str(b.mod, 20)
+    if (absPath(b.tp)) c.tp = absPath(b.tp)
+    if (absPath(b.tdir)) c.tdir = absPath(b.tdir)
+    if (typeof b.effort === 'string' && b.effort) c.effort = str(b.effort, 20)
+    if (b.models) c.models = modelsOf(b.models)
+    if (Array.isArray(b.efforts)) c.efforts = effortsOf(b.efforts)
     if (b.loaded) c.loaded = b.loaded
     if (b.breakdown) c.breakdown = b.breakdown
     if (Array.isArray(b.commands)) c.commands = b.commands.slice(0, 400)
@@ -648,6 +812,7 @@ const routes = {
       if (ev && ev.k === 'end') c.endedByMod = true
       const e = apply(c, ev)
       if (e) broadcast({ type: 'ev', chan: c.id, ev: e })
+      if (e && e.k === 'resumed') loadHist(c, e.sid)
     }
     chanDirty.add(c.id)
     const commands = c.queue.splice(0)
@@ -733,6 +898,39 @@ const routes = {
     const name = str(b.name, 80).replace(/^\//, '')
     if (!/^[\w:.-]+$/.test(name)) return [400, { error: 'name' }]
     c.queue.push({ id: randomBytes(6).toString('hex'), type: 'command', name, args: str(b.args, 4000) })
+    return [200, { ok: true, queued: c.status !== 'idle' }]
+  },
+  // the project's conversations this terminal could return to (read from its folder when asked; nothing is kept)
+  'POST /api/ui/sessions': async (b) => {
+    const c = chans.get(str(b.chan, 64)); if (!c) return [404, { error: 'chan' }]
+    const r = await sessionsOf(c)
+    if (!r) return [200, { ok: false, sessions: [], error: 'この会話のフォルダが分かりません。ターミナルで claude を起動し直すと分かるようになります。' }]
+    return [200, { ok: true, ...r }]
+  },
+  'POST /api/ui/resume': (b) => {
+    const c = chans.get(str(b.chan, 64)); if (!c || c.status === 'off') return [409, { error: 'このチャンネルは終了しています' }]
+    if (!canPick(c)) return [409, { error: OLD_MOD }]
+    const sid = str(b.sid, 100); if (!isSid(sid)) return [400, { error: 'sid' }]
+    if (sid === c.sid) return [409, { error: 'いま開いている会話です' }]
+    const other = [...chans.values()].find(x => x !== c && x.status !== 'off' && x.sid === sid)
+    if (other) return [409, { error: `ch.${other.num} ${other.name} で開いている会話です` }]
+    c.queue.push({ id: randomBytes(6).toString('hex'), type: 'resume', sid })
+    return [200, { ok: true, queued: c.status !== 'idle' }]
+  },
+  'POST /api/ui/model': (b) => {
+    const c = chans.get(str(b.chan, 64)); if (!c || c.status === 'off') return [409, { error: 'このチャンネルは終了しています' }]
+    if (!canPick(c)) return [409, { error: OLD_MOD }]
+    const value = str(b.value, 60)
+    if (!/^[\w.:[\]-]{1,60}$/.test(value) || (c.models && c.models.options.length && !c.models.options.includes(value))) return [400, { error: 'model' }]
+    c.queue.push({ id: randomBytes(6).toString('hex'), type: 'model', value })
+    return [200, { ok: true, queued: c.status !== 'idle' }]
+  },
+  'POST /api/ui/effort': (b) => {
+    const c = chans.get(str(b.chan, 64)); if (!c || c.status === 'off') return [409, { error: 'このチャンネルは終了しています' }]
+    if (!canPick(c)) return [409, { error: OLD_MOD }]
+    const value = str(b.value, 20), levels = c.efforts && c.efforts.length ? c.efforts : ['low', 'medium', 'high', 'xhigh', 'max', 'auto']
+    if (!levels.includes(value)) return [400, { error: 'effort' }]
+    c.queue.push({ id: randomBytes(6).toString('hex'), type: 'effort', value })
     return [200, { ok: true, queued: c.status !== 'idle' }]
   },
   'POST /api/ui/stop': (b) => { const c = chans.get(str(b.chan, 64)); if (!c) return [404, { error: 'chan' }]; c.queue.push({ id: randomBytes(6).toString('hex'), type: 'stop' }); return [200, { ok: true }] },

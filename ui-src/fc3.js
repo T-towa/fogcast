@@ -26,7 +26,7 @@ function mkChannel(o){
   const P=PROJECTS[o.cwd];
   const c={num:CH.length+1,name:o.name,role:o.role,cwd:o.cwd,branch:P.branch,model:'Opus 5.5',status:o.off?'off':'idle',now:o.off?'セッションは終了しています':'入力待ち',
     active:null,ops:o.ops||[],ctx:o.ctx,tok:o.tok||0,cost:o.cost||0,perTurn:[],tasks:[],files:{},agents:[],queue:[],script:SCRIPTS[o.script]||[],sk:o.script,idx:0,
-    turnId:0,loopId:0,turnNo:0,blocks:[],delay:o.delay||0,resume:o.resume||null,loaded:loadedFor(o.cwd),endedAt:o.off?Date.now()-(o.endedAgo||20)*60000:null,phaseAt:Date.now(),warned85:false,boot:false};
+    turnId:0,loopId:0,turnNo:0,blocks:[],delay:o.delay||0,effort:o.effort||'medium',models:{...DEMO_MODELS,options:[...DEMO_MODELS.options]},resume:o.resume||null,loaded:loadedFor(o.cwd),endedAt:o.off?Date.now()-(o.endedAgo||20)*60000:null,phaseAt:Date.now(),warned85:false,boot:false};
   c.log=document.createElement('ol'); c.log.className='log'; c.log.hidden=true; c.log.setAttribute('aria-label',`ch.${c.num} ${o.name} の会話`);
   $('logs').appendChild(c.log); CH.push(c); return c;
 }
@@ -77,7 +77,7 @@ function renderWall(){
     t.querySelector('.meta').textContent=`${c.role} · ${c.cwd} · ${c.branch}`;
     t.querySelector('.now').innerHTML=c.now;
     t.querySelector('.ops').innerHTML=c.ops.slice(-7).map((id,i,a)=>{ const l=LINK[id]; return l? `<i class="${i===a.length-1&&c.active===id?'on':''}" title="${esc(l.label)}">${l.num}·${esc(l.label.length>10?l.label.slice(0,9)+'…':l.label)}</i>` : ''; }).join('');
-    t.querySelector('.ft').innerHTML=`<span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span>`;
+    t.querySelector('.ft').innerHTML=`<span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span class="tk"><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span>`;
     t.querySelector('.fogl').style.setProperty('--fog',fogOf(c).toFixed(2)); });
   const n=k=>CH.filter(c=>c.status===k).length, asks=CH.filter(c=>c.status==='wait'&&c.ask).length;
   const sum=`作業中 <b>${n('work')}</b> · 承認待ち <b>${n('wait')-asks}</b>${asks?` · 回答待ち <b>${asks}</b>`:''} · 入力待ち <b>${n('idle')}</b> · 終了 <b>${n('off')}</b>${n('off')?'<button class="tidy" type="button" id="bTidy">終了したチャンネルを片付ける</button>':''}`;
@@ -99,11 +99,16 @@ function renderGuide(){
 
 /* ================= TV: one channel ================= */
 function renderOsd(c){
-  $('osd').innerHTML=`<span class="n">ch.${c.num}</span><span class="nm">${esc(c.name)}</span><span class="meta">${esc(c.role)} · ${esc(c.cwd)} · ${esc(c.branch)} · ${c.model}</span>
-    <span class="right"><span class="chip ${c.status}">${stl(c)}</span><span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span></span>`;
+  // the model and effort are buttons (their pickers): drawn again only when something in the line changed, so a press is never lost
+  const off=c.status==='off', old=LIVE&&!c.models&&!off;      // a terminal on an earlier Fogcast: its pickers come with a restart
+  const lock=off||old? ` disabled${old?' title="このターミナルの Fogcast は前の版です。claude を起動し直すと使えます"':''}` : '';
+  const html=`<span class="n">ch.${c.num}</span><span class="nm">${esc(c.name)}</span><span class="meta" title="${esc(`${c.role} · ${c.cwd} · ${c.branch}`)}">${esc(c.role)} · ${esc(c.cwd)} · ${esc(c.branch)}</span>
+    <span class="picks"><button class="osdPick" type="button" data-pick="model"${lock||' title="モデルを切り替える"'}>${esc(c.model||'モデル')}</button><button class="osdPick" type="button" data-pick="effort"${lock||' title="考える深さ（effort）を変える"'}>effort <b>${esc(effortLabel(c.effort))}</b></button></span>
+    <span class="right"><span class="chip ${c.status}">${stl(c)}</span><span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span class="tk"><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span></span>`;
+  if($('osd').dataset.k!==html){ $('osd').dataset.k=html; $('osd').innerHTML=html; }
   const el=c.status==='off'? '' : `${Math.floor((Date.now()-c.phaseAt)/1000)}s`;
   $('live').innerHTML=`<i class="dot ${c.status}"></i><span class="txt">${c.now}</span><span class="el">${el}</span>`;
-  const off=c.status==='off', busy=c.status==='work'||c.status==='wait';
+  const busy=c.status==='work'||c.status==='wait';
   $('ask').disabled=off; $('bSend').disabled=off; $('bStop').disabled=!busy; $('bCompact').disabled=off; $('bForget').hidden=!off; $('bSend').hidden=off;
   // the dim suggestion sits in the empty box, as in the terminal
   $('ask').placeholder= off? 'このセッションは終了しています。「詳細」から再開コマンドをコピーできます' : c.suggest&&c.status==='idle'? `${c.suggest}　（Tab で入力）` : `ch.${c.num} ${c.name} に送る（Enter で送信、Shift+Enter で改行）`;

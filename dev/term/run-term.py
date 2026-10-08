@@ -3,7 +3,7 @@
 import os, sys, pty, time, json, select, subprocess, urllib.request, signal
 import pyte
 S=os.path.dirname(os.path.abspath(__file__)); T=os.path.join(S,'t'); os.makedirs(T,exist_ok=True)
-HOME=os.path.join(T,'home'); WORK=os.path.join(T,'work'); FH=os.path.join(T,'fh')
+HOME=os.path.join(T,'home'); WORK=os.environ.get('WORKDIR') or os.path.join(T,'work'); FH=os.path.join(T,'fh')
 for d in (HOME,WORK,FH): os.makedirs(d,exist_ok=True)
 KEY='sk-ant-api03-'+'x'*80+'AAstub'
 PORT=int(os.environ.get('HUBPORT','4337')); STUB=int(os.environ.get('STUBPORT','4394'))
@@ -23,7 +23,10 @@ pid,fd=pty.fork()
 if pid==0:
     os.chdir(WORK)
     import fcntl, termios, struct
-    os.execvpe('claude',['claude','--plugin-dir',PLUGIN],env)
+    argv=['claude']
+    for pd in os.environ.get('PLUGINS',PLUGIN).split(':'): argv+=['--plugin-dir',pd]
+    argv+=[a for a in os.environ.get('CLAUDE_ARGS','').split(' ') if a]
+    os.execvpe('claude',argv,env)
 import fcntl, termios, struct
 fcntl.ioctl(fd,termios.TIOCSWINSZ,struct.pack('HHHH',ROWS,COLS,0,0))
 def pump(sec):
@@ -45,6 +48,24 @@ def api(path,body,client='term-test'):
     r=urllib.request.Request(f'http://127.0.0.1:{PORT}{path}',data=json.dumps(body).encode(),headers={'content-type':'application/json','x-fogcast-token':tok,'x-fogcast-client':client},method='POST')
     try: return json.loads(urllib.request.urlopen(r,timeout=5).read())
     except urllib.error.HTTPError as e: return {'status':e.code,'body':e.read().decode()}
+def snapshot(client='term-res'):
+    tok=open(os.path.join(FH,'token')).read().strip()
+    r=urllib.request.urlopen(urllib.request.Request(f'http://127.0.0.1:{PORT}/api/ui/stream',headers={'x-fogcast-token':tok,'x-fogcast-client':client}),timeout=5)
+    buf=b''
+    while b'\n\n' not in buf: buf+=r.read1(1<<20)
+    r.close(); return json.loads(buf.split(b'\n\n')[0][6:])
+SESS=[]
+def evline(e):
+    k=e.get('k'); keep={'resumed':('from','sid','title','src'),'hist':('more','partial'),'cmd':('name','args','text','out','via'),'cmdOut':('name','text','ref'),
+        'model':('from','to','src'),'info':('sid','model','effort','tp','branch'),'clear':('prev',),'end':('reason','resume'),'did':('what','ok','error'),
+        'turn':('text','via'),'say':('text',),'turnEnd':('aborted',)}.get(k)
+    if keep is None: return None
+    d={x:e[x] for x in keep if x in e}
+    for x in ('from','sid','prev','resume'):
+        if isinstance(d.get(x),str) and len(d[x])>30: d[x]=d[x][:8]
+    if k=='hist': d['items']=[(i.get('u','')[:30],i.get('a','')[:30]) for i in e.get('items',[])]
+    if 'tp' in d: d['tp']=os.path.basename(d['tp'])[:12]
+    return f"{e.get('seq','')}:{k} "+json.dumps(d,ensure_ascii=False)[:220]
 try:
     pump(12)
     show('started')
@@ -52,9 +73,42 @@ try:
         kind,_,arg=step.partition(':')
         if kind=='wait': pump(float(arg))
         elif kind=='show': show(arg)
+        elif kind=='tail':
+            n,_,title=arg.partition(':'); lines=[l.rstrip() for l in screen.display]
+            while lines and not lines[-1]: lines.pop()
+            lines=[l for l in lines if l.strip()]
+            print(f'===== {title} ====='); print('\n'.join(lines[-int(n):])); print()
         elif kind=='type': send(arg)
         elif kind=='enter': send('\r')
         elif kind=='key': send({'tab':'\t','esc':'\x1b','ctrlx':'\x18','down':'\x1b[B','up':'\x1b[A','right':'\x1b[C','left':'\x1b[D','space':' '}[arg])
+        elif kind=='chan':
+            m=snapshot(); ch=m['chans'][-1]
+            print('chan:',{k:(ch.get(k)[:8] if k=='sid' and ch.get(k) else ch.get(k)) for k in ('num','status','sid','title','model','effort','efforts')},'| models:',(ch.get('models') or {}).get('options'),'| tdir:',bool(ch.get('tdir')))
+            evs=[x for x in (evline(e) for e in ch.get('events',[])) if x]
+            print('\n'.join('  '+x for x in evs[-int(arg or 12):]))
+            print('past:',[(p.get('id','')[:8],p.get('title') or p.get('name'),p.get('how')) for p in m.get('past',[])][:6])
+        elif kind=='sessions':
+            ch=snapshot()['chans'][-1]; r=api('/api/ui/sessions',{'chan':ch['id']})
+            SESS[:]=r.get('sessions',[])
+            print('sessions ->',r.get('ok'),r.get('error',''),[(x['id'][:8],x.get('title'),x.get('first','')[:30],x.get('last','')[:30],x.get('open')) for x in SESS])
+        elif kind in ('resume','typeresume'):
+            sid=SESS[int(arg)]['id'] if arg.isdigit() else arg
+            if kind=='resume':
+                ch=snapshot()['chans'][-1]; print('resume',sid[:8],'->',api('/api/ui/resume',{'chan':ch['id'],'sid':sid}))
+            else: send(f'/resume {sid}'); pump(.6); send('\r'); print('typed /resume',sid[:8])
+        elif kind in ('model','effort'):
+            ch=snapshot()['chans'][-1]; print(kind,arg,'->',api(f'/api/ui/{kind}',{'chan':ch['id'],'value':arg}))
+        elif kind=='ucmd':
+            name,_,args=arg.partition(' '); ch=snapshot()['chans'][-1]; print('command',name,args,'->',api('/api/ui/command',{'chan':ch['id'],'name':name,'args':args}))
+        elif kind=='stub':
+            print('----- stub -----'); print('\n'.join([l for l in open(os.path.join(T,'stub.log')).read().splitlines() if 'main=true' in l][-int(arg or 3):]))
+        elif kind=='browser':
+            # a browser script against this hub, while the terminal keeps being read
+            tok=open(os.path.join(FH,'token')).read().strip()
+            script,_,rest=arg.partition(' ')
+            bp=subprocess.Popen(['python3',script,f'http://127.0.0.1:{PORT}/#k={tok}',*rest.split()],stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+            while bp.poll() is None: pump(.3)
+            print('----- browser',rest,'-----'); print(bp.stdout.read().decode().rstrip())
         elif kind=='log':
             # the probe plugin's notes, from where the last look left off
             pth=os.path.join(T,'probe.log'); txt=open(pth).read() if os.path.exists(pth) else ''

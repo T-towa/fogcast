@@ -6,8 +6,8 @@
 //                                a multiple-choice question (answered from the screen), "end" ends ch.2's terminal
 // Both say they run this version of the mod, so a pairing code reaches them as the hub hands it to a
 // real terminal (the mod frames it above the prompt); here it is written to SIM_LOG as {pair}.
-import { readFileSync, appendFileSync, existsSync, rmSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { readFileSync, appendFileSync, existsSync, rmSync, mkdtempSync, writeFileSync, utimesSync } from 'node:fs'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const PORT = Number(process.env.FOGCAST_PORT) || 4317
@@ -22,16 +22,32 @@ async function post(path, body) {
   const r = await fetch(`http://127.0.0.1:${PORT}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fogcast-token': TOKEN }, body: JSON.stringify(body) })
   return r.json()
 }
-const BUILTIN = [['compact', '会話を要約してコンテキストを空ける', '<要約の指示>'], ['clear', '会話をリセットして新しいセッションにする'], ['context', 'コンテキストの内訳を表示する'], ['model', 'モデルを切り替える', '[model]'], ['usage', '使用量を表示する'], ['init', 'CLAUDE.md を作る']]
+const BUILTIN = [['compact', '会話を要約してコンテキストを空ける', '<要約の指示>'], ['clear', '会話をリセットして新しいセッションにする'], ['context', 'コンテキストの内訳を表示する'], ['model', 'モデルを切り替える', '[model]'],
+  ['effort', '考える深さを変える', '[low|medium|high|xhigh|max|auto]'], ['resume', '前の会話に戻る', '[conversation id or search term]'], ['usage', '使用量を表示する'], ['init', 'CLAUDE.md を作る']]
+const MODELS = { options: ['default', 'sonnet', 'opus', 'haiku', 'opus[1m]', 'opusplan'], value: 'default' }
+const MODEL_ID = { default: 'claude-opus-5-5', opus: 'claude-opus-5-5', sonnet: 'claude-sonnet-5-5', haiku: 'claude-haiku-5-5', 'opus[1m]': 'claude-opus-5-5[1m]', opusplan: 'claude-opus-5-5' }
+// ch.1's earlier conversations, as Claude Code keeps them (one file each), for the screen's /resume list
+const CONVS = mkdtempSync(join(tmpdir(), 'fogcast-sim-'))
+const conv = (id, title, turns, ageMin) => {
+  const t0 = Date.now() - ageMin * 60e3, rows = []
+  turns.forEach(([u, a], i) => { const ts = new Date(t0 + i * 60e3).toISOString(); rows.push({ type: 'user', message: { role: 'user', content: u }, timestamp: ts, sessionId: id }, { type: 'assistant', message: { role: 'assistant', model: 'claude-opus-5-5', content: [{ type: 'text', text: a }] }, timestamp: ts, sessionId: id }) })
+  if (title) rows.push({ type: 'custom-title', customTitle: title, sessionId: id })
+  rows.push({ type: 'last-prompt', lastPrompt: turns[turns.length - 1][0], sessionId: id })
+  const f = join(CONVS, `${id}.jsonl`); writeFileSync(f, rows.map(r => JSON.stringify(r)).join('\n') + '\n')
+  const at = (t0 + turns.length * 60e3) / 1000; utimesSync(f, at, at)
+}
+conv('5f0c2a71-3b9e-4c1d-9a55-0e1f2a3b4c5d', 'statusline-fix', [['ステータスラインの幅が崩れる不具合を直して', '全角文字の幅を 1 と数えていたのが原因でした。`stringWidth` で数えるようにしています。'], ['狭い端末でも 1 行に収まるか確かめて', '80 桁と 60 桁で確かめました。60 桁では予報の部分を省きます。']], 120)
+conv('9a8b7c6d-1e2f-4a3b-8c4d-5e6f7a8b9c0d', '', [['受け皿の再起動で回数が二重になるのを直して', '再接続のときに送り直す分を、受け皿が受け取り済みの番号で間引くようにしました。']], 1440)
 // what a skill's or agent's SKILL.md / definition says it is for
 const DESC = { 'api-conventions': 'API を設計・変更するときに使う。\nURL の命名、エラーの形、ページングの書き方をまとめている。', reviewer: '変更のレビューを任せるサブエージェント。差分を読み、バグの可能性を挙げる。', dataviz: '表をグラフにするときに使う。' }
 // skills and agents: [name, where] — '.claude' is the project's own (listed in コミュ when loaded), anything else is everywhere's (listed when first called)
 function terminal(chan, cwd, skills, agents, mcp) {
   const own = ([, src]) => src.startsWith('.claude')
-  const t = { chan, out: [], turn: 0 }
+  const t = { chan, out: [], turn: 0, sid: `${chan}-sess`, model: 'claude-opus-5-5', effort: 'xhigh', convs: '' }
   t.push = ev => t.out.push({ t: Date.now(), ...ev })
   t.hello = () => post('/api/mod/hello', {
-    chan, mod: '0.4.0', sid: `${chan}-sess`, cwd, branch: 'main', model: 'claude-opus-5-5', version: '2.1.291', startedAt: Date.now() - 600e3,
+    chan, mod: '0.5.0', sid: t.sid, cwd, branch: 'main', model: t.model, version: '2.1.291', startedAt: Date.now() - 600e3,
+    tdir: t.convs || '', effort: t.effort, models: MODELS, efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'auto'],
     commands: [...BUILTIN.map(([name, description, hint]) => ({ name, description, source: 'builtin', hint })), ...skills.map(([s]) => ({ name: s, description: `${s} の手順`, source: 'user' })), { name: 'fog', description: 'Fogcast', source: 'plugin', plugin: 'fogcast' }],
     loaded: { md: true, memory: [{ path: `${cwd}/CLAUDE.md`, type: 'Project', dt: 2400 }], skills: skills.map(([n, src]) => ({ n, src, dt: 160 })), agents: agents.map(([n, src]) => ({ n, src, dt: 70 })), mcp, mods: ['fogcast'], totalSkills: skills.length, includedSkills: skills.length, window: 200000, autoCompactAt: 167000 },
     breakdown: [{ n: 'System prompt', v: 3100 }, { n: 'System tools', v: 14200 }, { n: 'MCP tools', v: 6200 }, { n: 'Memory files', v: 2400 }, { n: 'Skills', v: 640 }, { n: 'Messages', v: 1200 }],
@@ -43,7 +59,14 @@ function terminal(chan, cwd, skills, agents, mcp) {
     const r = await post('/api/mod/sync', { chan, events })
     if (r.ok === false) { await t.hello(); return }
     if ((r.pair?.code ?? null) !== (t.pair ?? null)) { t.pair = r.pair?.code ?? null; log({ chan, pair: r.pair }) }
-    for (const c of r.commands || []) { log({ chan, command: c }); if (c.type === 'prompt') t.queue = (t.queue || []).concat(c); if (c.type === 'answer') t.answered = c }
+    for (const c of r.commands || []) { log({ chan, command: c }); if (c.type === 'prompt') t.queue = (t.queue || []).concat(c); else if (c.type === 'answer') t.answered = c; else t.perform(c) }
+  }
+  // the pickers and commands, as Claude Code answers them (the mod's rows for them)
+  t.perform = c => {
+    if (c.type === 'model') { const to = MODEL_ID[c.value] || c.value; t.push({ k: 'model', from: t.model, to, src: 'screen', asked: c.value }); t.model = to }
+    else if (c.type === 'effort') { t.effort = c.value; t.push({ k: 'cmd', name: 'effort', args: c.value, via: 'screen', run: c.id, text: `Set effort level to ${c.value} (saved as your default for new sessions)` }); t.push({ k: 'info', effort: c.value }) }
+    else if (c.type === 'resume') { const from = t.sid; t.sid = c.sid; t.push({ k: 'resumed', from, sid: c.sid, title: '', tp: join(t.convs, `${c.sid}.jsonl`), source: 'resume' }) }
+    else if (c.type === 'command') t.push({ k: 'cmd', name: c.name, args: c.args || '', via: 'screen', run: c.id, text: c.name === 'context' ? '## Context Usage\n\n| Category | Tokens | Percentage |\n|---|---|---|\n| System prompt | 3.1k | 1.6% |\n| Messages | 38.0k | 19.0% |' : '' })
   }
   return t
 }
@@ -54,6 +77,7 @@ const measure = (tokens, five, seven, usd) => ({ k: 'measure', ctx: { tokens, wi
 const BUILT_IN = [['general-purpose', '組み込み'], ['Explore', '組み込み'], ['Plan', '組み込み']]
 const MINE = [['dataviz', '~/.claude'], ['release-notes', '~/.claude']]
 const api = terminal('sim-shop-api', `${HOME}/dev/shop-api`, [['api-conventions', '.claude'], ['db-migration', '.claude'], ['sql-style', '.claude'], ...MINE], [...BUILT_IN, ['reviewer', '.claude']], ['github', 'postgres'])
+api.convs = CONVS
 const docs = terminal('sim-docs-site', `${HOME}/dev/docs-site`, MINE, BUILT_IN, [])
 await api.hello(); await docs.hello()
 setInterval(() => { api.sync().catch(() => {}); docs.sync().catch(() => {}) }, 500)

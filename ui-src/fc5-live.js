@@ -26,7 +26,8 @@ const rnd=()=>{ const b=new Uint8Array(12); crypto.getRandomValues(b); return [.
 const cssq=s=>window.CSS&&CSS.escape? CSS.escape(String(s)) : String(s).replace(/["\\]/g,'\\$&');
 const tilde=p=>{ p=String(p||''); return LV.home&&(p===LV.home||p.startsWith(LV.home+'/')||p.startsWith(LV.home+'\\'))? '~'+p.slice(LV.home.length) : p; };
 const clip1=(s,n)=>{ s=String(s||'').replace(/\s+/g,' ').trim(); return s.length>n? s.slice(0,n-1)+'…' : s; };
-function modelName(m){ const x=/claude-([a-z]+)-(\d+)-(\d+)/i.exec(String(m||'')); return x? `${x[1][0].toUpperCase()}${x[1].slice(1)} ${x[2]}.${x[3]}` : String(m||''); }
+// claude-opus-5-5[1m] → Opus 5.5（1M）: the long-context variant is a model of its own in the picker, so it says so here too
+function modelName(m){ const s=String(m||''), x=/claude-([a-z]+)-(\d+)-(\d+)/i.exec(s); return x? `${x[1][0].toUpperCase()}${x[1].slice(1)} ${x[2]}.${x[3]}${/\[1m\]$/i.test(s)?'（1M）':''}` : s; }
 
 /* ---------------- the key, and talking to the hub ---------------- */
 function liveKeys(){
@@ -102,6 +103,8 @@ function chanFrom(x){ let c=LV.byId.get(x.id);
   if(x.endedAt!==undefined) c.endedAt=x.endedAt; if(x.resume!==undefined) c.resume=x.resume; if(x.sid) c.sid=x.sid;
   if(x.loaded) c.loaded=liveLoaded(x.loaded);
   if(x.commands) c.commands=x.commands;
+  if(x.effort!==undefined) c.effort=x.effort||''; if(x.title!==undefined) c.title=x.title||'';
+  if(x.models!==undefined) c.models=x.models; if(x.efforts!==undefined) c.efforts=x.efforts||[];
   if(x.breakdown) c.breakdownRaw=x.breakdown;
   c.log.setAttribute('aria-label',`ch.${c.num} ${c.name} の会話`);
   CH.sort((a,b)=>a.num-b.num);
@@ -161,8 +164,20 @@ function liveLinks(list,full){ let rebuild=false;
   dirty=true; }
 
 /* ---------------- the conversation, event by event ---------------- */
-function mdLite(t){ const parts=String(t||'').split(/```[^\n]*\n?/); return parts.map((p,i)=>{ if(i%2) return `<pre>${esc(p.replace(/\n$/,''))}</pre>`;
-  return esc(p).replace(/`([^`\n]+)`/g,'<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/^#{1,6} (.+)$/gm,'<b>$1</b>').replace(/^\s*[-*] /gm,'• ').replace(/\n{2,}/g,'<br><br>').replace(/\n/g,'<br>'); }).join(''); }
+/* Claude's words and a command's markdown: code blocks, tables, headings, bold, code and lists, nothing more */
+const mdInline=s=>esc(s).replace(/`([^`\n]+)`/g,'<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>');
+const mdText=p=>mdInline(p).replace(/^#{1,6} (.+)$/gm,'<b>$1</b>').replace(/^\s*[-*] /gm,'• ').replace(/\n{2,}/g,'<br><br>').replace(/\n/g,'<br>');
+const mdCells=r=>r.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(x=>x.trim());
+const isRow=l=>/^\s*\|.*\|\s*$/.test(l), isSep=l=>isRow(l)&&mdCells(l).every(x=>/^:?-{2,}:?$/.test(x));
+function mdTables(p){ const L=p.split('\n'), out=[]; let buf=[];
+  const flush=()=>{ if(buf.length){ out.push(mdText(buf.join('\n'))); buf=[]; } };
+  for(let i=0;i<L.length;i++){
+    if(isRow(L[i])&&isSep(L[i+1]||'')){ const head=mdCells(L[i]), rows=[]; i+=2;
+      while(i<L.length&&isRow(L[i])){ rows.push(mdCells(L[i])); i++; } i--; flush();
+      out.push(`<div class="mdt"><table><thead><tr>${head.map(h=>`<th>${mdInline(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(x=>`<td>${mdInline(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`); }
+    else buf.push(L[i]); }
+  flush(); return out.join(''); }
+function mdLite(t){ const parts=String(t||'').split(/```[^\n]*\n?/); return parts.map((p,i)=> i%2? `<pre>${esc(p.replace(/\n$/,''))}</pre>` : mdTables(p)).join(''); }
 const stripAnsi=s=>String(s||'').replace(/\x1b\[[0-9;]*[A-Za-z]/g,'');
 function flowOf(c){ if(c.cur) return c.cur.flow; const li=document.createElement('li'); li.className='solo'; const f=document.createElement('div'); f.className='flow'; li.appendChild(f); c.log.appendChild(li); return f; }
 function sysBox(c,html){ const d=document.createElement('div'); d.className='sys'; d.innerHTML=html; if(c.cur) c.cur.flow.appendChild(d); else { const li=document.createElement('li'); li.appendChild(d); c.log.appendChild(li); } return d; }
@@ -219,9 +234,19 @@ const EVH={
   skill(c,ev){ const f=flowOf(c); let ul=f.lastElementChild; if(!ul||!ul.classList.contains('ops')){ ul=document.createElement('ul'); ul.className='ops'; f.appendChild(ul); }
     const l=LINK[`skill:${ev.name}`], li=document.createElement('li'); li.className='op k-skill'; skUse(c,ev.name,l&&l.src,ev.t);
     li.innerHTML=`<span class="num">${l&&l.card?esc(l.num):''}</span><span class="v">Skill</span><span class="x">${esc(ev.name)}</span><span class="r">読み込み</span>`; ul.appendChild(li); },
-  cmd(c,ev){ const text=stripAnsi(ev.text).trim(), d=document.createElement('div'); d.className='cmdo'+(text?'':' panel');
-    d.innerHTML=`<div class="hd"><span class="tag teal">/${esc(ev.name)}${ev.args?' '+esc(ev.args):''}</span><span class="s">${ev.via==='screen'?'この画面から実行':'ターミナルで実行'}${text?'':' · 表示はターミナルに出ています'}</span></div>${text?`<pre>${esc(text)}</pre>`:''}`;
+  cmd(c,ev){ const text=stripAnsi(ev.text||ev.out||'').trim(), d=document.createElement('div');
+    Object.assign(d.dataset,{seq:ev.seq||'',name:ev.name||'',args:ev.args||'',via:ev.via||''}); cmdFill(d,text);
     if(c.cur) c.cur.flow.appendChild(d); else { const li=document.createElement('li'); li.appendChild(d); c.log.appendChild(li); } },
+  // the line a command printed ("Set model to …"), which comes after its row: it fills that row
+  cmdOut(c,ev){ const d=ev.ref&&c.log.querySelector(`.cmdo[data-seq="${cssq(ev.ref)}"]`), text=stripAnsi(ev.text).trim(); if(!text) return;
+    if(d){ cmdFill(d,text); return; }
+    EVH.cmd(c,{name:ev.name,args:ev.args||'',text,seq:ev.seq,via:ev.via}); },
+  resumed(c,ev,replay){ c.title=ev.title||''; const name=ev.title||ev.label||''; c.role=name? clip1(name,28) : ''; resumedBox(c,{title:name,from:ev.from});
+    if(!replay&&!LV.replaying) toast('info',`ch.${c.num} ${esc(c.name)} で前の会話を再開しました`,esc(cut1(name,60))||'ここから下が、その続きです。',sel===c.num?null:c.num); },
+  // with what the conversation began with, when the resume could not name it
+  hist(c,ev){ if(ev.label){ const r=[...c.log.querySelectorAll('.swap .rt')].pop(); if(r&&!r.textContent) r.textContent=`：${cut1(ev.label,80)}`; if(!c.role) c.role=clip1(ev.label,28); }
+    histTurns(c,ev.items||[],ev.more||0); },
+  model(c,ev){ const was=modelName(ev.from), to=modelName(ev.to); c.model=to; modelBox(c,{from:was,to,src:ev.src}); },
   compact(c,ev,replay){ sysBox(c,`<b>${ev.trigger==='auto'?'自動で圧縮しました':'圧縮しました'}</b><span>これまでの要点は要約として残っています。</span>`);
     if(!replay){ toast('compact',`ch.${c.num} ${esc(c.name)} を圧縮しました`,'コンテキストが空きました。',sel===c.num?null:c.num); if(sel===c.num&&!reduce) osdFlash(`${pct(c)}%<small>霧が晴れました</small>`); } },
   turnEnd(c,ev){ const t=c.cur; if(!t) return;
@@ -255,11 +280,27 @@ function liveAskEnd(m){ const a=LV.asks.get(m.id); if(!a) return; a.decision=m.d
   else if(m.decision==='gone') p.remove(); }
 
 /* ---------------- what the person does here ---------------- */
-const LIVE_KIND={compact:'op',clear:'danger',context:'text',usage:'text',cost:'text',help:'text','release-notes':'text',todos:'text','reload-skills':'text','reload-plugins':'text',
-  init:'turn',review:'turn','security-review':'turn','pr-comments':'turn'};
-const HIDE_CMD=new Set(['fog','exit','quit','login','logout','vim','terminal-setup']);
-function liveCommands(c){ return (c.commands||[]).filter(x=>!HIDE_CMD.has(x.name)).map(x=>{ const b=x.source==='builtin', k=b? (LIVE_KIND[x.name]||'panel') : 'turn';
+/* how each command behaves when this page runs it, as Claude Code 2.1.293 was seen to: a skill (even one listed as
+   built-in) starts a turn; a built-in not named here opens its screen in the terminal */
+const LIVE_KIND={resume:'pick',model:'pick',effort:'pick',compact:'op',clear:'danger',
+  context:'text',rename:'text',plan:'text','output-style':'text',copy:'text','reload-skills':'text','reload-plugins':'text',color:'text',
+  goal:'turn',init:'turn',review:'turn','security-review':'turn','pr-comments':'turn','code-review':'turn',simplify:'turn',doctor:'turn',verify:'turn',
+  debug:'turn',batch:'turn',loop:'turn','deep-research':'turn',run:'turn',insights:'turn',diff:'panel',recap:'term'};
+const HIDE_CMD=new Set(['fog','exit','quit','login','logout','vim','terminal-setup','heapdump','stickers','mobile','passes','radio','tui','scroll-speed','focus',
+  'pro-trial-expired','__remote-workflow','workflow-launch-exec','setup-bedrock','setup-vertex']);
+function liveCommands(c){ return (c.commands||[]).filter(x=>!HIDE_CMD.has(x.name)&&!x.hidden).map(x=>{ const b=x.source==='builtin', k=x.skill? 'turn' : LIVE_KIND[x.name]||(b?'panel':'turn');
   return {n:x.name,d:x.description||'',k,h:x.hint||(k==='turn'?'[指示]':''),g:b?'組み込み':x.source==='plugin'?'プラグイン':x.source==='mcp'?'MCP':'スキル',src:x.plugin||''}; }); }
+function cmdFill(d,text){ const x=d.dataset; d.className='cmdo'+(text?'':' panel');
+  // markdown (/context's tables) is drawn as such; a plain line stays as printed
+  const md=/^#{1,6} /m.test(text)||text.split('\n').some((l,i,L)=>isRow(l)&&isSep(L[i+1]||''));
+  d.innerHTML=`<div class="hd"><span class="tag teal">/${esc(x.name)}${x.args?' '+esc(x.args):''}</span><span class="s">${x.via==='screen'?'この画面から実行':'ターミナルで実行'}${text?'':' · 表示はターミナルに出ています'}</span></div>${!text?'':md?`<div class="cmdmd">${mdLite(text)}</div>`:`<pre>${esc(text)}</pre>`}`; }
+/* the pickers' choices, carried out in that terminal */
+function liveResume(c,sid,title){ api('/api/ui/resume',{chan:c.id,sid}).then(r=>{ if(r.queued) toast('queue','再開を予約しました',`ch.${c.num} ${esc(c.name)} の今のターンが終わったら「${esc(cut1(title||sid,40))}」に切り替えます。`); })
+  .catch(err=>toast('info','再開できませんでした',esc(err.message==='sid'?'会話の ID が正しくありません。':err.message))); }
+function liveModel(c,o){ api('/api/ui/model',{chan:c.id,value:o}).then(r=>{ toast(r.queued?'queue':'info',r.queued?'モデルの切り替えを予約しました':`ch.${c.num} ${esc(c.name)} のモデルを切り替えます`,`${esc(modelLabel(o))}${r.queued?'（今のターンが終わったら）':''}`); })
+  .catch(err=>toast('info','モデルを切り替えられませんでした',esc(err.message==='model'?'このターミナルでは選べないモデルです。':err.message))); }
+function liveEffort(c,x){ api('/api/ui/effort',{chan:c.id,value:x}).then(r=>{ toast(r.queued?'queue':'info',r.queued?'effort の変更を予約しました':`ch.${c.num} ${esc(c.name)} の effort を変えます`,`${esc(effortLabel(x))}（${esc(x)}）${r.queued?' · 今のターンが終わったら':''}`); })
+  .catch(err=>toast('info','effort を変えられませんでした',esc(err.message==='effort'?'このターミナルでは選べない値です。':err.message))); }
 // shown at once as a bubble; the hub hands it to the terminal, which starts it when it is free
 function liveSend(c,text){ const lid=rnd(); LV.lids.add(lid); const x={lid,text,t:Date.now(),st:'sending'}; (c.pend||(c.pend=[])).push(x); c.pendKey=null; renderPend(c);
   api('/api/ui/send',{chan:c.id,text,local:lid}).then(r=>{ x.id=x.id||r.id; if(x.st==='sending') x.st=r.queued?'queued':'sent'; c.pendKey=null; renderPend(c); })
