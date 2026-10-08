@@ -1,5 +1,5 @@
 import { test, expect, mock } from 'claude-code/testing'
-import { linkFor, summarize, outline, fileChange, todosOf, statusLine, textOf, rel, older, midTurnText, questionsOf, answersFor, keepText } from './shape'
+import { linkFor, summarize, outline, fileChange, todosOf, statusLine, textOf, rel, older, midTurnText, questionsOf, answersFor, keepText, commandRow, effortLevels, modelKey } from './shape'
 
 // ---------------------------------------------------------------- shape
 
@@ -65,7 +65,7 @@ function hub(on: Any, opts: { approvals?: boolean; decision?: string; wait?: () 
     const body = e.init?.body ? JSON.parse(e.init.body) : null
     const ok = (v: unknown) => ({ value: { status: 200, ok: true, headers: {}, text: JSON.stringify(v) } })
     if (path === '/api/health') {
-      const v = opts.version ? opts.version() : '0.4.0'
+      const v = opts.version ? opts.version() : '0.5.1'
       return v === null ? { value: { status: 502, ok: false, headers: {}, text: '' } } : ok({ ok: true, app: 'fogcast', version: v })
     }
     if (e.init?.headers?.['x-fogcast-token'] !== TOKEN) return { value: { status: 401, ok: false, headers: {}, text: '{}' } }
@@ -296,7 +296,7 @@ test('a hub left running from an older version is stopped once, and this version
   on('process.run', (_$: Any, e: Any) => {
     runs.push([...e.argv])
     if (e.argv.includes('--stop')) version = null
-    if (e.argv.includes('--daemon')) version = '0.4.0'
+    if (e.argv.includes('--daemon')) version = '0.5.1'
     return { value: { exitCode: 0, stdout: 'main\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   hub(on, { version: () => version })
@@ -472,4 +472,154 @@ test('a prompt from the screen carries its id into the turn it starts', async ($
   await $.turn.start({ text: 'READMEを直して', turnId: 'tr' })
   await clock.advance(700)
   expect(h.events.find(e => e.k === 'turn')).toEqual(expect.objectContaining({ text: 'READMEを直して', via: 'screen', cid: 'cid-7' }))
+})
+
+// ---------------------------------------------------------------- commands: resume, model, effort
+
+test('a command\'s printed line is read off its rows; the effort levels off /effort\'s hint', () => {
+  expect(commandRow('<command-name>/model</command-name>\n            <command-message>model</command-message>\n            <command-args>sonnet</command-args>')).toEqual({ name: 'model' })
+  expect(commandRow([{ type: 'text', text: '<local-command-stdout>Set model to \u001b[1mSonnet 5.5\u001b[22m and saved\r\nas your default</local-command-stdout>' }])).toEqual({ out: 'Set model to Sonnet 5.5 and saved\nas your default' })
+  expect(commandRow('<local-command-stdout></local-command-stdout>')).toEqual({ out: '' })
+  expect(commandRow('<local-command-caveat>The command below was run directly in Claude Code</local-command-caveat>')).toEqual({})
+  expect(effortLevels('[low|medium|high|xhigh|max|auto|ultracode [on|off]]')).toEqual(['low', 'medium', 'high', 'xhigh', 'max', 'auto'])
+  expect(effortLevels(undefined)).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+  expect(modelKey('claude-opus-5-5[1m]')).toBe('claude-opus-5-5')
+})
+
+test('a /resume in the terminal swaps the conversation: the channel goes on and is told which one it is on now', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on); const h = hub(on)
+  on('classic.SessionStart', () => ({}))
+  const DIR = '/home/t/.claude/projects/-home-t-dev-shop'
+  await $.classic.SessionStart({ source: 'startup', session_id: 'sess-1', transcript_path: `${DIR}/sess-1.jsonl`, model: 'claude-opus-5-5' })
+  await started($, on, clock)
+  const hello = h.posts.find(p => p.path === '/api/mod/hello')!.body
+  expect(hello.tp).toBe(`${DIR}/sess-1.jsonl`)
+  expect(hello.tdir).toBe(DIR)                        // the project's conversations, for the screen's resume list
+  await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  await $.classic.SessionStart({ source: 'resume', session_id: 'sess-2', session_title: 'bananas-talk', transcript_path: `${DIR}/sess-2.jsonl`, model: 'claude-opus-5-5' })
+  await clock.advance(700)
+  expect(h.events.some(e => e.k === 'end')).toBe(false)
+  expect(h.events.find(e => e.k === 'resumed')).toEqual(expect.objectContaining({ from: 'sess-1', sid: 'sess-2', title: 'bananas-talk', tp: `${DIR}/sess-2.jsonl`, source: 'resume' }))
+  await $.session.end({ reason: 'prompt_input_exit', sessionId: 'sess-2', resume: { id: 'sess-2' } })
+  expect(h.events.filter(e => e.k === 'end')).toEqual([expect.objectContaining({ reason: 'prompt_input_exit', resume: 'sess-2' })])
+})
+
+test('the screen\'s resume, effort and model reach the terminal as its own; while a turn runs they wait for it to end', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on); const h = hub(on)
+  const ran: Any[] = [], set: Any[] = []
+  on('command.run', (_$: Any, e: Any) => { ran.push([e.command, e.args]); return {} })
+  on('config.set', (_$: Any, e: Any) => { set.push([e.key, e.value]); return { value: e.value } })
+  await started($, on, clock)
+  h.queue.push({ id: 'r1', type: 'resume', sid: '26524db9-d8aa-466f-a4d6-484562d1ea8e' }, { id: 'e1', type: 'effort', value: 'high' })
+  await clock.advance(700); await clock.settle()
+  expect(ran).toEqual([['resume', '26524db9-d8aa-466f-a4d6-484562d1ea8e'], ['effort', 'high']])
+  await $.turn.start({ text: 'まとめて', turnId: 'tm' })
+  h.queue.push({ id: 'm1', type: 'model', value: 'sonnet' }, { id: 'e2', type: 'effort', value: 'low' }, { id: 'r2', type: 'resume', sid: 'a4d1b2c3-0000-4000-8000-000000000001' })
+  await clock.advance(700); await clock.settle()
+  expect(set).toEqual([])                                   // mid-turn nothing changes under the running turn
+  expect(ran.length).toBe(2)
+  await $.turn.complete({ answer: 'ok', durationMs: 10, isAborted: false, turnId: 'tm', reason: 'answer', usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, model: 'm' } })
+  await clock.advance(700); await clock.settle()
+  expect(set).toEqual([['model', 'sonnet']])                // the /config Model row: no "switch model?" question in the terminal
+  expect(ran.slice(2)).toEqual([['effort', 'low'], ['resume', 'a4d1b2c3-0000-4000-8000-000000000001']])
+})
+
+test('a resume that goes through is told by the conversation it brings back; one that does not, by its line', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on); const h = hub(on)
+  on('classic.SessionStart', () => ({}))
+  const DIR = '/home/t/.claude/projects/-home-t-dev-shop'
+  on('command.run', async (_$: Any, e: Any) => {
+    if (e.args === 'sess-gone') return { text: 'Session sess-gone was not found.' }
+    await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+    await $.classic.SessionStart({ source: 'resume', session_id: 'sess-2', session_title: 'bananas-talk', transcript_path: `${DIR}/sess-2.jsonl`, model: 'claude-opus-5-5' })
+    return {}
+  })
+  await started($, on, clock)
+  await $.command.run({ command: 'resume', args: 'sess-2' })
+  await clock.advance(1000)
+  await $.command.run({ command: 'resume', args: 'sess-gone' })
+  await clock.advance(1500)
+  expect(h.events.filter(e => e.k === 'resumed').map(e => e.sid)).toEqual(['sess-2'])
+  expect(h.events.filter(e => e.k === 'cmd').map(e => [e.name, e.args, e.text])).toEqual([['resume', 'sess-gone', 'Session sess-gone was not found.']])
+})
+
+test('each command run gets one row: with the line it printed, from the screen or the terminal; one that did something else is told by that', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on); const h = hub(on)
+  on('classic.PostModelSwitch', () => ({}))
+  const row =(text: string) => $.session.append({ door: 'command', uuid: 'u', origin: { kind: 'composer' }, message: { type: 'user', role: 'user', content: [{ type: 'text', text }] } })
+  on('command.run', async (_$: Any, e: Any) => {
+    if (e.command === 'rename') return { text: `Session renamed to: ${e.args}` }
+    if (e.command === 'model') await $.classic.PostModelSwitch({ from_model: 'claude-opus-5-5', to_model: 'claude-sonnet-5-5', requested_model: 'sonnet', source: 'command', context_tokens: 0, cache_warm: true })
+    return {}
+  })
+  await started($, on, clock)
+  // from the screen: its line comes as a row of the conversation, and rides in the command's row
+  h.queue.push({ id: 'e1', type: 'command', name: 'effort', args: 'high' })
+  await clock.advance(700); await clock.settle()
+  await row('<command-name>/effort</command-name>\n<command-args>high</command-args>')
+  await row('<local-command-stdout>Set effort level to high (saved as your default for new sessions)</local-command-stdout>')
+  await clock.advance(1500)
+  // typed: one that answers with text; one that switches the model; a skill that starts a turn; a panel whose line comes late
+  await $.command.run({ command: 'rename', args: 'shop-fix' })
+  await row('<command-name>/rename</command-name>'); await row('<local-command-stdout>Session renamed to: shop-fix</local-command-stdout>')
+  await $.command.run({ command: 'model', args: 'sonnet' })
+  await row('<command-name>/model</command-name>'); await row('<local-command-stdout>Set model to Sonnet 5.5</local-command-stdout>')
+  await $.command.run({ command: 'init', args: '' })
+  await $.turn.start({ text: 'Please analyze this codebase and create a CLAUDE.md file', turnId: 'ti' })
+  await $.turn.complete({ answer: 'ok', durationMs: 10, isAborted: false, turnId: 'ti', reason: 'answer', usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, model: 'm' } })
+  await $.command.run({ command: 'usage', args: '' })
+  await clock.advance(1500)
+  await row('<command-name>/usage</command-name>'); await row('<local-command-stdout>Usage dialog dismissed</local-command-stdout>')
+  await clock.advance(1500)
+  const cmds = h.events.filter(e => e.k === 'cmd')
+  expect(cmds.map(e => [e.name, e.args, e.text, e.via])).toEqual([
+    ['effort', 'high', 'Set effort level to high (saved as your default for new sessions)', 'screen'],
+    ['rename', 'shop-fix', 'Session renamed to: shop-fix', undefined],
+    ['usage', '', '', undefined],
+  ])
+  expect(h.events.filter(e => e.k === 'cmdOut').map(e => [e.name, e.text, e.run === cmds[2].run])).toEqual([['usage', 'Usage dialog dismissed', true]])
+  expect(h.events.filter(e => e.k === 'model').map(e => e.to)).toEqual(['claude-sonnet-5-5'])
+  expect(h.events.find(e => e.k === 'turn').text).toBe('/init')
+  expect(h.events.filter(e => e.k === 'info' && e.effort).map(e => e.effort)).toEqual(['high'])
+})
+
+test('a model switch is told in the conversation, with the effort the settings keep for the new model; a resume\'s restore is not', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on); const h = hub(on)
+  on('classic.PostModelSwitch', () => ({}))
+  on('settings.read', () => ({ value: { modelSettings: { 'claude-sonnet-5-5': { effortLevel: 'high' } } } }))
+  await started($, on, clock)
+  await $.classic.PostModelSwitch({ from_model: 'claude-opus-5-5', to_model: 'claude-sonnet-5-5', requested_model: 'sonnet', source: 'command', context_tokens: 0, cache_warm: true })
+  await $.classic.PostModelSwitch({ from_model: 'claude-sonnet-5-5', to_model: 'claude-haiku-5-5', requested_model: null, source: 'resume', context_tokens: 0, cache_warm: false })
+  await clock.advance(700)
+  expect(h.events.filter(e => e.k === 'model')).toEqual([expect.objectContaining({ from: 'claude-opus-5-5', to: 'claude-sonnet-5-5', src: 'command', asked: 'sonnet' })])
+  expect(h.events.filter(e => e.k === 'info' && e.effort).map(e => e.effort)).toEqual(['high'])
+  expect(h.events.filter(e => e.k === 'info' && e.model).map(e => e.model)).toEqual(['claude-haiku-5-5'])
+})
+
+test('the pickers\' choices ride with the hello; a built-in that is a skill is marked, and one found out later is told', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on, [], {}, { commands: [{ name: 'effort', description: 'Set effort level', source: 'builtin' }, { name: 'dataviz', description: 'charts', source: 'builtin' }, { name: 'doctor', description: 'Health-check', source: 'builtin' }] })
+  on('command.describe', (_$: Any, e: Any) => ({ description: e.description, argumentHint: e.argumentHint, isHidden: false }))
+  on('config.list', () => ({ value: [{ key: 'theme', label: 'Theme', kind: 'choice', value: 'dark', options: ['dark', 'light'], provider: { plugin: 'engine', tier: 'core' }, isLocked: false },
+    { key: 'model', label: 'Model', kind: 'choice', value: 'opus', options: ['default', 'sonnet', 'opus', 'opus[1m]'], provider: { plugin: 'engine', tier: 'core' }, isLocked: false }] }))
+  on('settings.read', () => ({ value: { modelSettings: { 'claude-opus-5-5': { effortLevel: 'xhigh' } } } }))
+  on('skill.prompt', (_$: Any, e: Any) => ({ text: e.text }))
+  const h = hub(on)
+  await $.command.describe({ command: 'effort', description: 'Set effort level', argumentHint: '[low|medium|high|xhigh|max|auto|ultracode [on|off]]', isHidden: false, immediate: true, provider: { plugin: 'engine', tier: 'core' } })
+  await started($, on, clock)
+  const hello = h.posts.find(p => p.path === '/api/mod/hello')!.body
+  expect(hello.models).toEqual({ options: ['default', 'sonnet', 'opus', 'opus[1m]'], value: 'opus' })
+  expect(hello.efforts).toEqual(['low', 'medium', 'high', 'xhigh', 'max', 'auto'])
+  expect(hello.effort).toBe('xhigh')                              // what /effort saved for this model, until a request says
+  expect(hello.commands.find((c: Any) => c.name === 'dataviz').skill).toBe(true)
+  expect(hello.commands.find((c: Any) => c.name === 'doctor').skill).toBe(undefined)
+  await $.skill.prompt({ skill: 'doctor', text: 'check the setup' })
+  await $.skill.prompt({ skill: 'doctor', text: 'again' })
+  await clock.advance(700)
+  expect(h.events.filter(e => e.k === 'skillCmd').map(e => e.name)).toEqual(['doctor'])
 })

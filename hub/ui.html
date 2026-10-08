@@ -249,10 +249,17 @@ h1,h2,h3{text-wrap:balance}
 
 /* channel view */
 .osd{position:sticky;top:-16px;margin:-16px -18px 12px;padding:14px 18px 12px;z-index:3;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;
-  background:linear-gradient(180deg,rgba(7,11,20,.97) 70%,rgba(7,11,20,0))}
+  background:linear-gradient(180deg,rgba(7,11,20,.97) calc(100% - 12px),rgba(7,11,20,0))}
 .osd .n{font:32px/1 var(--f-osd);color:var(--teal);text-shadow:0 0 12px rgba(63,230,214,.55),2px 2px 0 #000}
 .osd .nm{font-family:var(--f-disp);font-size:20px;line-height:1.1;transform:skewX(var(--skew))}
-.osd .meta{font-size:12.5px;color:var(--mute);min-width:0}
+/* the role, folder and branch give way first: the pickers and the numbers stay on the line */
+.osd .meta{font-size:12.5px;color:var(--mute);flex:1 1 140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* the model and the effort: each opens its picker */
+.osd .picks{display:inline-flex;gap:6px;flex:none}
+.osdPick{font:600 12px/1 var(--f-body);padding:5px 10px 4px;border-radius:999px;border:1px solid rgba(63,230,214,.45);background:rgba(63,230,214,.08);color:var(--ink);cursor:pointer;white-space:nowrap}
+.osdPick b{font-weight:700;color:var(--teal)}
+.osdPick:hover{background:rgba(63,230,214,.16)}
+.osdPick:disabled{opacity:.4;cursor:default}
 .osd .right{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:12px;color:var(--mute)}
 .osd .right b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
 .log{list-style:none;margin:0;padding:0 0 8px;display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
@@ -453,7 +460,7 @@ h1,h2,h3{text-wrap:balance}
 @keyframes tin{from{opacity:0;transform:translateX(30px)}}
 .scrim{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(3,4,8,.62);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .sheet{--r:26px;border-radius:var(--r);border:1px solid var(--rim);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 30px 80px rgba(0,0,0,.6);width:min(780px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:20px;display:grid;gap:14px;align-content:start;background:linear-gradient(160deg,rgba(32,36,50,.98),rgba(11,13,21,.99))}
-.sheet h2{margin:0;font-family:var(--f-disp);font-weight:400;font-size:20px;line-height:1.3;letter-spacing:.04em}
+.sheet h2{margin:0;font-family:var(--f-disp);font-weight:400;font-size:20px;line-height:1.3;letter-spacing:.04em;word-break:auto-phrase;text-wrap:pretty}
 .sheet .sub{margin:0;font-size:12.5px;color:var(--mute);line-height:1.7}
 .sheet h3{margin:4px 0 0;font:700 14.5px/1.35 var(--f-body);letter-spacing:.04em}
 .sheet .hd{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -470,6 +477,31 @@ h1,h2,h3{text-wrap:balance}
 .past li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
 .past li small{grid-column:1;color:var(--faint);font-size:11.5px}
 .past li .btns{grid-row:1/3;grid-column:2}
+
+/* ---------- pickers: /resume, /model and /effort, chosen here ---------- */
+.sheet.pick{width:min(720px,100%)}
+.psearch{width:100%;box-sizing:border-box;padding:9px 12px;border-radius:12px;border:1px solid var(--rim);background:rgba(0,0,0,.25);color:var(--ink);font:500 13.5px/1.4 var(--f-body)}
+.psearch:focus{outline:2px solid var(--teal);outline-offset:1px}
+.plist{list-style:none;margin:0;padding:0 2px 0 0;display:grid;gap:8px;max-height:min(52vh,460px);overflow:auto;scrollbar-width:thin}
+.plist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px;align-items:center;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+.plist li.on{border-color:rgba(63,230,214,.5);background:rgba(63,230,214,.06)}
+.plist .pt{display:grid;gap:1px;min-width:0}
+.plist .pt b{font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plist .pt span{font-size:12px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plist small{grid-column:1;color:var(--faint);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plist .btns{grid-row:1/3;grid-column:2}
+.plist li.pempty,p.pempty{display:block;margin:0;color:var(--mute);font-size:12.5px;border-style:dashed}
+.pbusy,.pcur{font-size:11.5px;color:var(--mute);white-space:nowrap}
+.pcur{color:var(--teal);font-weight:700}
+.pnote{margin:0;font-size:12.5px;line-height:1.7;color:var(--yolk);padding:8px 12px;border-radius:12px;background:rgba(255,217,49,.07);border:1px solid rgba(255,217,49,.25)}
+.eff{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.eff button{display:grid;gap:2px;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--rim);background:rgba(255,255,255,.04);color:var(--ink);cursor:pointer;font-family:var(--f-body)}
+.eff button:hover{background:rgba(255,255,255,.09)}
+.eff button.on{border-color:var(--teal);background:rgba(63,230,214,.1)}
+.eff b{font-weight:700;font-size:14px}
+.eff code{font-size:11px;color:var(--teal)}
+.eff small{font-size:11.5px;color:var(--mute);line-height:1.5}
+@media (max-width:620px){ .plist li{grid-template-columns:minmax(0,1fr)} .plist .btns{grid-row:auto;grid-column:1} .eff{grid-template-columns:repeat(2,minmax(0,1fr))} }
 .vh{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 
 /* ---------- コミュ: a card, opened (the overlay with the wheel at the right edge) ---------- */
@@ -623,10 +655,13 @@ h1,h2,h3{text-wrap:balance}
 .po .kd.k-panel{color:var(--sky);border-color:rgba(147,180,255,.4)}
 .po .kd.k-danger{color:var(--alarm);border-color:rgba(255,106,85,.5)}
 .po .kd.k-op{color:var(--yolk);border-color:rgba(255,217,49,.45)}
+.po .kd.k-pick{color:var(--teal);border-color:rgba(63,230,214,.45);background:rgba(63,230,214,.08)}
+.po .kd.k-term{color:var(--faint);border-style:dashed}
 .po:hover{background:rgba(255,255,255,.06)}
 .po.on{background:var(--yolk);color:var(--yolk-ink)}
 .po.on code,.po.on .d,.po.on .h{color:var(--yolk-ink)}
-.po.on .kd{border-color:rgba(0,0,0,.35);color:var(--yolk-ink)}
+/* on the chosen (yellow) row every kind turns to ink: no teal or red on yellow */
+.po.on .kd{background:var(--yolk-ink);border-color:var(--yolk-ink);border-style:solid;color:var(--yolk)}
 .palft{font-size:11px;color:var(--faint);padding:7px 14px;border-top:1px solid var(--line)}
 #bCmd b{font-family:var(--f-mono);color:var(--yolk)}
 .cmdo{display:grid;gap:8px;border-radius:14px;padding:11px 13px;background:rgba(63,230,214,.05);border:1px solid rgba(63,230,214,.25)}
@@ -635,6 +670,12 @@ h1,h2,h3{text-wrap:balance}
 .cmdo pre{margin:0;font:12px/1.7 var(--f-mono);white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
 .cmdo p{margin:0;font-size:12.5px;color:var(--mute);line-height:1.7}
 .cmdo.panel{background:rgba(147,180,255,.05);border-color:rgba(147,180,255,.28)}
+/* where a conversation was swapped (/resume), and the last exchanges of the one returned to */
+.sys.res{border-style:solid;border-color:rgba(63,230,214,.45);background:rgba(63,230,214,.06)}
+.histBox{border:1px dashed rgba(255,255,255,.16);border-radius:14px;padding:9px 12px}
+.histBox summary{cursor:pointer;display:flex;gap:4px 10px;align-items:baseline;flex-wrap:wrap;font-size:12.5px;color:var(--mute)}
+.histBox summary b{color:var(--ink);font-weight:600}
+.histIn{display:grid;gap:12px;margin-top:10px;opacity:.88}
 
 /* ---------- approvals from the browser ---------- */
 .pbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
@@ -768,6 +809,16 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 .flow > .ans code{background:rgba(22,19,13,.08);color:#16130d}
 .flow > .ans b{color:#000}
 .flow > .ans pre{background:#14110c;color:var(--ink);border-color:transparent}
+/* tables in Claude's words and in a command's markdown: scroll sideways inside, never the page */
+.mdt{margin:6px 0;max-width:100%;overflow-x:auto}
+.mdt table{border-collapse:collapse;font-size:12.5px;line-height:1.55;min-width:50%}
+.mdt th,.mdt td{padding:4px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.1);white-space:nowrap}
+.mdt th{font-weight:700;border-bottom-color:rgba(63,230,214,.45)}
+.mdt td:not(:first-child){font-variant-numeric:tabular-nums}
+.flow > .ans .mdt th,.flow > .ans .mdt td{border-bottom-color:rgba(22,19,13,.16)}
+.flow > .ans .mdt th{border-bottom-color:rgba(22,19,13,.55)}
+.cmdmd{font-size:12.5px;line-height:1.7;color:var(--ink);overflow-wrap:anywhere}
+.cmdmd .mdt{margin:4px 0 8px}
 .flow > .ops{margin:0;padding:7px 11px;max-width:min(100%,780px);border:1px solid rgba(255,255,255,.08);border-left:3px solid rgba(63,230,214,.5);border-radius:10px;background:rgba(0,0,0,.3)}
 .flow > .you{margin-left:-54px;width:calc(100% + 54px)}
 .flow > .sys{margin-left:-54px}
@@ -938,8 +989,6 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
 .stParts span{font-size:12.5px;font-weight:700;color:var(--mute)}
 .stParts b{font:400 19px/1 var(--f-disp);color:var(--yolk);font-variant-numeric:tabular-nums}
 .stParts small{grid-column:1/-1;font-size:11.5px;color:var(--faint);line-height:1.5}
-.stParts .cap{grid-column:3;align-self:center;height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;position:relative}
-.stParts .cap i{position:absolute;left:0;top:0;bottom:0;background:var(--yolk)}
 .stHist{display:grid;gap:6px}
 .stHist .xpBars{display:flex;align-items:flex-end;justify-content:space-between;gap:5px;height:70px;padding:0 2px;border-bottom:1px solid var(--line)}
 .stHist .xpBars i{flex:1;max-width:30px;min-height:2px;background:rgba(63,230,214,.55);border-radius:3px 3px 0 0;transform-origin:bottom;animation:barUp .6s cubic-bezier(.2,.9,.25,1) both;animation-delay:calc(var(--i)*30ms)}
@@ -950,11 +999,13 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
 @keyframes barUp{from{transform:scaleY(0)}}
 .stRadar{display:grid;justify-items:center;gap:6px;padding-top:6px}
 .stRadar svg{width:100%;max-width:400px;height:auto;overflow:visible}
+.stRadar .lab{font:700 17px var(--f-body);letter-spacing:.12em;paint-order:stroke;stroke:rgba(7,9,15,.85);stroke-width:4px;stroke-linejoin:round}
 .stRadar .poly{animation:radarIn .7s cubic-bezier(.2,1.2,.35,1) both;transform-origin:center;transform-box:fill-box}
 @keyframes radarIn{from{transform:scale(.2);opacity:0}}
 .stAbs{list-style:none;margin:0;padding:0;display:grid;gap:7px}
 .stAb{--c:var(--teal);display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 14px;align-items:center;padding:9px 12px 9px 14px;background:linear-gradient(90deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border-left:4px solid var(--c);animation:coIn .45s cubic-bezier(.2,.9,.25,1) both;animation-delay:calc(var(--i)*45ms)}
-.stAb .nm b{display:block;font:400 18px/1.15 var(--f-disp);letter-spacing:.05em}
+/* the abilities' names: kanji at this size stay legible only in the body face (the display face fills their strokes in) */
+.stAb .nm b{display:block;font:700 17px/1.2 var(--f-body);letter-spacing:.12em}
 .stAb .nm small{font-size:11.5px;color:var(--faint)}
 .stAb .pips{display:flex;gap:4px}
 .stAb .pips i{width:17px;height:10px;transform:skewX(var(--skew));background:rgba(255,255,255,.13)}
@@ -1021,6 +1072,7 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
   .screen{height:70vh;min-height:430px}
   .view{padding:14px 12px 16px}
   .osd{margin:-14px -12px 10px;padding:12px}
+  .osd .right .tk{display:none}   /* the rail's 今日の使用量 has them; the status stays on one line */
   .live{margin:10px -12px -16px;padding:10px 12px 12px}
   .op{grid-template-columns:5.6em minmax(0,1fr) auto}
   .op .num{display:none}
@@ -1340,23 +1392,31 @@ function loadedFor(cwd){ const p=PROJECTS[cwd]||PROJECTS['~/dev/docs-site'];
 
 /* slash commands: what $.command.list() hands back, and how each behaves when run from here */
 const BUILTIN=[
+  ['resume','前の会話に戻る','pick','[会話の ID か名前]'],
+  ['model','モデルを切り替える','pick','[モデル]'],
+  ['effort','考える深さ（effort）を変える','pick','[low|medium|high|xhigh|max|auto]'],
   ['compact','会話を要約してコンテキストを空ける','op'],
   ['clear','会話をリセットして新しいセッションにする','danger'],
+  ['rename','この会話に名前を付ける（/resume の一覧に出る）','text','[名前]'],
   ['context','コンテキストの内訳を表示する','text'],
-  ['usage','トークンとコストを表示する（/cost でも同じ）','text'],
-  ['model','モデルを切り替える。名前を付けるとすぐ切り替わる','panel','[モデル名]'],
+  ['plan','計画モードに切り替える','text'],
+  ['export','会話をファイルに書き出す','text','[ファイル名]'],
+  ['init','このリポジトリの CLAUDE.md を作る','turn'],
+  ['code-review','今の変更をレビューする（裏で動く）','turn'],
+  ['simplify','変更したコードを見直して整える','turn'],
+  ['security-review','今のブランチの変更をセキュリティの面で確かめる','turn'],
+  ['usage','トークンとコストの画面を開く','panel'],
   ['status','セッションの状態を開く','panel'],
   ['permissions','許可の設定を開く','panel'],
   ['skills','スキルの一覧を開く','panel'],
-  ['skill-doctor','スキルの使われ方とコンテキストの負担を調べる','panel'],
-  ['plugin','プラグインを管理する','panel'],
-  ['resume','過去のセッションに戻る','panel'],
   ['rewind','会話とコードを前の時点に戻す','panel'],
-  ['init','このリポジトリの CLAUDE.md を作る','turn'],
-  ['reload-skills','スキルを読み込み直す','text'],
-  ['help','使い方を表示する','text'],
+  ['help','使い方を表示する','panel'],
+  ['recap','今の会話を 1 行にまとめる','term'],
 ];
-const CKIND={text:'結果を表示',panel:'ターミナルで開く',turn:'ターンを始める',op:'圧縮',danger:'会話をリセット'};
+const CKIND={text:'結果を表示',panel:'ターミナルで開く',turn:'ターンを始める',op:'圧縮',danger:'会話をリセット',pick:'この画面で選ぶ',term:'ターミナルで打つ'};
+/* what the model and effort pickers offer in the demo (the live page takes the terminal's own) */
+const DEMO_MODELS={options:['default','opus','sonnet','haiku','fable','opus[1m]','opusplan'],value:'default'};
+const DEMO_EFFORTS=['low','medium','high','xhigh','max','auto'];
 function commandsFor(c){ if(LIVE) return liveCommands(c); const L=c.loaded, out=[];
   BUILTIN.forEach(([n,d,k,h])=>out.push({n,d,k,h:h||'',g:'組み込み'}));
   L.skills.forEach(s=>out.push({n:s.n,d:(ALLK[s.n]&&ALLK[s.n].what)||'スキル',k:'turn',h:'[指示]',g:'スキル',src:s.src}));
@@ -1454,6 +1514,28 @@ const PAST=LIVE? [] : [
   {n:'注文 API のリトライ処理',cwd:'~/dev/shop-api',t:'昨日 18:40',id:'2b81d0f4'},
   {n:'CI のテストを速くする',cwd:'~/dev/shop-api',t:'日曜',id:'5d2e8b13'},
 ];
+/* the demo's conversations on disk, by folder: what the resume picker lists (the live page reads the terminal's) */
+const DEMO_CONVOS=LIVE? {} : {
+  '~/dev/fogcast':[
+    {id:'7f3a9c2e-1b4d-4e8a-9c21-3d4e5f6a8b90',title:'statusline-fix',first:'ステータスラインの幅が崩れる不具合を直して',last:'狭い端末でも 1 行に収まるか確かめて',age:95,size:412e3,
+      hist:[{u:'ステータスラインの幅が崩れる不具合を直して',a:'全角文字の幅を 1 と数えていたのが原因でした。<code>stringWidth</code> で数えるようにしています。'},{u:'狭い端末でも 1 行に収まるか確かめて',a:'80 桁と 60 桁で確かめました。60 桁では予報の部分を省きます。'}]},
+    {id:'0c9d8e7f-6a5b-4c3d-8e2f-1a0b9c8d7e6f',title:'',first:'受け皿の再起動で回数が二重になるのを直して',last:'',age:60*26,size:228e3,
+      hist:[{u:'受け皿の再起動で回数が二重になるのを直して',a:'送り直しのあいだは数えないようにしました。'}]},
+  ],
+  '~/dev/fogcast-ui':[
+    {id:'3a2b1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d',title:'calendar-v1',first:'週のカレンダーに予報を出す部品を作って',last:'色をテーマの値に揃えて',age:60*5,size:530e3,
+      hist:[{u:'週のカレンダーに予報を出す部品を作って',a:'過去の日は使用量、これからの日は予報を出す部品を作りました。'},{u:'色をテーマの値に揃えて',a:'色の指定をテーマの値に揃えました。'}]},
+  ],
+  '~/dev/shop-api':[
+    {id:'2b81d0f4-7c6e-4d5a-9b8c-7d6e5f4a3b2c',title:'',first:'注文 API のリトライ処理を見直して',last:'リトライの上限を 3 回にして',age:60*20,size:610e3,
+      hist:[{u:'注文 API のリトライ処理を見直して',a:'再送のたびに待ち時間を倍にするようにしました。'},{u:'リトライの上限を 3 回にして',a:'上限を 3 回にし、超えたらエラーを返します。'}]},
+    {id:'5d2e8b13-4f3a-4b2c-8d1e-0f9a8b7c6d5e',title:'ci-speedup',first:'CI のテストを速くする',last:'キャッシュを効かせて',age:60*72,size:345e3,
+      hist:[{u:'CI のテストを速くする',a:'テストを 4 つに分けて並列に走らせるようにしました。'}]},
+  ],
+  '~/dev/docs-site':[
+    {id:'9f8e7d6c-5b4a-4392-8a1b-0c9d8e7f6a5b',title:'',first:'README に導入手順を書いて',last:'',age:60*30,size:120e3,hist:[{u:'README に導入手順を書いて',a:'導入手順を 3 段で書きました。'}]},
+  ],
+};
 
 /* ================= arcana art: line drawings that move faster while the card is in use ================= */
 function art(g,w,h,name,t,a,pulse){
@@ -1651,7 +1733,7 @@ function mkChannel(o){
   const P=PROJECTS[o.cwd];
   const c={num:CH.length+1,name:o.name,role:o.role,cwd:o.cwd,branch:P.branch,model:'Opus 5.5',status:o.off?'off':'idle',now:o.off?'セッションは終了しています':'入力待ち',
     active:null,ops:o.ops||[],ctx:o.ctx,tok:o.tok||0,cost:o.cost||0,perTurn:[],tasks:[],files:{},agents:[],queue:[],script:SCRIPTS[o.script]||[],sk:o.script,idx:0,
-    turnId:0,loopId:0,turnNo:0,blocks:[],delay:o.delay||0,resume:o.resume||null,loaded:loadedFor(o.cwd),endedAt:o.off?Date.now()-(o.endedAgo||20)*60000:null,phaseAt:Date.now(),warned85:false,boot:false};
+    turnId:0,loopId:0,turnNo:0,blocks:[],delay:o.delay||0,effort:o.effort||'medium',models:{...DEMO_MODELS,options:[...DEMO_MODELS.options]},resume:o.resume||null,loaded:loadedFor(o.cwd),endedAt:o.off?Date.now()-(o.endedAgo||20)*60000:null,phaseAt:Date.now(),warned85:false,boot:false};
   c.log=document.createElement('ol'); c.log.className='log'; c.log.hidden=true; c.log.setAttribute('aria-label',`ch.${c.num} ${o.name} の会話`);
   $('logs').appendChild(c.log); CH.push(c); return c;
 }
@@ -1702,7 +1784,7 @@ function renderWall(){
     t.querySelector('.meta').textContent=`${c.role} · ${c.cwd} · ${c.branch}`;
     t.querySelector('.now').innerHTML=c.now;
     t.querySelector('.ops').innerHTML=c.ops.slice(-7).map((id,i,a)=>{ const l=LINK[id]; return l? `<i class="${i===a.length-1&&c.active===id?'on':''}" title="${esc(l.label)}">${l.num}·${esc(l.label.length>10?l.label.slice(0,9)+'…':l.label)}</i>` : ''; }).join('');
-    t.querySelector('.ft').innerHTML=`<span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span>`;
+    t.querySelector('.ft').innerHTML=`<span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span class="tk"><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span>`;
     t.querySelector('.fogl').style.setProperty('--fog',fogOf(c).toFixed(2)); });
   const n=k=>CH.filter(c=>c.status===k).length, asks=CH.filter(c=>c.status==='wait'&&c.ask).length;
   const sum=`作業中 <b>${n('work')}</b> · 承認待ち <b>${n('wait')-asks}</b>${asks?` · 回答待ち <b>${asks}</b>`:''} · 入力待ち <b>${n('idle')}</b> · 終了 <b>${n('off')}</b>${n('off')?'<button class="tidy" type="button" id="bTidy">終了したチャンネルを片付ける</button>':''}`;
@@ -1724,11 +1806,16 @@ function renderGuide(){
 
 /* ================= TV: one channel ================= */
 function renderOsd(c){
-  $('osd').innerHTML=`<span class="n">ch.${c.num}</span><span class="nm">${esc(c.name)}</span><span class="meta">${esc(c.role)} · ${esc(c.cwd)} · ${esc(c.branch)} · ${c.model}</span>
-    <span class="right"><span class="chip ${c.status}">${stl(c)}</span><span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span></span>`;
+  // the model and effort are buttons (their pickers): drawn again only when something in the line changed, so a press is never lost
+  const off=c.status==='off', old=LIVE&&!c.models&&!off;      // a terminal on an earlier Fogcast: its pickers come with a restart
+  const lock=off||old? ` disabled${old?' title="このターミナルの Fogcast は前の版です。claude を起動し直すと使えます"':''}` : '';
+  const html=`<span class="n">ch.${c.num}</span><span class="nm">${esc(c.name)}</span><span class="meta" title="${esc(`${c.role} · ${c.cwd} · ${c.branch}`)}">${esc(c.role)} · ${esc(c.cwd)} · ${esc(c.branch)}</span>
+    <span class="picks"><button class="osdPick" type="button" data-pick="model"${lock||' title="モデルを切り替える"'}>${esc(c.model||'モデル')}</button><button class="osdPick" type="button" data-pick="effort"${lock||' title="考える深さ（effort）を変える"'}>effort <b>${esc(effortLabel(c.effort))}</b></button></span>
+    <span class="right"><span class="chip ${c.status}">${stl(c)}</span><span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span class="tk"><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span></span>`;
+  if($('osd').dataset.k!==html){ $('osd').dataset.k=html; $('osd').innerHTML=html; }
   const el=c.status==='off'? '' : `${Math.floor((Date.now()-c.phaseAt)/1000)}s`;
   $('live').innerHTML=`<i class="dot ${c.status}"></i><span class="txt">${c.now}</span><span class="el">${el}</span>`;
-  const off=c.status==='off', busy=c.status==='work'||c.status==='wait';
+  const busy=c.status==='work'||c.status==='wait';
   $('ask').disabled=off; $('bSend').disabled=off; $('bStop').disabled=!busy; $('bCompact').disabled=off; $('bForget').hidden=!off; $('bSend').hidden=off;
   // the dim suggestion sits in the empty box, as in the terminal
   $('ask').placeholder= off? 'このセッションは終了しています。「詳細」から再開コマンドをコピーできます' : c.suggest&&c.status==='idle'? `${c.suggest}　（Tab で入力）` : `ch.${c.num} ${c.name} に送る（Enter で送信、Shift+Enter で改行）`;
@@ -1928,7 +2015,7 @@ function stRadar(stats){
   const at=stats.map((x,i)=>pt(i,Math.max(R*.05,R*val(x)/5)));
   const dots=stats.map((x,i)=>`<circle class="st-${x.k}" cx="${at[i][0].toFixed(1)}" cy="${at[i][1].toFixed(1)}" r="4.5" style="fill:var(--c)" stroke="#000" stroke-width="1.5"/>`).join('');
   const labels=stats.map((x,i)=>{ const [lx,ly]=pt(i,R+30), a=Math.abs(lx-cx)<8?'middle':lx<cx?'end':'start';
-    return `<g class="st-${x.k}"><text x="${lx.toFixed(1)}" y="${(ly-1).toFixed(1)}" text-anchor="${a}" font-family="'Dela Gothic One',sans-serif" font-size="17" style="fill:var(--c)">${x.n}</text><text x="${lx.toFixed(1)}" y="${(ly+15).toFixed(1)}" text-anchor="${a}" font-size="11.5" fill="rgba(243,239,226,.72)">${x.r?`ランク ${x.r}`:'—'}</text></g>`; }).join('');
+    return `<g class="st-${x.k}"><text class="lab" x="${lx.toFixed(1)}" y="${(ly-1).toFixed(1)}" text-anchor="${a}" style="fill:var(--c)">${x.n}</text><text x="${lx.toFixed(1)}" y="${(ly+15).toFixed(1)}" text-anchor="${a}" font-size="11.5" fill="rgba(243,239,226,.72)">${x.r?`ランク ${x.r}`:'—'}</text></g>`; }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="能力のレーダー。${stats.map(x=>`${x.n} ランク ${x.r}`).join('、')}">${grid}${axes}<polygon class="poly" points="${at.map(xy).join(' ')}" fill="rgba(255,217,49,.26)" stroke="#ffd931" stroke-width="2.5" stroke-linejoin="round"/>${dots}${labels}</svg>`; }
 function stvHTML(s){
   const R=s.rules, t=s.today, r=s.rec, left=s.to? s.to-s.exp : 0;
@@ -1936,7 +2023,7 @@ function stvHTML(s){
     <div class="stXp"><div class="bar" role="img" aria-label="次の Lv まで ${stPct(s).toFixed(0)}%"><i data-w="${stPct(s).toFixed(1)}%"></i></div>
       <div class="nums"><span>EXP <b>${fmtN(s.exp)}</b></span><span>${s.to? `次の Lv まで あと <b>${fmtN(left)}</b>` : '最高レベルです'}</span></div></div></div>`;
   const today=`<div class="blk"><h3>今日<small>+${fmtN(t.xp)} EXP</small></h3><div class="stParts">
-    <div><span>量</span><b>+${fmtN(t.vol)}</b><i class="cap" aria-hidden="true"><i style="width:${Math.min(100,t.vol/R.cap*100).toFixed(1)}%"></i></i><small>やり終えたターン ${fmtN(t.done)} 回・トークン ${fmt(t.tok)}（1 日 ${R.cap} まで）</small></div>
+    <div><span>量</span><b>+${fmtN(t.vol)}</b><small>やり終えたターン ${fmtN(t.done)} 回（+${fmtN(t.done*R.turn)}）・トークン ${fmt(t.tok)}（+${fmtN(Math.floor(t.tok/R.tok))}）</small></div>
     <div><span>習慣</span><b>+${fmtN(t.habit)}</b><small>${t.habit? `作業した日 +${R.day}${t.habit>R.day?`・${r.streak} 日連続 +${t.habit-R.day}`:''}` : `今日はじめてターンをやり終えると +${R.day}（連続した日は上乗せ）`}</small></div>
     <div><span>初めて</span><b>+${fmtN(t.first)}</b><small>${t.first? `初めて使った道具 ${Math.round(t.first/R.first)} 種` : `初めての道具を使うと +${R.first}`}</small></div></div></div>`;
   // the last 14 days, one slot each, today at the right; a day without EXP keeps its slot
@@ -1955,7 +2042,7 @@ function stvHTML(s){
     <div><b>${fmt(r.tok)}</b><span>トークン</span></div><div><b>$${(r.usd||0).toFixed(2)}</b><span>料金（目安）</span></div><div><b>${fmtN(r.kinds)}</b><span>使った道具の種類</span></div></div>
     ${s.top.length? `<ul class="stTop">${s.top.map(x=>`<li><span class="k k-${x.kind}">${KIND[x.kind]||x.kind}</span><b>${esc(x.label)}</b><span class="n">${fmtN(x.n)} 回</span></li>`).join('')}</ul>` : '<p class="note">まだ道具は使われていません。</p>'}</div>`;
   const how=`<details class="blk stHow"><summary>EXP と能力のしくみ</summary><ul>
-    <li><b>量</b>：やり終えたターン 1 回で +${R.turn}、トークン ${fmtN(R.tok)} ごとに +1（入力・出力・キャッシュ作成。キャッシュの読み込みは数えません）。1 日 ${R.cap} まで。</li>
+    <li><b>量</b>：やり終えたターン 1 回で +${R.turn}、トークン ${fmtN(R.tok)} ごとに +1（入力・出力・キャッシュ作成。キャッシュの読み込みは数えません）。1 日の上限はありません。</li>
     <li><b>習慣</b>：その日はじめてターンをやり終えると +${R.day}。続けて作業した日は 1 日ごとに +${R.streak} ずつ上乗せ（+${R.streak*R.streakMax} まで）。</li>
     <li><b>初めて</b>：ツール・スキル・エージェント・MCP を初めて使うと +${R.first}。</li>
     <li><b>Lv</b>：Lv n から n+1 までに 100 × n EXP（最高 Lv ${s.max}）。</li>
@@ -2398,7 +2485,7 @@ async function turn(c,T,text,byUser){
   if(c.ctx>WIN*.95) compact(c,false); }
 
 /* ================= your status in the demo: twelve days in, growing as the demo's turns finish (the live screen gets it from the hub) ================= */
-const XPR={cap:400,turn:10,tok:1e4,day:50,streak:10,streakMax:7,first:30}, ST_RANKS=[10,50,200,600,1500], LV_MAX=99;
+const XPR={turn:10,tok:1e4,day:50,streak:10,streakMax:7,first:30}, ST_RANKS=[10,50,200,600,1500], LV_MAX=99;
 const lvFloor=lv=>50*lv*(lv-1), toLv=e=>{ let lv=1; while(lv<LV_MAX&&lvFloor(lv+1)<=e) lv++; return lv; };
 const ST_DEF=[['inq','調査','調べる'],['make','構築','書く'],['run','実行','動かす'],['lead','段取り','任せる'],['ext','拡張','広げる']];
 const statOf=l=> /^(Read|Grep|Glob|WebSearch|WebFetch|ToolSearch|LSP|Explore)$/.test(l.id)? 'inq' : /^(Edit|Write|MultiEdit|NotebookEdit)$/.test(l.id)? 'make'
@@ -2407,7 +2494,7 @@ const statOf=l=> /^(Read|Grep|Glob|WebSearch|WebFetch|ToolSearch|LSP|Explore)$/.
 const DST={since:dayStart(Date.now())-11*DAY, exp:6480, turns:418, tok:9.62e6, usd:58.4, days:11, streak:6, best:6,
   first:new Set(LINKS.filter(l=>l.uses>0&&l.kind!=='core').map(l=>l.id)), stats:{inq:640,make:410,run:520,lead:150,ext:96},
   n:Object.fromEntries(LINKS.filter(l=>l.kind!=='core'&&l.uses>0).map(l=>[l.id,l.uses])),
-  past:[260,380,420,310,90,0,450,500,470,520,480], today:{vol:110,habit:100,first:0,done:8,tok:310000}};
+  past:[260,380,420,310,90,0,450,500,470,520,480], today:{vol:110,habit:100,first:0,done:8,tok:300000}};      // 8 turns × 10 + 300,000 tokens / 10,000
 function demoStatus(){ const D=DST, lv=toLv(D.exp), t=D.today, today=dayStart(Date.now());
   return {since:D.since,lv,max:LV_MAX,exp:D.exp,from:lvFloor(lv),to:lv>=LV_MAX?null:lvFloor(lv+1),
     today:{xp:t.vol+t.habit+t.first,vol:t.vol,habit:t.habit,first:t.first,done:t.done,tok:t.tok},
@@ -2421,7 +2508,7 @@ function stGain(kind,n){ if(n>0){ DST.today[kind]+=n; DST.exp+=n; } }
 function stUse(l){ if(LIVE) return; const k=statOf(l); if(k) DST.stats[k]+=l.kind==='agent'?3:l.kind==='skill'?2:1;
   DST.n[l.id]=(DST.n[l.id]||0)+1; if(!DST.first.has(l.id)){ DST.first.add(l.id); stGain('first',XPR.first); } stChanged(); }
 function stTurn(tok){ if(LIVE) return; const t=DST.today; t.done++; t.tok+=tok; DST.turns++; DST.tok+=tok; DST.usd+=tok*1.1e-6;
-  stGain('vol',Math.min(XPR.cap,t.done*XPR.turn+Math.floor(t.tok/XPR.tok))-t.vol); stChanged(); }
+  stGain('vol',t.done*XPR.turn+Math.floor(t.tok/XPR.tok)-t.vol); stChanged(); }
 if(!LIVE) G.status=demoStatus();
 
 /* ================= slash commands, as $.command.run would run them ================= */
@@ -2447,19 +2534,20 @@ function cmdText(c,name){
   return '「/」でこのチャンネルのコマンドを一覧できます。組み込みのコマンド、スキル、MCP のプロンプトが並びます。';
 }
 function cmdOut(c,name,args,text){ add(c,`<div class="cmdo"><div class="hd"><span class="tag teal">/${esc(name)}${args?' '+esc(args):''}</span><span class="s">コマンドの結果</span></div><pre>${esc(text)}</pre></div>`); }
-const MODELS={sonnet:'Sonnet 5.5',opus:'Opus 5.5',haiku:'Haiku 4.5'};
 async function runCmd(c,it){ const {name,args,k}=it;
   if(k==='turn'){ await turn(c,cmdScript(name,args),esc('/'+name+(args?' '+args:'')),false); return; }
   if(k==='op'){ compact(c,true); return; }
   if(k==='danger'){ clearChannel(c); return; }
+  if(k==='pick'){ if(name==='resume'&&it.x) demoResume(c,it.x); return; }
   if(k==='panel'){
-    if(name==='model'&&args){ const m=MODELS[args.trim().toLowerCase()]; cmdOut(c,name,args, m? `モデルを ${m} に切り替えました。` : `「${args}」というモデルは見つかりませんでした。sonnet / opus / haiku が使えます。`); if(m) c.model=m; dirty=true; return; }
-    add(c,`<div class="cmdo panel"><div class="hd"><span class="tag">/${esc(name)}</span><span class="s">ターミナルで開きました</span></div><p>このコマンドは選択画面を開くので、ターミナル側に表示されます。${name==='model'?'モデル名を付けると（例 <code>/model sonnet</code>）、この画面からすぐ切り替えられます。':'操作が終わると、結果はこの画面にも映ります。'}</p></div>`);
+    add(c,`<div class="cmdo panel"><div class="hd"><span class="tag">/${esc(name)}</span><span class="s">ターミナルで開きました</span></div><p>このコマンドは選択画面を開くので、ターミナル側に表示されます。操作が終わると、結果はこの画面にも映ります。</p></div>`);
     toast('info',`/${esc(name)} をターミナルで開きました`,`ch.${c.num} ${esc(c.name)} のターミナルに選択画面が出ています。`); return; }
   cmdOut(c,name,args,cmdText(c,name)); }
 function queueCmd(c,name,args){ const cmd=commandsFor(c).find(x=>x.n===name);
   if(!cmd){ toast('info',`/${esc(name)} はこのチャンネルにありません`,'「/」で、このチャンネルで使えるコマンドを一覧できます。'); return false; }
   if(cmd.k==='danger'){ confirmClear(c); return true; }
+  if(cmd.k==='term'){ toast('info',`/${esc(name)} はターミナルで打ってください`,'Claude Code は、このコマンドを本人がターミナルで打ったときだけ実行します。'); return true; }
+  if(cmd.k==='pick'){ if(args) pickArgs(c,name,args); else openPick(c,name); return true; }
   if(LIVE){ liveCommand(c,name,args,cmd); return true; }
   c.queue.push({type:'cmd',name,args,k:cmd.k});
   if(c.status!=='idle') toast('queue',`/${esc(name)} を予約しました`,`ch.${c.num} ${esc(c.name)} の今のターンが終わったら実行します。`);
@@ -2475,6 +2563,103 @@ function clearChannel(c){ const old=c.sid||rid(), last=[...c.log.querySelectorAl
   c.log.innerHTML=''; c.turnNo=0; c.perTurn=[]; c.tasks=[]; c.files={}; c.agents=[]; c.ops=[]; c.ctx=Math.round(WIN*.025); c.warned85=false; c.resume=null;
   add(c,`<div class="sys boot"><b>会話をリセットしました</b><span>新しいセッションとして始まりました。前の会話は「＋ 追加」の過去のセッションから戻れます（再開 ID ${old}）。</span></div>`);
   toast('info',`ch.${c.num} ${esc(c.name)} をリセットしました`,'新しいセッションとして続きます。'); setStatus(c,'idle','入力待ち'); }
+
+/* ================= /resume, /model and /effort: chosen here, carried out in the terminal ================= */
+const cut1=(s,n)=>{ s=String(s||'').replace(/\s+/g,' ').trim(); return s.length>n? s.slice(0,n-1)+'…' : s; };
+const MODEL_LABEL={default:'既定（おすすめ）',opus:'Opus',sonnet:'Sonnet',haiku:'Haiku',fable:'Fable',best:'いちばん賢いモデル',opusplan:'計画は Opus、実装は Sonnet'};
+const MODEL_NOTE={default:'Claude Code が選ぶ既定のモデル',opus:'ふだんの複雑な作業に',sonnet:'決まった作業を手早く',haiku:'短い質問にいちばん速く',fable:'いちばん難しい、長い作業に',best:'使える中でいちばん賢いモデル',opusplan:'計画モードのあいだは Opus、そのほかは Sonnet'};
+function modelLabel(o){ const m=/^(.*?)(\[1m\])?$/.exec(String(o||'')); const base=MODEL_LABEL[m[1]]||m[1]; return m[2]? `${base}（100 万トークン）` : base; }
+const EFFORT_LABEL={low:'低い',medium:'ふつう',high:'高い',xhigh:'とても高い',max:'最大',auto:'おまかせ'};
+const EFFORT_NOTE={low:'速く、トークンを抑える',medium:'ふだんの作業に',high:'丁寧に。確かめも厚く',xhigh:'high より深く考える',max:'いちばん深く考える',auto:'作業に合わせて Claude Code が決める'};
+function effortLabel(e){ return EFFORT_LABEL[e]||e||'—'; }
+function sinceTxt(ms){ const m=Math.max(0,Math.round(ms/60000)); if(m<1) return 'たった今'; if(m<60) return `${m} 分前`; const h=Math.round(m/60); if(h<24) return `${h} 時間前`; const d=Math.round(h/24); return d<7? `${d} 日前` : md(Date.now()-ms); }
+const kb=n=> n>=1e6? `${(n/1e6).toFixed(1)} MB` : `${Math.max(1,Math.round(n/1e3))} KB`;
+const modelsOfCh=c=>(LIVE? c.models : (c.models||DEMO_MODELS))||{options:[],value:''};
+const effortsOfCh=c=>(LIVE&&c.efforts&&c.efforts.length? c.efforts : DEMO_EFFORTS);
+function openPick(c,name){ if(!c||c.status==='off') return; if(name==='resume') openResume(c); else if(name==='model') openModel(c); else if(name==='effort') openEffort(c); }
+const busyNote=c=> c.status==='work'||c.status==='wait'? '<p class="pnote">いまは作業中です。選ぶと、今のターンが終わってから切り替わります。</p>' : '';
+// /model sonnet, /effort high, /resume <id>: the value is taken as the picker would take it
+function pickArgs(c,name,args){ const a=args.trim(), lo=a.toLowerCase();
+  if(name==='model'){ const o=modelsOfCh(c).options.find(x=>x.toLowerCase()===lo); if(o){ doModel(c,o); return; } }
+  if(name==='effort'&&effortsOfCh(c).includes(lo)){ doEffort(c,lo); return; }
+  if(name==='resume'){
+    if(LIVE){ if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(a)) liveResume(c,a,''); else liveCommand(c,'resume',a,{k:'text'}); return; }
+    const x=(DEMO_CONVOS[c.cwd]||[]).find(y=>y.id===a||y.id.startsWith(lo)||y.title===a); if(x){ doResume(c,x); return; } }
+  if(LIVE){ liveCommand(c,name,a,{k:'text'}); return; }
+  toast('info',`/${esc(name)} ${esc(a)} は見つかりませんでした`,`「/${esc(name)}」だけで送ると、この画面で一覧から選べます。`); }
+
+function openResume(c){
+  openSheet(`<div class="hd"><span class="tag teal">再開</span><button class="btn small" type="button" data-close>閉じる</button></div>
+    <h2 id="sheetT">ch.${c.num} ${esc(c.name)} で前の会話に戻る</h2>
+    <p class="sub">このフォルダ（<code>${esc(c.cwd)}</code>）で前に話した会話です。選ぶと、ターミナルで <code>/resume</code> したのと同じく、このチャンネルが選んだ会話の続きになります。今の会話は残るので、あとでまたここから戻れます。</p>
+    ${busyNote(c)}
+    <input class="psearch" id="rsQ" type="search" placeholder="名前や依頼の言葉で絞り込む" aria-label="会話を絞り込む" autocomplete="off">
+    <ul class="plist" id="rsList"><li class="pempty">読み込んでいます…</li></ul>
+    <p class="sub">ほかのフォルダの会話は、そのフォルダで起動したターミナルのチャンネルから戻れます。開いているターミナルがなければ、「＋ 追加」の過去のセッションから再開コマンドをコピーできます。</p>`,'pick');
+  let all=[];
+  const draw=()=>{ const el=$('rsList'); if(!el) return; const q=$('rsQ').value.trim().toLowerCase();
+    const list=all.filter(x=>!q||`${x.title} ${x.first} ${x.last}`.toLowerCase().includes(q));
+    el.innerHTML= list.map(x=>`<li><div class="pt"><b>${esc(x.title||cut1(x.first,80)||'（名前のない会話）')}</b>${x.title&&x.first?`<span>${esc(cut1(x.first,90))}</span>`:''}</div>
+      <small>${sinceTxt(Date.now()-x.t)} · ${kb(x.size)}${x.last&&x.last!==x.first?` · 最後の依頼：${esc(cut1(x.last,60))}`:''}</small>
+      <span class="btns">${x.open?`<span class="pbusy">ch.${x.open.num} ${esc(x.open.name)} で開いています</span>`:`<button class="btn small primary" type="button" data-i="${all.indexOf(x)}">再開</button>`}</span></li>`).join('')
+      || `<li class="pempty">${all.length?'一致する会話はありません。':'このフォルダで前に話した会話はありません。'}</li>`;
+    el.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{ const x=all[+b.dataset.i]; closeSheet(); doResume(c,x); })); };
+  $('rsQ').addEventListener('input',draw);
+  const got=r=>{ if(!$('rsList')) return; if(!r||r.ok===false){ $('rsList').innerHTML=`<li class="pempty">${esc((r&&r.error)||'一覧を読めませんでした。')}</li>`; return; } all=r.sessions||[]; draw(); };
+  if(LIVE) api('/api/ui/sessions',{chan:c.id}).then(got).catch(err=>got({ok:false,error:`一覧を読めませんでした（${err.message}）`}));
+  else setTimeout(()=>got({ok:true,sessions:(DEMO_CONVOS[c.cwd]||[]).filter(x=>x.id!==c.sid).map(x=>({...x,t:Date.now()-x.age*60e3}))}),250);
+}
+function doResume(c,x){ if(LIVE){ liveResume(c,x.id,x.title||x.first); return; }
+  if(c.status!=='idle'){ c.queue.push({type:'cmd',name:'resume',args:x.id,k:'pick',x}); toast('queue','再開を予約しました',`ch.${c.num} ${esc(c.name)} の今のターンが終わったら切り替えます。`); return; }
+  demoResume(c,x); }
+function demoResume(c,x){ const old=c.sid||rid(), last=[...c.log.querySelectorAll('.turn .fold .p')].pop(), first=[...c.log.querySelectorAll('.turn .fold .p')][0];
+  const list=DEMO_CONVOS[c.cwd]||(DEMO_CONVOS[c.cwd]=[]), i=list.indexOf(x); if(i>=0) list.splice(i,1);
+  list.unshift({id:old,title:c.title||'',first:first? first.textContent : c.role,last:last? last.textContent : '',age:0,size:180e3,hist:[]});
+  PAST.unshift({n:c.title||(first? first.textContent.slice(0,24) : c.role),cwd:c.cwd,t:`今日 ${hm(Date.now())}`,id:old});
+  c.sid=x.id; c.title=x.title||''; c.perTurn=[]; c.tasks=[]; c.files={}; c.agents=[]; c.ops=[]; c.cur=null;
+  resumedBox(c,{title:x.title||x.first,from:old});
+  histTurns(c,(x.hist||[]).map(h=>({u:h.u,a:h.a,html:true})),0);
+  toast('info',`ch.${c.num} ${esc(c.name)} で前の会話を再開しました`,esc(cut1(x.title||x.first,60))); setStatus(c,'idle','入力待ち'); scrollIf(c); }
+/* the turn the conversation was swapped at, and the last exchanges of the one returned to */
+function resumedBox(c,ev){ c.cur=null; const li=document.createElement('li'); li.className='swap';
+  li.innerHTML=`<div class="sys res"><b>前の会話を再開しました<span class="rt">${ev.title?`：${esc(cut1(ev.title,80))}`:''}</span></b><span>ここから下は、選んだ会話の続きです。それまでの会話も残っていて、「再開」からまた戻れます${ev.from?`（ID ${esc(String(ev.from).slice(0,8))}）`:''}。</span></div>`;
+  c.log.appendChild(li); }
+function histTurns(c,items,more){ if(!items||!items.length) return; const li=document.createElement('li'); li.className='hist';
+  li.innerHTML=`<details class="histBox"${items.length<=2?' open':''}><summary><b>再開した会話のこれまで</b><span>${items.length} 往復${more?`（その前に ${more} 往復）`:''}</span></summary>
+    <div class="histIn">${items.map(x=>`${x.u?youHTML(userText(x.u),'以前の依頼',x.t||0):''}${x.a?`<div class="ans">${x.html? x.a : typeof mdLite==='function'? mdLite(x.a) : esc(x.a)}</div>`:''}`).join('')}</div></details>`;
+  c.log.appendChild(li); }
+
+function openModel(c){
+  // nothing set in /config means Claude Code's own default: that row is the one in use
+  const M=modelsOfCh(c), cur=M.value||(M.options.includes('default')?'default':''), base=o=>String(o).replace(/\[1m\]$/,'');
+  openSheet(`<div class="hd"><span class="tag teal">モデル</span><button class="btn small" type="button" data-close>閉じる</button></div>
+    <h2 id="sheetT">ch.${c.num} ${esc(c.name)} のモデルを切り替える</h2>
+    <p class="sub">今のモデル：<b>${esc(c.model||'—')}</b>。選ぶと、ターミナルの設定（<code>/config</code> のモデルの行）で切り替えます。<code>/model</code> と同じく、新しいセッションの既定も変わります。</p>
+    ${c.turnNo>0?'<p class="pnote">会話の途中で切り替えると、次の返答で新しいモデルが会話を最初から読み直します。その 1 回は時間とトークンが多くかかります。</p>':''}
+    ${busyNote(c)}
+    ${M.options.length?`<ul class="plist" id="mdList">${M.options.map((o,i)=>`<li class="${o===cur?'on':''}"><div class="pt"><b>${esc(modelLabel(o))}</b><span><code>${esc(o)}</code>${MODEL_NOTE[base(o)]?` · ${esc(MODEL_NOTE[base(o)])}`:''}</span></div><span class="btns">${o===cur?'<span class="pcur">設定中</span>':`<button class="btn small primary" type="button" data-i="${i}">切り替える</button>`}</span></li>`).join('')}</ul>`
+      : '<p class="pempty">このターミナルからモデルの一覧を受け取れていません。ターミナルで <code>/model</code> を使ってください。</p>'}`,'pick');
+  $('sheet').querySelectorAll('#mdList [data-i]').forEach(b=>b.addEventListener('click',()=>{ const o=M.options[+b.dataset.i]; closeSheet(); doModel(c,o); })); }
+function doModel(c,o){ if(LIVE){ liveModel(c,o); return; }
+  const M=c.models||(c.models={...DEMO_MODELS,options:[...DEMO_MODELS.options]}); M.value=o;
+  const DEMO_NAME={default:'Opus 5.5',best:'Opus 5.5',opus:'Opus 5.5',sonnet:'Sonnet 5.5',haiku:'Haiku 5.5',fable:'Fable 5.1',opusplan:'Opus 5.5'};
+  const was=c.model, to=DEMO_NAME[o.replace(/\[1m\]$/,'')]||o;
+  c.model=to; modelBox(c,{from:was,to,src:'screen'}); toast('info',`ch.${c.num} ${esc(c.name)} のモデルを切り替えました`,esc(modelLabel(o))); dirty=true; }
+function modelBox(c,ev){ const d=document.createElement('div'); d.className='sys';
+  d.innerHTML=`<b>モデルを切り替えました：${esc(ev.from||'—')} → ${esc(ev.to)}</b><span>${ev.src==='screen'?'この画面から切り替えました。':'ターミナルで切り替えました。'}次の返答から、このモデルで答えます。</span>`;
+  if(c.cur) c.cur.flow.appendChild(d); else { const li=document.createElement('li'); li.appendChild(d); c.log.appendChild(li); } }
+
+function openEffort(c){
+  const L=effortsOfCh(c), cur=c.effort||'';
+  openSheet(`<div class="hd"><span class="tag teal">effort</span><button class="btn small" type="button" data-close>閉じる</button></div>
+    <h2 id="sheetT">ch.${c.num} ${esc(c.name)} の考える深さ（effort）</h2>
+    <p class="sub">今：<b>${esc(effortLabel(cur))}</b>${cur?`（<code>${esc(cur)}</code>）`:'（まだ分かりません。最初の返答で分かります）'}。選ぶと、ターミナルで <code>/effort</code> を実行したのと同じになります。新しいセッションの既定にも保存されるかは、会話の欄に出る結果の 1 行に書かれます（<code>max</code> はこのセッションだけ）。深くするほど、返答に時間とトークンがかかります。</p>
+    ${busyNote(c)}
+    <div class="eff" id="efList">${L.map((x,i)=>`<button type="button" class="${x===cur?'on':''}" data-i="${i}" aria-pressed="${x===cur}"><b>${esc(effortLabel(x))}</b><code>${esc(x)}</code><small>${esc(EFFORT_NOTE[x]||'')}</small></button>`).join('')}</div>`,'pick');
+  $('efList').querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{ const x=L[+b.dataset.i]; closeSheet(); if(x!==cur) doEffort(c,x); })); }
+function doEffort(c,x){ if(LIVE){ liveEffort(c,x); return; }
+  c.effort=x; cmdOut(c,'effort',x,`Set effort level to ${x} (saved as your default for new sessions)`); toast('info',`ch.${c.num} ${esc(c.name)} の effort を変えました`,esc(effortLabel(x))); dirty=true; }
+$('osd').addEventListener('click',e=>{ const b=e.target.closest('[data-pick]'); if(b) openPick(chN(sel),b.dataset.pick); });
 
 async function loop(c){ const lid=++c.loopId; await sleep(c.delay);
   while(lid===c.loopId&&c.status!=='off'){
@@ -2821,7 +3006,8 @@ const rnd=()=>{ const b=new Uint8Array(12); crypto.getRandomValues(b); return [.
 const cssq=s=>window.CSS&&CSS.escape? CSS.escape(String(s)) : String(s).replace(/["\\]/g,'\\$&');
 const tilde=p=>{ p=String(p||''); return LV.home&&(p===LV.home||p.startsWith(LV.home+'/')||p.startsWith(LV.home+'\\'))? '~'+p.slice(LV.home.length) : p; };
 const clip1=(s,n)=>{ s=String(s||'').replace(/\s+/g,' ').trim(); return s.length>n? s.slice(0,n-1)+'…' : s; };
-function modelName(m){ const x=/claude-([a-z]+)-(\d+)-(\d+)/i.exec(String(m||'')); return x? `${x[1][0].toUpperCase()}${x[1].slice(1)} ${x[2]}.${x[3]}` : String(m||''); }
+// claude-opus-5-5[1m] → Opus 5.5（1M）: the long-context variant is a model of its own in the picker, so it says so here too
+function modelName(m){ const s=String(m||''), x=/claude-([a-z]+)-(\d+)-(\d+)/i.exec(s); return x? `${x[1][0].toUpperCase()}${x[1].slice(1)} ${x[2]}.${x[3]}${/\[1m\]$/i.test(s)?'（1M）':''}` : s; }
 
 /* ---------------- the key, and talking to the hub ---------------- */
 function liveKeys(){
@@ -2897,6 +3083,8 @@ function chanFrom(x){ let c=LV.byId.get(x.id);
   if(x.endedAt!==undefined) c.endedAt=x.endedAt; if(x.resume!==undefined) c.resume=x.resume; if(x.sid) c.sid=x.sid;
   if(x.loaded) c.loaded=liveLoaded(x.loaded);
   if(x.commands) c.commands=x.commands;
+  if(x.effort!==undefined) c.effort=x.effort||''; if(x.title!==undefined) c.title=x.title||'';
+  if(x.models!==undefined) c.models=x.models; if(x.efforts!==undefined) c.efforts=x.efforts||[];
   if(x.breakdown) c.breakdownRaw=x.breakdown;
   c.log.setAttribute('aria-label',`ch.${c.num} ${c.name} の会話`);
   CH.sort((a,b)=>a.num-b.num);
@@ -2956,8 +3144,20 @@ function liveLinks(list,full){ let rebuild=false;
   dirty=true; }
 
 /* ---------------- the conversation, event by event ---------------- */
-function mdLite(t){ const parts=String(t||'').split(/```[^\n]*\n?/); return parts.map((p,i)=>{ if(i%2) return `<pre>${esc(p.replace(/\n$/,''))}</pre>`;
-  return esc(p).replace(/`([^`\n]+)`/g,'<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/^#{1,6} (.+)$/gm,'<b>$1</b>').replace(/^\s*[-*] /gm,'• ').replace(/\n{2,}/g,'<br><br>').replace(/\n/g,'<br>'); }).join(''); }
+/* Claude's words and a command's markdown: code blocks, tables, headings, bold, code and lists, nothing more */
+const mdInline=s=>esc(s).replace(/`([^`\n]+)`/g,'<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>');
+const mdText=p=>mdInline(p).replace(/^#{1,6} (.+)$/gm,'<b>$1</b>').replace(/^\s*[-*] /gm,'• ').replace(/\n{2,}/g,'<br><br>').replace(/\n/g,'<br>');
+const mdCells=r=>r.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(x=>x.trim());
+const isRow=l=>/^\s*\|.*\|\s*$/.test(l), isSep=l=>isRow(l)&&mdCells(l).every(x=>/^:?-{2,}:?$/.test(x));
+function mdTables(p){ const L=p.split('\n'), out=[]; let buf=[];
+  const flush=()=>{ if(buf.length){ out.push(mdText(buf.join('\n'))); buf=[]; } };
+  for(let i=0;i<L.length;i++){
+    if(isRow(L[i])&&isSep(L[i+1]||'')){ const head=mdCells(L[i]), rows=[]; i+=2;
+      while(i<L.length&&isRow(L[i])){ rows.push(mdCells(L[i])); i++; } i--; flush();
+      out.push(`<div class="mdt"><table><thead><tr>${head.map(h=>`<th>${mdInline(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(x=>`<td>${mdInline(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`); }
+    else buf.push(L[i]); }
+  flush(); return out.join(''); }
+function mdLite(t){ const parts=String(t||'').split(/```[^\n]*\n?/); return parts.map((p,i)=> i%2? `<pre>${esc(p.replace(/\n$/,''))}</pre>` : mdTables(p)).join(''); }
 const stripAnsi=s=>String(s||'').replace(/\x1b\[[0-9;]*[A-Za-z]/g,'');
 function flowOf(c){ if(c.cur) return c.cur.flow; const li=document.createElement('li'); li.className='solo'; const f=document.createElement('div'); f.className='flow'; li.appendChild(f); c.log.appendChild(li); return f; }
 function sysBox(c,html){ const d=document.createElement('div'); d.className='sys'; d.innerHTML=html; if(c.cur) c.cur.flow.appendChild(d); else { const li=document.createElement('li'); li.appendChild(d); c.log.appendChild(li); } return d; }
@@ -3014,9 +3214,19 @@ const EVH={
   skill(c,ev){ const f=flowOf(c); let ul=f.lastElementChild; if(!ul||!ul.classList.contains('ops')){ ul=document.createElement('ul'); ul.className='ops'; f.appendChild(ul); }
     const l=LINK[`skill:${ev.name}`], li=document.createElement('li'); li.className='op k-skill'; skUse(c,ev.name,l&&l.src,ev.t);
     li.innerHTML=`<span class="num">${l&&l.card?esc(l.num):''}</span><span class="v">Skill</span><span class="x">${esc(ev.name)}</span><span class="r">読み込み</span>`; ul.appendChild(li); },
-  cmd(c,ev){ const text=stripAnsi(ev.text).trim(), d=document.createElement('div'); d.className='cmdo'+(text?'':' panel');
-    d.innerHTML=`<div class="hd"><span class="tag teal">/${esc(ev.name)}${ev.args?' '+esc(ev.args):''}</span><span class="s">${ev.via==='screen'?'この画面から実行':'ターミナルで実行'}${text?'':' · 表示はターミナルに出ています'}</span></div>${text?`<pre>${esc(text)}</pre>`:''}`;
+  cmd(c,ev){ const text=stripAnsi(ev.text||ev.out||'').trim(), d=document.createElement('div');
+    Object.assign(d.dataset,{seq:ev.seq||'',name:ev.name||'',args:ev.args||'',via:ev.via||''}); cmdFill(d,text);
     if(c.cur) c.cur.flow.appendChild(d); else { const li=document.createElement('li'); li.appendChild(d); c.log.appendChild(li); } },
+  // the line a command printed ("Set model to …"), which comes after its row: it fills that row
+  cmdOut(c,ev){ const d=ev.ref&&c.log.querySelector(`.cmdo[data-seq="${cssq(ev.ref)}"]`), text=stripAnsi(ev.text).trim(); if(!text) return;
+    if(d){ cmdFill(d,text); return; }
+    EVH.cmd(c,{name:ev.name,args:ev.args||'',text,seq:ev.seq,via:ev.via}); },
+  resumed(c,ev,replay){ c.title=ev.title||''; const name=ev.title||ev.label||''; c.role=name? clip1(name,28) : ''; resumedBox(c,{title:name,from:ev.from});
+    if(!replay&&!LV.replaying) toast('info',`ch.${c.num} ${esc(c.name)} で前の会話を再開しました`,esc(cut1(name,60))||'ここから下が、その続きです。',sel===c.num?null:c.num); },
+  // with what the conversation began with, when the resume could not name it
+  hist(c,ev){ if(ev.label){ const r=[...c.log.querySelectorAll('.swap .rt')].pop(); if(r&&!r.textContent) r.textContent=`：${cut1(ev.label,80)}`; if(!c.role) c.role=clip1(ev.label,28); }
+    histTurns(c,ev.items||[],ev.more||0); },
+  model(c,ev){ const was=modelName(ev.from), to=modelName(ev.to); c.model=to; modelBox(c,{from:was,to,src:ev.src}); },
   compact(c,ev,replay){ sysBox(c,`<b>${ev.trigger==='auto'?'自動で圧縮しました':'圧縮しました'}</b><span>これまでの要点は要約として残っています。</span>`);
     if(!replay){ toast('compact',`ch.${c.num} ${esc(c.name)} を圧縮しました`,'コンテキストが空きました。',sel===c.num?null:c.num); if(sel===c.num&&!reduce) osdFlash(`${pct(c)}%<small>霧が晴れました</small>`); } },
   turnEnd(c,ev){ const t=c.cur; if(!t) return;
@@ -3050,11 +3260,27 @@ function liveAskEnd(m){ const a=LV.asks.get(m.id); if(!a) return; a.decision=m.d
   else if(m.decision==='gone') p.remove(); }
 
 /* ---------------- what the person does here ---------------- */
-const LIVE_KIND={compact:'op',clear:'danger',context:'text',usage:'text',cost:'text',help:'text','release-notes':'text',todos:'text','reload-skills':'text','reload-plugins':'text',
-  init:'turn',review:'turn','security-review':'turn','pr-comments':'turn'};
-const HIDE_CMD=new Set(['fog','exit','quit','login','logout','vim','terminal-setup']);
-function liveCommands(c){ return (c.commands||[]).filter(x=>!HIDE_CMD.has(x.name)).map(x=>{ const b=x.source==='builtin', k=b? (LIVE_KIND[x.name]||'panel') : 'turn';
+/* how each command behaves when this page runs it, as Claude Code 2.1.293 was seen to: a skill (even one listed as
+   built-in) starts a turn; a built-in not named here opens its screen in the terminal */
+const LIVE_KIND={resume:'pick',model:'pick',effort:'pick',compact:'op',clear:'danger',
+  context:'text',rename:'text',plan:'text','output-style':'text',copy:'text','reload-skills':'text','reload-plugins':'text',color:'text',
+  goal:'turn',init:'turn',review:'turn','security-review':'turn','pr-comments':'turn','code-review':'turn',simplify:'turn',doctor:'turn',verify:'turn',
+  debug:'turn',batch:'turn',loop:'turn','deep-research':'turn',run:'turn',insights:'turn',diff:'panel',recap:'term'};
+const HIDE_CMD=new Set(['fog','exit','quit','login','logout','vim','terminal-setup','heapdump','stickers','mobile','passes','radio','tui','scroll-speed','focus',
+  'pro-trial-expired','__remote-workflow','workflow-launch-exec','setup-bedrock','setup-vertex']);
+function liveCommands(c){ return (c.commands||[]).filter(x=>!HIDE_CMD.has(x.name)&&!x.hidden).map(x=>{ const b=x.source==='builtin', k=x.skill? 'turn' : LIVE_KIND[x.name]||(b?'panel':'turn');
   return {n:x.name,d:x.description||'',k,h:x.hint||(k==='turn'?'[指示]':''),g:b?'組み込み':x.source==='plugin'?'プラグイン':x.source==='mcp'?'MCP':'スキル',src:x.plugin||''}; }); }
+function cmdFill(d,text){ const x=d.dataset; d.className='cmdo'+(text?'':' panel');
+  // markdown (/context's tables) is drawn as such; a plain line stays as printed
+  const md=/^#{1,6} /m.test(text)||text.split('\n').some((l,i,L)=>isRow(l)&&isSep(L[i+1]||''));
+  d.innerHTML=`<div class="hd"><span class="tag teal">/${esc(x.name)}${x.args?' '+esc(x.args):''}</span><span class="s">${x.via==='screen'?'この画面から実行':'ターミナルで実行'}${text?'':' · 表示はターミナルに出ています'}</span></div>${!text?'':md?`<div class="cmdmd">${mdLite(text)}</div>`:`<pre>${esc(text)}</pre>`}`; }
+/* the pickers' choices, carried out in that terminal */
+function liveResume(c,sid,title){ api('/api/ui/resume',{chan:c.id,sid}).then(r=>{ if(r.queued) toast('queue','再開を予約しました',`ch.${c.num} ${esc(c.name)} の今のターンが終わったら「${esc(cut1(title||sid,40))}」に切り替えます。`); })
+  .catch(err=>toast('info','再開できませんでした',esc(err.message==='sid'?'会話の ID が正しくありません。':err.message))); }
+function liveModel(c,o){ api('/api/ui/model',{chan:c.id,value:o}).then(r=>{ toast(r.queued?'queue':'info',r.queued?'モデルの切り替えを予約しました':`ch.${c.num} ${esc(c.name)} のモデルを切り替えます`,`${esc(modelLabel(o))}${r.queued?'（今のターンが終わったら）':''}`); })
+  .catch(err=>toast('info','モデルを切り替えられませんでした',esc(err.message==='model'?'このターミナルでは選べないモデルです。':err.message))); }
+function liveEffort(c,x){ api('/api/ui/effort',{chan:c.id,value:x}).then(r=>{ toast(r.queued?'queue':'info',r.queued?'effort の変更を予約しました':`ch.${c.num} ${esc(c.name)} の effort を変えます`,`${esc(effortLabel(x))}（${esc(x)}）${r.queued?' · 今のターンが終わったら':''}`); })
+  .catch(err=>toast('info','effort を変えられませんでした',esc(err.message==='effort'?'このターミナルでは選べない値です。':err.message))); }
 // shown at once as a bubble; the hub hands it to the terminal, which starts it when it is free
 function liveSend(c,text){ const lid=rnd(); LV.lids.add(lid); const x={lid,text,t:Date.now(),st:'sending'}; (c.pend||(c.pend=[])).push(x); c.pendKey=null; renderPend(c);
   api('/api/ui/send',{chan:c.id,text,local:lid}).then(r=>{ x.id=x.id||r.id; if(x.st==='sending') x.st=r.queued?'queued':'sent'; c.pendKey=null; renderPend(c); })

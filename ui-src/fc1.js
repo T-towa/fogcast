@@ -152,23 +152,31 @@ function loadedFor(cwd){ const p=PROJECTS[cwd]||PROJECTS['~/dev/docs-site'];
 
 /* slash commands: what $.command.list() hands back, and how each behaves when run from here */
 const BUILTIN=[
+  ['resume','前の会話に戻る','pick','[会話の ID か名前]'],
+  ['model','モデルを切り替える','pick','[モデル]'],
+  ['effort','考える深さ（effort）を変える','pick','[low|medium|high|xhigh|max|auto]'],
   ['compact','会話を要約してコンテキストを空ける','op'],
   ['clear','会話をリセットして新しいセッションにする','danger'],
+  ['rename','この会話に名前を付ける（/resume の一覧に出る）','text','[名前]'],
   ['context','コンテキストの内訳を表示する','text'],
-  ['usage','トークンとコストを表示する（/cost でも同じ）','text'],
-  ['model','モデルを切り替える。名前を付けるとすぐ切り替わる','panel','[モデル名]'],
+  ['plan','計画モードに切り替える','text'],
+  ['export','会話をファイルに書き出す','text','[ファイル名]'],
+  ['init','このリポジトリの CLAUDE.md を作る','turn'],
+  ['code-review','今の変更をレビューする（裏で動く）','turn'],
+  ['simplify','変更したコードを見直して整える','turn'],
+  ['security-review','今のブランチの変更をセキュリティの面で確かめる','turn'],
+  ['usage','トークンとコストの画面を開く','panel'],
   ['status','セッションの状態を開く','panel'],
   ['permissions','許可の設定を開く','panel'],
   ['skills','スキルの一覧を開く','panel'],
-  ['skill-doctor','スキルの使われ方とコンテキストの負担を調べる','panel'],
-  ['plugin','プラグインを管理する','panel'],
-  ['resume','過去のセッションに戻る','panel'],
   ['rewind','会話とコードを前の時点に戻す','panel'],
-  ['init','このリポジトリの CLAUDE.md を作る','turn'],
-  ['reload-skills','スキルを読み込み直す','text'],
-  ['help','使い方を表示する','text'],
+  ['help','使い方を表示する','panel'],
+  ['recap','今の会話を 1 行にまとめる','term'],
 ];
-const CKIND={text:'結果を表示',panel:'ターミナルで開く',turn:'ターンを始める',op:'圧縮',danger:'会話をリセット'};
+const CKIND={text:'結果を表示',panel:'ターミナルで開く',turn:'ターンを始める',op:'圧縮',danger:'会話をリセット',pick:'この画面で選ぶ',term:'ターミナルで打つ'};
+/* what the model and effort pickers offer in the demo (the live page takes the terminal's own) */
+const DEMO_MODELS={options:['default','opus','sonnet','haiku','fable','opus[1m]','opusplan'],value:'default'};
+const DEMO_EFFORTS=['low','medium','high','xhigh','max','auto'];
 function commandsFor(c){ if(LIVE) return liveCommands(c); const L=c.loaded, out=[];
   BUILTIN.forEach(([n,d,k,h])=>out.push({n,d,k,h:h||'',g:'組み込み'}));
   L.skills.forEach(s=>out.push({n:s.n,d:(ALLK[s.n]&&ALLK[s.n].what)||'スキル',k:'turn',h:'[指示]',g:'スキル',src:s.src}));
@@ -266,3 +274,25 @@ const PAST=LIVE? [] : [
   {n:'注文 API のリトライ処理',cwd:'~/dev/shop-api',t:'昨日 18:40',id:'2b81d0f4'},
   {n:'CI のテストを速くする',cwd:'~/dev/shop-api',t:'日曜',id:'5d2e8b13'},
 ];
+/* the demo's conversations on disk, by folder: what the resume picker lists (the live page reads the terminal's) */
+const DEMO_CONVOS=LIVE? {} : {
+  '~/dev/fogcast':[
+    {id:'7f3a9c2e-1b4d-4e8a-9c21-3d4e5f6a8b90',title:'statusline-fix',first:'ステータスラインの幅が崩れる不具合を直して',last:'狭い端末でも 1 行に収まるか確かめて',age:95,size:412e3,
+      hist:[{u:'ステータスラインの幅が崩れる不具合を直して',a:'全角文字の幅を 1 と数えていたのが原因でした。<code>stringWidth</code> で数えるようにしています。'},{u:'狭い端末でも 1 行に収まるか確かめて',a:'80 桁と 60 桁で確かめました。60 桁では予報の部分を省きます。'}]},
+    {id:'0c9d8e7f-6a5b-4c3d-8e2f-1a0b9c8d7e6f',title:'',first:'受け皿の再起動で回数が二重になるのを直して',last:'',age:60*26,size:228e3,
+      hist:[{u:'受け皿の再起動で回数が二重になるのを直して',a:'送り直しのあいだは数えないようにしました。'}]},
+  ],
+  '~/dev/fogcast-ui':[
+    {id:'3a2b1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d',title:'calendar-v1',first:'週のカレンダーに予報を出す部品を作って',last:'色をテーマの値に揃えて',age:60*5,size:530e3,
+      hist:[{u:'週のカレンダーに予報を出す部品を作って',a:'過去の日は使用量、これからの日は予報を出す部品を作りました。'},{u:'色をテーマの値に揃えて',a:'色の指定をテーマの値に揃えました。'}]},
+  ],
+  '~/dev/shop-api':[
+    {id:'2b81d0f4-7c6e-4d5a-9b8c-7d6e5f4a3b2c',title:'',first:'注文 API のリトライ処理を見直して',last:'リトライの上限を 3 回にして',age:60*20,size:610e3,
+      hist:[{u:'注文 API のリトライ処理を見直して',a:'再送のたびに待ち時間を倍にするようにしました。'},{u:'リトライの上限を 3 回にして',a:'上限を 3 回にし、超えたらエラーを返します。'}]},
+    {id:'5d2e8b13-4f3a-4b2c-8d1e-0f9a8b7c6d5e',title:'ci-speedup',first:'CI のテストを速くする',last:'キャッシュを効かせて',age:60*72,size:345e3,
+      hist:[{u:'CI のテストを速くする',a:'テストを 4 つに分けて並列に走らせるようにしました。'}]},
+  ],
+  '~/dev/docs-site':[
+    {id:'9f8e7d6c-5b4a-4392-8a1b-0c9d8e7f6a5b',title:'',first:'README に導入手順を書いて',last:'',age:60*30,size:120e3,hist:[{u:'README に導入手順を書いて',a:'導入手順を 3 段で書きました。'}]},
+  ],
+};

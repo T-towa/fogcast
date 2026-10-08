@@ -207,7 +207,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
 <!-- body -->
 <div class="page" lang="ja">
   <header class="cover">
-    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.4.0</span></div>
+    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.5.1</span></div>
     <h1><span class="mark">FOGCAST</span><span class="ja">霧読み</span></h1>
     <p class="lead">Claude Code を何本ものターミナルで動かしているときに、すべての会話・道具の呼び出し・使用量を、ブラウザの 1 画面にまとめて映す Mod です。画面から依頼を送る、<code>/</code> のコマンドを実行する、ツールの実行を許可する、といった操作もできます。</p>
     <dl class="facts">
@@ -259,7 +259,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <div class="cmd"><code>node -v &amp;&amp; claude --version</code><button class="copy" type="button">コピー</button></div></li>
           <li><b class="t">zip を解凍して、ホームフォルダに置く</b>
             <p>ダウンロードフォルダにある場合は、次のコマンドで <code>~/fogcast</code> ができます。</p>
-            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.4.0.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.5.1.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>Finder でダブルクリックして、できた <code>fogcast</code> フォルダをホームフォルダに移してもかまいません。中にある <code>.claude-plugin</code> は見えないフォルダなので、中身だけを選ばずにフォルダごと移してください。</p></li>
           <li><b class="t">マーケットプレイスとして追加する</b>
             <div class="cmd"><code>claude plugin marketplace add ~/fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -286,7 +286,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td>画面</td><td>Windows のブラウザで見ます。<code>/fog</code> で Windows の既定のブラウザが開きます（0.1.2 から）。WSL2 は localhost を Windows に転送するので、<code>http://127.0.0.1:4317</code> で届きます。</td></tr>
           </tbody>
         </table></div>
-        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.4.0.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
+        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.5.1.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
         <p class="note"><span class="lb">お知らせ</span><span>Windows のブラウザでつながらないときは、PowerShell で <code>wsl --shutdown</code> を実行してから WSL を開き直すと直ることがあります。</span></p>
       </section>
 
@@ -340,23 +340,46 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <h3>次の入力の提案</h3>
             <p class="muted">Claude Code は返答のあと、入力欄に「次はこれを打つとよさそう」という文を薄く出します。同じ文が、空の送信欄にも薄く出て、下の行に「次の提案」として並びます。<kbd>Tab</kbd>（または <kbd>→</kbd>）か「入れる（Tab）」で送信欄に入ります（送るのは <kbd>Enter</kbd> を押したときです）。ターミナルで何か打つか、次のターンが始まると消えます。</p>
             <h3>コマンドを実行する</h3>
-            <p class="muted"><kbd>/</kbd> を押すと、そのターミナルで使えるコマンド（組み込み・スキル・プラグイン・MCP）の一覧が出ます。コマンドを選ぶと、送信欄の下にそのコマンドの引数（例 <code>/model [model]</code>）が、ターミナルと同じ書き方で出ます。<code>/model</code> のように選択画面が出るものは、ターミナル側に出ます。<code>/clear</code> は確認してから実行します。</p>
+            <p class="muted"><kbd>/</kbd> を押すと、そのターミナルで使えるコマンド（組み込み・スキル・プラグイン・MCP）の一覧が出ます。コマンドを選ぶと、送信欄の下にそのコマンドの引数（例 <code>/effort [low|medium|…]</code>）が、ターミナルと同じ書き方で出ます。一覧の右には、この画面から実行したときにどうなるかが出ます。</p>
+            <ul class="rules">
+              <li><b>この画面で選ぶ</b>：<code>/resume</code>・<code>/model</code>・<code>/effort</code>。この画面に選ぶ画面が開きます（下の 2 つの項目）。</li>
+              <li><b>結果を表示</b>：<code>/context</code>・<code>/rename</code>・<code>/plan</code> など。結果がこの画面の会話の欄に出ます。</li>
+              <li><b>ターンを始める</b>：スキルと、<code>/init</code>・<code>/code-review</code>・<code>/simplify</code> など。Claude が作業を始めます。</li>
+              <li><b>ターミナルで開く</b>：<code>/usage</code>・<code>/status</code>・<code>/config</code> など選択画面のあるもの。選択画面はターミナル側に出ます。</li>
+              <li><b>ターミナルで打つ</b>：<code>/recap</code> など、Claude Code が本人がターミナルで打ったときだけ実行するもの。この画面からは送りません。</li>
+            </ul>
+            <p class="muted"><code>/clear</code> は確認してから実行します。作業中に実行したコマンドは、今のターンが終わってから実行します。ターミナルで打ったコマンドも、その結果の 1 行（「Set effort level to high」など）がこの画面に出ます。</p>
+            <h3>前の会話に戻る（/resume）</h3>
+            <p class="muted"><code>/resume</code> を選ぶと、そのチャンネルのフォルダで前に話した会話の一覧が出ます（名前か最初の依頼、いつ、大きさ、最後の依頼）。言葉で絞り込めます。「再開」を押すと、ターミナルで <code>/resume</code> したのと同じく、そのチャンネルが選んだ会話の続きになります。チャンネルは終わらずにそのまま続き、会話の欄には「前の会話を再開しました」と、その会話の最後の 20 往復までが出ます。それまでの会話は残っていて、同じ一覧からまた戻れます。ターミナルで <code>/resume</code> したときも、同じように出ます。</p>
+            <ul class="rules">
+              <li>一覧は、<code>/resume</code> を開いたときに Claude Code の会話のファイル（<code>~/.claude/projects</code> の中）の最初と最後だけを読んで作ります。Fogcast が会話を保存することはありません。</li>
+              <li>ほかのターミナルで開いている会話は「ch.2 … で開いています」と出て、選べません（2 つのターミナルが同じ会話に書き込まないように）。</li>
+              <li>ほかのフォルダの会話は、そのフォルダで起動したターミナルのチャンネルから戻れます。</li>
+              <li>作業中に選ぶと、今のターンが終わってから切り替わります。</li>
+            </ul>
+            <h3>モデルと考える深さ（effort）</h3>
+            <p class="muted">チャンネルの見出しのモデル名（例 <code>Opus 5.5</code>）と「effort」を押すと、選ぶ画面が開きます。<code>/model</code>・<code>/effort</code> を選んでも同じで、<code>/effort high</code> のように値を付けると、そのまま変えます。</p>
+            <ul class="rules">
+              <li><b>モデル</b>：一覧は、そのターミナルの <code>/config</code> のモデルの行と同じです。選ぶとその行で切り替えるので、確認なしで切り替わり、<code>/model</code> と同じく新しいセッションの既定にもなります。会話の途中で切り替えると、次の返答で新しいモデルが会話を最初から読み直すため、その 1 回は時間とトークンが多くかかります。</li>
+              <li><b>effort</b>：ターミナルで <code>/effort</code> を実行したのと同じです。見出しには、Claude Code が最後の返答で使った値が出ます。</li>
+              <li>作業中に選ぶと、今のターンが終わってから切り替わります。ターミナルで切り替えたときも、見出しと会話の欄に出ます。</li>
+            </ul>
             <h3>Claude の質問に答える</h3>
             <p class="muted">Claude が選択肢で質問してくると（ターミナルに選ぶ画面が出るとき）、そのチャンネルに質問のカードが出て、タイルは「回答待ち」になります。選択肢を押すと答えになります。質問が 1 つで 1 つだけ選ぶものは、押した時点で送ります。いくつも選べるものや質問が複数あるものは、選んでから「答える」を押します。選択肢にないときは「ほかの答え」に書きます。</p>
             <p class="muted">ターミナルの選ぶ画面も同時に開いていて、先に答えた方が使われ、もう一方は閉じます。画面から答えると、ターミナルにも「User answered Claude's questions」と答えが残り、Claude にはターミナルで答えたのと同じ形で渡ります。承認の設定（オン・オフ）に関係なく使えます。</p>
             <h3>止める・圧縮する</h3>
             <p class="muted">「停止」は今のターンを中断します。「圧縮」は会話を要約してコンテキストを空けます（作業中なら、ターンが終わってから）。</p>
+          </div>
+          <div>
             <h3>ステータス</h3>
             <p class="muted">FOGCAST の横の「Lv」を押すと、ステータス画面が開きます（<kbd>Esc</kbd> で戻ります）。0.3.0 を入れた日から数え始め、あなた全体の Lv、5 つの能力、今日の EXP、日ごとの EXP、記録（作業した日・連続日数・ターン・トークン・料金・使った道具の種類）が並びます。Lv が上がると、画面に一度だけ知らせます（ターミナルには出しません）。</p>
             <ul class="rules">
-              <li><b>量</b>：やり終えたターン 1 回で +10 EXP、トークン 1 万ごとに +1。1 日 400 まで。</li>
+              <li><b>量</b>：やり終えたターン 1 回で +10 EXP、トークン 1 万ごとに +1。1 日の上限はありません。</li>
               <li><b>習慣</b>：その日はじめてターンをやり終えると +50。続けて作業した日は 1 日ごとに +10 ずつ上乗せ（+70 まで）。</li>
               <li><b>初めて</b>：ツール・スキル・エージェント・MCP を初めて使うと +30。</li>
               <li><b>Lv</b>：Lv n から n+1 までに 100 × n EXP。最高は Lv 99。</li>
               <li><b>能力</b>：調査（Read・Grep・Web 検索など）、構築（Edit・Write）、実行（Bash など）、段取り（サブエージェント・タスク・計画）、拡張（スキル・MCP）。道具を 1 回使うごとに 1 pt（サブエージェントは 3 pt、スキルは 2 pt）で、10・50・200・600・1500 pt でランク 1〜5。</li>
             </ul>
-          </div>
-          <div>
             <h3>天気予報</h3>
             <p class="muted">5 時間枠と週の枠の今の割合、今のペース、リセット時の予報、上限に届く時刻を出します。値は Claude の応答が返るたびに届くので、最初の応答のあとに出ます（API キーで使っている場合は使用枠がないので出ません）。</p>
             <p class="muted">週のカレンダーは、これまでの日と今日に、その日に使った週の枠の割合が出ます。押すとその日の記録（週の枠・ターン数・トークン・料金、チャンネル別の内訳、よく使ったツールやスキル）が開きます。先の日は、今のペースでの天気だけです（1 日 9% 未満が晴れ、18% 以上が雨、上限に届く日が霧）。日ごとの記録は 0.2.0 から、受け皿が動いているあいだの分を 35 日ぶん残します。</p>
@@ -439,7 +462,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
           <thead><tr><th>キー</th><th>すること</th></tr></thead>
           <tbody>
             <tr><td><kbd>0</kbd>〜<kbd>9</kbd></td><td>チャンネルを切り替えます（<kbd>0</kbd> は全チャンネル）。</td></tr>
-            <tr><td><kbd>/</kbd></td><td>開いているチャンネルのコマンドの一覧を出します。<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> で入れ、<kbd>Esc</kbd> で閉じます。</td></tr>
+            <tr><td><kbd>/</kbd></td><td>開いているチャンネルのコマンドの一覧を出します。<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> で入れ、<kbd>Esc</kbd> で閉じます。<code>/resume</code>・<code>/model</code>・<code>/effort</code> は、この画面に選ぶ画面が開きます。</td></tr>
             <tr><td><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>送信 / 改行。</td></tr>
             <tr><td><kbd>↑</kbd><kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd></td><td>カードの画面で輪を回します。ホイールとドラッグでも回ります。</td></tr>
             <tr><td><kbd>Esc</kbd></td><td>カードの画面や設定を閉じます。</td></tr>
@@ -452,7 +475,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>新しい版に更新する</h3>
         <ol class="steps">
           <li><b class="t">新しい zip で <code>~/fogcast</code> を上書きする</b>
-            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.4.0.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.5.1.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>ファイル名は受け取った版に合わせてください。</p></li>
           <li><b class="t">版を更新する</b>
             <div class="cmd"><code>claude plugin update fogcast@fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -512,7 +535,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>仕様</h3>
         <div class="tbl"><table>
           <tbody>
-            <tr><td>版</td><td>0.4.0</td></tr>
+            <tr><td>版</td><td>0.5.1</td></tr>
             <tr><td>必要なもの</td><td>Claude Code 2.1.290 以降（Mod が使える版）、Node.js 18 以上</td></tr>
             <tr><td>日付の区切り</td><td>画面（ブラウザ）の時計に合わせます。WSL の時計が Windows と違う地域になっていても、カレンダーと連続日数は画面の日付で数えます（0.3.0 から）。</td></tr>
             <tr><td>確かめた環境</td><td>Linux。WSL は、Windows のブラウザを開くところを Linux 上で見立てて確かめました。macOS とネイティブの Windows はまだ確かめていません。</td></tr>
@@ -520,6 +543,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td>コンテキストへの影響</td><td>毎回のコンテキストに足すものはありません（<code>claude plugin details</code> で約 0 トークン）。増えるのは、コマンドの一覧の <code>/fog</code> 1 行と、<code>/fog</code> を実行したときの結果 1 行だけです。読み込んだスキル・エージェント・MCP の一覧と、スキルやエージェントの説明、コマンドの引数、次の入力の提案は、Claude Code の手元の情報から読むだけで、モデルには送りません。画面から答えた質問は、ターミナルで答えたときと同じ答えとして Claude に渡ります。</td></tr>
             <tr><td>受け皿の終了</td><td>ターミナルも画面もつながっていない状態が 20 分続くと、自動で終わります。次に <code>claude</code> を起動すると、自動で起動します。</td></tr>
             <tr><td>保存するもの</td><td><code>~/.fogcast/</code> に、鍵（token）、state.json（コミュの使用回数と最近の使用（カードごとに直近 20 回の、依頼の書き出しや道具の入力の要約）、使用枠の読み取り、日ごとの記録（ターン数・トークン・料金、チャンネル名ごとの内訳、使ったものの回数。35 日ぶん）、ステータス（EXP・能力・記録）、終わったセッションの再開 ID と最初の依頼の書き出し）、hub.log。会話の本文（返答や道具の結果の全文）と、送ってまだ始まっていない文は受け皿のメモリにだけ置き、ファイルには書きません。</td></tr>
+            <tr><td>読むもの</td><td>Claude Code の会話のファイル（<code>~/.claude/projects/…/&lt;セッション ID&gt;.jsonl</code>）は、<code>/resume</code> の一覧を開いたとき（各ファイルの最初と最後だけ）と、会話を再開したとき（その会話の最後の部分）にだけ読みます。読むのは、そのチャンネルのフォルダの会話だけです。</td></tr>
           </tbody>
         </table></div>
         <h3>環境変数</h3>
@@ -536,7 +560,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
     </main>
   </div>
 
-  <footer><span>Fogcast（霧読み）0.4.0 取扱説明書</span><span>画面の左上の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
+  <footer><span>Fogcast（霧読み）0.5.1 取扱説明書</span><span>画面の左上の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
 </div>
 <script>
 (function(){

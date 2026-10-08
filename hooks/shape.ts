@@ -155,6 +155,30 @@ export function midTurnText(row: { name?: string; content?: unknown } | undefine
   return (/while you were working:\n([\s\S]*?)\n\n/.exec(body)?.[1] ?? '').trim()
 }
 
+/**
+ * A slash command's rows as the conversation keeps them (`session.append`, door `command`): the row that names
+ * the command (`<command-name>/model</command-name>`) and the row with what it printed
+ * (`<local-command-stdout>…</local-command-stdout>`). The plugin that ran a command is handed no text for most
+ * of them; the printed line reaches the screen this way.
+ */
+export function commandRow(content: unknown): { name?: string; out?: string } {
+  const body = textOf(content)
+  const name = /<command-name>\/?([^<\s]+)<\/command-name>/.exec(body)?.[1]
+  const m = /<local-command-stdout>([\s\S]*?)<\/local-command-stdout>/.exec(body)
+  const out = m ? m[1]!.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').replace(/\r\n?/g, '\n').trim() : undefined
+  return { ...(name ? { name } : {}), ...(out !== undefined ? { out } : {}) }
+}
+
+/** The effort levels `/effort` takes, read off its argument hint (`[low|medium|…|auto|ultracode [on|off]]`). */
+export function effortLevels(hint: string | undefined): string[] {
+  const inner = String(hint ?? '').trim().replace(/^\[/, '')
+  const words = inner.split(/\[/)[0]!.split('|').map(w => w.replace(/[\]\s]/g, '')).filter(w => /^[a-z]+$/.test(w) && w !== 'ultracode')
+  return words.length ? [...new Set(words)] : ['low', 'medium', 'high', 'xhigh', 'max']
+}
+
+/** A model id as its key in the settings' `modelSettings` (`claude-opus-5-5[1m]` → `claude-opus-5-5`). */
+export function modelKey(model: string): string { return String(model || '').replace(/\[[^\]]*\]$/, '') }
+
 /** A longer text kept with its line breaks (a skill's description): trimmed, blank runs closed up, cut at `n`. */
 export function keepText(s: string, n: number): string {
   const t = s.replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()

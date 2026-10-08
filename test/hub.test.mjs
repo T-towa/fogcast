@@ -3,7 +3,7 @@
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -325,11 +325,11 @@ test('your status grows from what you did and how you work, from the day it bega
       { k: 'turn', t, id: 'q1', text: 'z' }, ...tool('q2', 'Bash'), { k: 'turnEnd', t, id: 'q1', ms: 5, usage: { in: 90000, out: 0, cw: 0, cr: 0 } },
     ] })
     assert.equal((await h.hello()).usage.status.exp, 163)
-    // volume has a cap a day; how you work does not
+    // volume has no cap a day: 46 turns × 10 + 485,000 tokens / 10,000 = 508
     const many = []; for (let i = 0; i < 45; i++) many.push({ k: 'turn', t, id: `m${i}`, text: 'm' }, { k: 'turnEnd', t, id: `m${i}`, ms: 5, usage: { in: 10000, out: 0, cw: 0, cr: 0 } })
     await h.post('/api/mod/sync', { chan: 'chan-st1', events: [...many, ...tool('w1', 'Write')] })
     st = (await h.hello()).usage.status
-    assert.deepEqual([st.today.vol, st.today.first, st.today.done], [400, 60, 46])
+    assert.deepEqual([st.today.vol, st.today.first, st.today.done], [508, 60, 46])
     assert.equal(st.stats.find(s => s.k === 'make').p, 1)
   } finally { await h.stop() }
 })
@@ -459,5 +459,120 @@ test('a skill keeps its own description for its card; the next-prompt suggestion
   await s.wait(m => m.type === 'chan' && m.chan.id === 'chan-d' && m.chan.suggest === 'コミットして')
   await req('POST', '/api/ui/send', { chan: 'chan-d', text: '先に README を' })
   await s.wait(m => m.type === 'chan' && m.chan.id === 'chan-d' && m.chan.suggest === '' && m.chan.pending.length === 1)
+  s.stop()
+})
+
+// ---------------------------------------------------------------- commands: resume, model, effort
+const U = n => `0000000${n}-aaaa-4bbb-8ccc-dddddddddddd`.slice(-36)
+const row = (o) => JSON.stringify(o)
+function convo(dir, id, rowsList, ageMin) {
+  const p = join(dir, `${id}.jsonl`)
+  writeFileSync(p, rowsList.map(row).join('\n') + '\n')
+  const t = (Date.now() - ageMin * 60e3) / 1000; utimesSync(p, t, t)
+  return p
+}
+const say = (role, text, extra = {}) => role === 'user'
+  ? { type: 'user', message: { role: 'user', content: text }, timestamp: new Date().toISOString(), ...extra }
+  : { type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }] }, timestamp: new Date().toISOString(), ...extra }
+
+test('the resume list is read from the project\'s conversation files: the one open here and empty ones are left out, one open elsewhere is marked', async () => {
+  const dir = join(HOME, 'projects', '-home-me-dev-notes'); mkdirSync(dir, { recursive: true })
+  convo(dir, U(1), [{ type: 'mode', sessionId: U(1) }, say('user', 'first session about apples'), say('ai', 'ok'), { type: 'assistant', message: { role: 'assistant', model: '<synthetic>', content: [{ type: 'text', text: 'No response requested.' }] } }], 30)
+  convo(dir, U(2), [say('user', 'second session about bananas'), say('ai', 'ok'), { type: 'custom-title', customTitle: 'bananas-talk', sessionId: U(2) }, { type: 'last-prompt', lastPrompt: 'and more bananas', sessionId: U(2) }], 5)
+  convo(dir, U(3), [say('user', 'the one open here')], 1)
+  convo(dir, U(4), [{ type: 'user', message: { role: 'user', content: '<command-name>/model</command-name>' } }, { type: 'user', isMeta: true, message: { role: 'user', content: 'hidden' } }], 2)
+  convo(dir, U(5), [say('user', 'open in another terminal')], 10)
+  writeFileSync(join(dir, 'notes.jsonl'), row(say('user', 'not a conversation')) + '\n')
+  await req('POST', '/api/mod/hello', { chan: 'chan-res', mod: '0.5.0', sid: U(3), cwd: '/home/me/dev/notes', tp: join(dir, `${U(3)}.jsonl`), tdir: dir })
+  await req('POST', '/api/mod/hello', { chan: 'chan-oth', sid: U(5), cwd: '/home/me/dev/notes' })
+  const r = await req('POST', '/api/ui/sessions', { chan: 'chan-res' })
+  assert.equal(r.json.ok, true)
+  assert.deepEqual(r.json.sessions.map(x => x.id), [U(2), U(5), U(1)])             // newest first
+  const [b, e, a] = r.json.sessions
+  assert.equal(b.title, 'bananas-talk'); assert.equal(b.first, 'second session about bananas'); assert.equal(b.last, 'and more bananas')
+  assert.equal(a.title, ''); assert.equal(a.first, 'first session about apples')
+  assert.equal(e.open.name.startsWith('notes'), true)
+  // a terminal whose folder is not known yet says so
+  await req('POST', '/api/mod/hello', { chan: 'chan-nodir', sid: U(9), cwd: '/home/me/dev/x' })
+  const none = await req('POST', '/api/ui/sessions', { chan: 'chan-nodir' })
+  assert.equal(none.json.ok, false)
+})
+
+test('a resume from the screen goes to its terminal; the one open here or elsewhere, or not an id, is refused', async () => {
+  assert.equal((await req('POST', '/api/ui/resume', { chan: 'chan-res', sid: U(2) })).json.ok, true)
+  assert.equal((await req('POST', '/api/ui/resume', { chan: 'chan-res', sid: U(3) })).status, 409)
+  assert.equal((await req('POST', '/api/ui/resume', { chan: 'chan-res', sid: U(5) })).status, 409)
+  assert.equal((await req('POST', '/api/ui/resume', { chan: 'chan-res', sid: '../../etc/passwd' })).status, 400)
+  const sync = await req('POST', '/api/mod/sync', { chan: 'chan-res', events: [] })
+  assert.deepEqual(sync.json.commands.map(c => [c.type, c.sid]), [['resume', U(2)]])
+})
+
+test('a resume swaps the channel\'s conversation: it stays open, the one left is kept to come back to, and its last exchanges are read in', async () => {
+  const dir = join(HOME, 'projects', '-home-me-dev-notes')
+  const s = stream('screen-res')
+  await s.wait(m => m.type === 'hello')
+  const t = Date.now()
+  await req('POST', '/api/mod/sync', { chan: 'chan-res', events: [{ k: 'turn', t, id: 'tr1', text: 'the one open here' }, { k: 'turnEnd', t: t + 10, id: 'tr1', ms: 10 }] })
+  await req('POST', '/api/mod/sync', { chan: 'chan-res', events: [{ k: 'resumed', t: t + 20, from: U(3), sid: U(1), title: '', tp: join(dir, `${U(1)}.jsonl`), source: 'resume' }] })
+  const ev = await s.wait(m => m.type === 'ev' && m.ev.k === 'resumed')
+  assert.equal(ev.ev.from, U(3)); assert.equal(ev.ev.sid, U(1)); assert.equal(ev.ev.tp, undefined)
+  const hist = await s.wait(m => m.type === 'ev' && m.ev.k === 'hist')
+  assert.deepEqual(hist.ev.items.map(x => [x.u, x.a]), [['first session about apples', 'ok']])
+  assert.equal(hist.ev.label, 'first session about apples')                          // never named: it goes by what it began with
+  const ch = await s.wait(m => m.type === 'chan' && m.chan.id === 'chan-res' && m.chan.sid === U(1))
+  assert.equal(ch.chan.status, 'idle')                                                // not ended: the terminal goes on
+  s.stop()
+  const again = stream('screen-res-2'); const h = await again.wait(m => m.type === 'hello')
+  assert.equal(h.past.some(p => p.id === U(3) && p.title === 'the one open here'), true)
+  // back to the one never named: it goes by what it began with
+  await req('POST', '/api/mod/sync', { chan: 'chan-res', events: [{ k: 'resumed', t: t + 30, from: U(1), sid: U(3), title: '', tp: join(dir, `${U(3)}.jsonl`), source: 'resume' }] })
+  const back = await again.wait(m => m.type === 'ev' && m.ev.k === 'resumed' && m.ev.sid === U(3))
+  assert.equal(back.ev.title, ''); assert.equal(back.ev.label, 'the one open here')
+  again.stop()
+  const third = stream('screen-res-3'); const h3 = await third.wait(m => m.type === 'hello'); third.stop()
+  assert.equal(h3.past.find(p => p.id === U(1))?.title, 'first session about apples')   // the one left is kept by its beginning
+})
+
+test('model and effort from the screen are checked against the terminal\'s own choices; a command\'s printed line fills its row once', async () => {
+  await req('POST', '/api/mod/hello', { chan: 'chan-me', mod: '0.5.0', sid: U(7), cwd: '/home/me/dev/me', models: { options: ['default', 'sonnet', 'opus', 'opus[1m]'], value: 'opus' }, efforts: ['low', 'medium', 'high', 'Bad Word'], effort: 'medium' })
+  // a terminal not yet restarted after the update does not know these requests: it is told so instead
+  await req('POST', '/api/mod/hello', { chan: 'chan-old', mod: '0.4.0', sid: U(8), cwd: '/home/me/dev/me' })
+  for (const [path, body] of [['/api/ui/model', { value: 'sonnet' }], ['/api/ui/effort', { value: 'high' }], ['/api/ui/resume', { sid: U(7) }]]) {
+    const r = await req('POST', path, { chan: 'chan-old', ...body })
+    assert.equal(r.status, 409); assert.match(r.json.error, /起動し直す/)
+  }
+  assert.equal((await req('POST', '/api/ui/model', { chan: 'chan-me', value: 'opus[1m]' })).json.ok, true)
+  assert.equal((await req('POST', '/api/ui/model', { chan: 'chan-me', value: 'gpt-9' })).status, 400)
+  assert.equal((await req('POST', '/api/ui/effort', { chan: 'chan-me', value: 'high' })).json.ok, true)
+  assert.equal((await req('POST', '/api/ui/effort', { chan: 'chan-me', value: 'Bad Word' })).status, 400)
+  const sync = await req('POST', '/api/mod/sync', { chan: 'chan-me', events: [] })
+  assert.deepEqual(sync.json.commands.map(c => [c.type, c.value]), [['model', 'opus[1m]'], ['effort', 'high']])
+  const s = stream('screen-me')
+  const h = await s.wait(m => m.type === 'hello')
+  const me = h.chans.find(c => c.id === 'chan-me')
+  assert.deepEqual(me.efforts, ['low', 'medium', 'high']); assert.equal(me.effort, 'medium'); assert.equal(me.models.value, 'opus')
+  const t = Date.now()
+  await req('POST', '/api/mod/sync', { chan: 'chan-me', events: [
+    { k: 'cmd', t, name: 'effort', args: 'high', text: '', via: 'screen', run: 'r1' },
+    { k: 'cmd', t: t + 1, name: 'effort', args: 'low', text: '', run: 'r2' },
+    { k: 'cmdOut', t: t + 5, name: 'effort', text: 'Set effort level to high (saved as your default for new sessions)', run: 'r1' },
+    { k: 'cmdOut', t: t + 6, name: 'effort', text: 'a second line', run: 'r1' },
+    { k: 'info', t: t + 7, effort: 'high' },
+    { k: 'cmd', t: t + 8, name: 'diff', args: '', text: 'The diff panel shows git changes', run: 'r3' },
+    { k: 'cmdOut', t: t + 9, name: 'diff', text: 'The diff panel shows git changes', run: 'r3' },
+    { k: 'model', t: t + 10, from: 'claude-opus-5-5', to: 'claude-sonnet-5-5', src: 'command', asked: 'sonnet' },
+    { k: 'cmdOut', t: t + 11, name: 'resume', args: '0f0f0f0f-0000-4000-8000-000000000000', via: 'screen', text: 'Session 0f0f0f0f-0000-4000-8000-000000000000 was not found.' },
+  ] })
+  const cmd = await s.wait(m => m.type === 'ev' && m.ev.k === 'cmd' && m.ev.name === 'effort' && m.ev.args === 'high')
+  const out = await s.wait(m => m.type === 'ev' && m.ev.k === 'cmdOut' && m.ev.name === 'effort')
+  assert.equal(out.ev.ref, cmd.ev.seq)                       // its own run's row, though a later /effort had a row too
+  await s.wait(m => m.type === 'ev' && m.ev.k === 'model')
+  const lone = await s.wait(m => m.type === 'ev' && m.ev.k === 'cmdOut' && m.ev.name === 'resume')
+  assert.equal(lone.ev.ref, undefined); assert.equal(lone.ev.via, 'screen'); assert.equal(lone.ev.args, '0f0f0f0f-0000-4000-8000-000000000000')
+  assert.equal(s.msgs.filter(m => m.type === 'ev' && m.ev.k === 'cmdOut').length, 2)   // the second line and the echo of a row that had its text are dropped
+  const ch = await s.wait(m => m.type === 'chan' && m.chan.id === 'chan-me' && m.chan.effort === 'high')
+  assert.equal(ch.chan.model, 'claude-sonnet-5-5')
+  const marked = await s.wait(m => m.type === 'chan' && m.chan.id === 'chan-me' && m.chan.models && m.chan.models.value === 'sonnet')   // the picker marks what was asked for
+  assert.equal(marked.chan.models.options.includes('sonnet'), true)
   s.stop()
 })

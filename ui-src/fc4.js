@@ -150,7 +150,7 @@ async function turn(c,T,text,byUser){
   if(c.ctx>WIN*.95) compact(c,false); }
 
 /* ================= your status in the demo: twelve days in, growing as the demo's turns finish (the live screen gets it from the hub) ================= */
-const XPR={cap:400,turn:10,tok:1e4,day:50,streak:10,streakMax:7,first:30}, ST_RANKS=[10,50,200,600,1500], LV_MAX=99;
+const XPR={turn:10,tok:1e4,day:50,streak:10,streakMax:7,first:30}, ST_RANKS=[10,50,200,600,1500], LV_MAX=99;
 const lvFloor=lv=>50*lv*(lv-1), toLv=e=>{ let lv=1; while(lv<LV_MAX&&lvFloor(lv+1)<=e) lv++; return lv; };
 const ST_DEF=[['inq','調査','調べる'],['make','構築','書く'],['run','実行','動かす'],['lead','段取り','任せる'],['ext','拡張','広げる']];
 const statOf=l=> /^(Read|Grep|Glob|WebSearch|WebFetch|ToolSearch|LSP|Explore)$/.test(l.id)? 'inq' : /^(Edit|Write|MultiEdit|NotebookEdit)$/.test(l.id)? 'make'
@@ -159,7 +159,7 @@ const statOf=l=> /^(Read|Grep|Glob|WebSearch|WebFetch|ToolSearch|LSP|Explore)$/.
 const DST={since:dayStart(Date.now())-11*DAY, exp:6480, turns:418, tok:9.62e6, usd:58.4, days:11, streak:6, best:6,
   first:new Set(LINKS.filter(l=>l.uses>0&&l.kind!=='core').map(l=>l.id)), stats:{inq:640,make:410,run:520,lead:150,ext:96},
   n:Object.fromEntries(LINKS.filter(l=>l.kind!=='core'&&l.uses>0).map(l=>[l.id,l.uses])),
-  past:[260,380,420,310,90,0,450,500,470,520,480], today:{vol:110,habit:100,first:0,done:8,tok:310000}};
+  past:[260,380,420,310,90,0,450,500,470,520,480], today:{vol:110,habit:100,first:0,done:8,tok:300000}};      // 8 turns × 10 + 300,000 tokens / 10,000
 function demoStatus(){ const D=DST, lv=toLv(D.exp), t=D.today, today=dayStart(Date.now());
   return {since:D.since,lv,max:LV_MAX,exp:D.exp,from:lvFloor(lv),to:lv>=LV_MAX?null:lvFloor(lv+1),
     today:{xp:t.vol+t.habit+t.first,vol:t.vol,habit:t.habit,first:t.first,done:t.done,tok:t.tok},
@@ -173,7 +173,7 @@ function stGain(kind,n){ if(n>0){ DST.today[kind]+=n; DST.exp+=n; } }
 function stUse(l){ if(LIVE) return; const k=statOf(l); if(k) DST.stats[k]+=l.kind==='agent'?3:l.kind==='skill'?2:1;
   DST.n[l.id]=(DST.n[l.id]||0)+1; if(!DST.first.has(l.id)){ DST.first.add(l.id); stGain('first',XPR.first); } stChanged(); }
 function stTurn(tok){ if(LIVE) return; const t=DST.today; t.done++; t.tok+=tok; DST.turns++; DST.tok+=tok; DST.usd+=tok*1.1e-6;
-  stGain('vol',Math.min(XPR.cap,t.done*XPR.turn+Math.floor(t.tok/XPR.tok))-t.vol); stChanged(); }
+  stGain('vol',t.done*XPR.turn+Math.floor(t.tok/XPR.tok)-t.vol); stChanged(); }
 if(!LIVE) G.status=demoStatus();
 
 /* ================= slash commands, as $.command.run would run them ================= */
@@ -199,19 +199,20 @@ function cmdText(c,name){
   return '「/」でこのチャンネルのコマンドを一覧できます。組み込みのコマンド、スキル、MCP のプロンプトが並びます。';
 }
 function cmdOut(c,name,args,text){ add(c,`<div class="cmdo"><div class="hd"><span class="tag teal">/${esc(name)}${args?' '+esc(args):''}</span><span class="s">コマンドの結果</span></div><pre>${esc(text)}</pre></div>`); }
-const MODELS={sonnet:'Sonnet 5.5',opus:'Opus 5.5',haiku:'Haiku 4.5'};
 async function runCmd(c,it){ const {name,args,k}=it;
   if(k==='turn'){ await turn(c,cmdScript(name,args),esc('/'+name+(args?' '+args:'')),false); return; }
   if(k==='op'){ compact(c,true); return; }
   if(k==='danger'){ clearChannel(c); return; }
+  if(k==='pick'){ if(name==='resume'&&it.x) demoResume(c,it.x); return; }
   if(k==='panel'){
-    if(name==='model'&&args){ const m=MODELS[args.trim().toLowerCase()]; cmdOut(c,name,args, m? `モデルを ${m} に切り替えました。` : `「${args}」というモデルは見つかりませんでした。sonnet / opus / haiku が使えます。`); if(m) c.model=m; dirty=true; return; }
-    add(c,`<div class="cmdo panel"><div class="hd"><span class="tag">/${esc(name)}</span><span class="s">ターミナルで開きました</span></div><p>このコマンドは選択画面を開くので、ターミナル側に表示されます。${name==='model'?'モデル名を付けると（例 <code>/model sonnet</code>）、この画面からすぐ切り替えられます。':'操作が終わると、結果はこの画面にも映ります。'}</p></div>`);
+    add(c,`<div class="cmdo panel"><div class="hd"><span class="tag">/${esc(name)}</span><span class="s">ターミナルで開きました</span></div><p>このコマンドは選択画面を開くので、ターミナル側に表示されます。操作が終わると、結果はこの画面にも映ります。</p></div>`);
     toast('info',`/${esc(name)} をターミナルで開きました`,`ch.${c.num} ${esc(c.name)} のターミナルに選択画面が出ています。`); return; }
   cmdOut(c,name,args,cmdText(c,name)); }
 function queueCmd(c,name,args){ const cmd=commandsFor(c).find(x=>x.n===name);
   if(!cmd){ toast('info',`/${esc(name)} はこのチャンネルにありません`,'「/」で、このチャンネルで使えるコマンドを一覧できます。'); return false; }
   if(cmd.k==='danger'){ confirmClear(c); return true; }
+  if(cmd.k==='term'){ toast('info',`/${esc(name)} はターミナルで打ってください`,'Claude Code は、このコマンドを本人がターミナルで打ったときだけ実行します。'); return true; }
+  if(cmd.k==='pick'){ if(args) pickArgs(c,name,args); else openPick(c,name); return true; }
   if(LIVE){ liveCommand(c,name,args,cmd); return true; }
   c.queue.push({type:'cmd',name,args,k:cmd.k});
   if(c.status!=='idle') toast('queue',`/${esc(name)} を予約しました`,`ch.${c.num} ${esc(c.name)} の今のターンが終わったら実行します。`);
@@ -227,6 +228,103 @@ function clearChannel(c){ const old=c.sid||rid(), last=[...c.log.querySelectorAl
   c.log.innerHTML=''; c.turnNo=0; c.perTurn=[]; c.tasks=[]; c.files={}; c.agents=[]; c.ops=[]; c.ctx=Math.round(WIN*.025); c.warned85=false; c.resume=null;
   add(c,`<div class="sys boot"><b>会話をリセットしました</b><span>新しいセッションとして始まりました。前の会話は「＋ 追加」の過去のセッションから戻れます（再開 ID ${old}）。</span></div>`);
   toast('info',`ch.${c.num} ${esc(c.name)} をリセットしました`,'新しいセッションとして続きます。'); setStatus(c,'idle','入力待ち'); }
+
+/* ================= /resume, /model and /effort: chosen here, carried out in the terminal ================= */
+const cut1=(s,n)=>{ s=String(s||'').replace(/\s+/g,' ').trim(); return s.length>n? s.slice(0,n-1)+'…' : s; };
+const MODEL_LABEL={default:'既定（おすすめ）',opus:'Opus',sonnet:'Sonnet',haiku:'Haiku',fable:'Fable',best:'いちばん賢いモデル',opusplan:'計画は Opus、実装は Sonnet'};
+const MODEL_NOTE={default:'Claude Code が選ぶ既定のモデル',opus:'ふだんの複雑な作業に',sonnet:'決まった作業を手早く',haiku:'短い質問にいちばん速く',fable:'いちばん難しい、長い作業に',best:'使える中でいちばん賢いモデル',opusplan:'計画モードのあいだは Opus、そのほかは Sonnet'};
+function modelLabel(o){ const m=/^(.*?)(\[1m\])?$/.exec(String(o||'')); const base=MODEL_LABEL[m[1]]||m[1]; return m[2]? `${base}（100 万トークン）` : base; }
+const EFFORT_LABEL={low:'低い',medium:'ふつう',high:'高い',xhigh:'とても高い',max:'最大',auto:'おまかせ'};
+const EFFORT_NOTE={low:'速く、トークンを抑える',medium:'ふだんの作業に',high:'丁寧に。確かめも厚く',xhigh:'high より深く考える',max:'いちばん深く考える',auto:'作業に合わせて Claude Code が決める'};
+function effortLabel(e){ return EFFORT_LABEL[e]||e||'—'; }
+function sinceTxt(ms){ const m=Math.max(0,Math.round(ms/60000)); if(m<1) return 'たった今'; if(m<60) return `${m} 分前`; const h=Math.round(m/60); if(h<24) return `${h} 時間前`; const d=Math.round(h/24); return d<7? `${d} 日前` : md(Date.now()-ms); }
+const kb=n=> n>=1e6? `${(n/1e6).toFixed(1)} MB` : `${Math.max(1,Math.round(n/1e3))} KB`;
+const modelsOfCh=c=>(LIVE? c.models : (c.models||DEMO_MODELS))||{options:[],value:''};
+const effortsOfCh=c=>(LIVE&&c.efforts&&c.efforts.length? c.efforts : DEMO_EFFORTS);
+function openPick(c,name){ if(!c||c.status==='off') return; if(name==='resume') openResume(c); else if(name==='model') openModel(c); else if(name==='effort') openEffort(c); }
+const busyNote=c=> c.status==='work'||c.status==='wait'? '<p class="pnote">いまは作業中です。選ぶと、今のターンが終わってから切り替わります。</p>' : '';
+// /model sonnet, /effort high, /resume <id>: the value is taken as the picker would take it
+function pickArgs(c,name,args){ const a=args.trim(), lo=a.toLowerCase();
+  if(name==='model'){ const o=modelsOfCh(c).options.find(x=>x.toLowerCase()===lo); if(o){ doModel(c,o); return; } }
+  if(name==='effort'&&effortsOfCh(c).includes(lo)){ doEffort(c,lo); return; }
+  if(name==='resume'){
+    if(LIVE){ if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(a)) liveResume(c,a,''); else liveCommand(c,'resume',a,{k:'text'}); return; }
+    const x=(DEMO_CONVOS[c.cwd]||[]).find(y=>y.id===a||y.id.startsWith(lo)||y.title===a); if(x){ doResume(c,x); return; } }
+  if(LIVE){ liveCommand(c,name,a,{k:'text'}); return; }
+  toast('info',`/${esc(name)} ${esc(a)} は見つかりませんでした`,`「/${esc(name)}」だけで送ると、この画面で一覧から選べます。`); }
+
+function openResume(c){
+  openSheet(`<div class="hd"><span class="tag teal">再開</span><button class="btn small" type="button" data-close>閉じる</button></div>
+    <h2 id="sheetT">ch.${c.num} ${esc(c.name)} で前の会話に戻る</h2>
+    <p class="sub">このフォルダ（<code>${esc(c.cwd)}</code>）で前に話した会話です。選ぶと、ターミナルで <code>/resume</code> したのと同じく、このチャンネルが選んだ会話の続きになります。今の会話は残るので、あとでまたここから戻れます。</p>
+    ${busyNote(c)}
+    <input class="psearch" id="rsQ" type="search" placeholder="名前や依頼の言葉で絞り込む" aria-label="会話を絞り込む" autocomplete="off">
+    <ul class="plist" id="rsList"><li class="pempty">読み込んでいます…</li></ul>
+    <p class="sub">ほかのフォルダの会話は、そのフォルダで起動したターミナルのチャンネルから戻れます。開いているターミナルがなければ、「＋ 追加」の過去のセッションから再開コマンドをコピーできます。</p>`,'pick');
+  let all=[];
+  const draw=()=>{ const el=$('rsList'); if(!el) return; const q=$('rsQ').value.trim().toLowerCase();
+    const list=all.filter(x=>!q||`${x.title} ${x.first} ${x.last}`.toLowerCase().includes(q));
+    el.innerHTML= list.map(x=>`<li><div class="pt"><b>${esc(x.title||cut1(x.first,80)||'（名前のない会話）')}</b>${x.title&&x.first?`<span>${esc(cut1(x.first,90))}</span>`:''}</div>
+      <small>${sinceTxt(Date.now()-x.t)} · ${kb(x.size)}${x.last&&x.last!==x.first?` · 最後の依頼：${esc(cut1(x.last,60))}`:''}</small>
+      <span class="btns">${x.open?`<span class="pbusy">ch.${x.open.num} ${esc(x.open.name)} で開いています</span>`:`<button class="btn small primary" type="button" data-i="${all.indexOf(x)}">再開</button>`}</span></li>`).join('')
+      || `<li class="pempty">${all.length?'一致する会話はありません。':'このフォルダで前に話した会話はありません。'}</li>`;
+    el.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{ const x=all[+b.dataset.i]; closeSheet(); doResume(c,x); })); };
+  $('rsQ').addEventListener('input',draw);
+  const got=r=>{ if(!$('rsList')) return; if(!r||r.ok===false){ $('rsList').innerHTML=`<li class="pempty">${esc((r&&r.error)||'一覧を読めませんでした。')}</li>`; return; } all=r.sessions||[]; draw(); };
+  if(LIVE) api('/api/ui/sessions',{chan:c.id}).then(got).catch(err=>got({ok:false,error:`一覧を読めませんでした（${err.message}）`}));
+  else setTimeout(()=>got({ok:true,sessions:(DEMO_CONVOS[c.cwd]||[]).filter(x=>x.id!==c.sid).map(x=>({...x,t:Date.now()-x.age*60e3}))}),250);
+}
+function doResume(c,x){ if(LIVE){ liveResume(c,x.id,x.title||x.first); return; }
+  if(c.status!=='idle'){ c.queue.push({type:'cmd',name:'resume',args:x.id,k:'pick',x}); toast('queue','再開を予約しました',`ch.${c.num} ${esc(c.name)} の今のターンが終わったら切り替えます。`); return; }
+  demoResume(c,x); }
+function demoResume(c,x){ const old=c.sid||rid(), last=[...c.log.querySelectorAll('.turn .fold .p')].pop(), first=[...c.log.querySelectorAll('.turn .fold .p')][0];
+  const list=DEMO_CONVOS[c.cwd]||(DEMO_CONVOS[c.cwd]=[]), i=list.indexOf(x); if(i>=0) list.splice(i,1);
+  list.unshift({id:old,title:c.title||'',first:first? first.textContent : c.role,last:last? last.textContent : '',age:0,size:180e3,hist:[]});
+  PAST.unshift({n:c.title||(first? first.textContent.slice(0,24) : c.role),cwd:c.cwd,t:`今日 ${hm(Date.now())}`,id:old});
+  c.sid=x.id; c.title=x.title||''; c.perTurn=[]; c.tasks=[]; c.files={}; c.agents=[]; c.ops=[]; c.cur=null;
+  resumedBox(c,{title:x.title||x.first,from:old});
+  histTurns(c,(x.hist||[]).map(h=>({u:h.u,a:h.a,html:true})),0);
+  toast('info',`ch.${c.num} ${esc(c.name)} で前の会話を再開しました`,esc(cut1(x.title||x.first,60))); setStatus(c,'idle','入力待ち'); scrollIf(c); }
+/* the turn the conversation was swapped at, and the last exchanges of the one returned to */
+function resumedBox(c,ev){ c.cur=null; const li=document.createElement('li'); li.className='swap';
+  li.innerHTML=`<div class="sys res"><b>前の会話を再開しました<span class="rt">${ev.title?`：${esc(cut1(ev.title,80))}`:''}</span></b><span>ここから下は、選んだ会話の続きです。それまでの会話も残っていて、「再開」からまた戻れます${ev.from?`（ID ${esc(String(ev.from).slice(0,8))}）`:''}。</span></div>`;
+  c.log.appendChild(li); }
+function histTurns(c,items,more){ if(!items||!items.length) return; const li=document.createElement('li'); li.className='hist';
+  li.innerHTML=`<details class="histBox"${items.length<=2?' open':''}><summary><b>再開した会話のこれまで</b><span>${items.length} 往復${more?`（その前に ${more} 往復）`:''}</span></summary>
+    <div class="histIn">${items.map(x=>`${x.u?youHTML(userText(x.u),'以前の依頼',x.t||0):''}${x.a?`<div class="ans">${x.html? x.a : typeof mdLite==='function'? mdLite(x.a) : esc(x.a)}</div>`:''}`).join('')}</div></details>`;
+  c.log.appendChild(li); }
+
+function openModel(c){
+  // nothing set in /config means Claude Code's own default: that row is the one in use
+  const M=modelsOfCh(c), cur=M.value||(M.options.includes('default')?'default':''), base=o=>String(o).replace(/\[1m\]$/,'');
+  openSheet(`<div class="hd"><span class="tag teal">モデル</span><button class="btn small" type="button" data-close>閉じる</button></div>
+    <h2 id="sheetT">ch.${c.num} ${esc(c.name)} のモデルを切り替える</h2>
+    <p class="sub">今のモデル：<b>${esc(c.model||'—')}</b>。選ぶと、ターミナルの設定（<code>/config</code> のモデルの行）で切り替えます。<code>/model</code> と同じく、新しいセッションの既定も変わります。</p>
+    ${c.turnNo>0?'<p class="pnote">会話の途中で切り替えると、次の返答で新しいモデルが会話を最初から読み直します。その 1 回は時間とトークンが多くかかります。</p>':''}
+    ${busyNote(c)}
+    ${M.options.length?`<ul class="plist" id="mdList">${M.options.map((o,i)=>`<li class="${o===cur?'on':''}"><div class="pt"><b>${esc(modelLabel(o))}</b><span><code>${esc(o)}</code>${MODEL_NOTE[base(o)]?` · ${esc(MODEL_NOTE[base(o)])}`:''}</span></div><span class="btns">${o===cur?'<span class="pcur">設定中</span>':`<button class="btn small primary" type="button" data-i="${i}">切り替える</button>`}</span></li>`).join('')}</ul>`
+      : '<p class="pempty">このターミナルからモデルの一覧を受け取れていません。ターミナルで <code>/model</code> を使ってください。</p>'}`,'pick');
+  $('sheet').querySelectorAll('#mdList [data-i]').forEach(b=>b.addEventListener('click',()=>{ const o=M.options[+b.dataset.i]; closeSheet(); doModel(c,o); })); }
+function doModel(c,o){ if(LIVE){ liveModel(c,o); return; }
+  const M=c.models||(c.models={...DEMO_MODELS,options:[...DEMO_MODELS.options]}); M.value=o;
+  const DEMO_NAME={default:'Opus 5.5',best:'Opus 5.5',opus:'Opus 5.5',sonnet:'Sonnet 5.5',haiku:'Haiku 5.5',fable:'Fable 5.1',opusplan:'Opus 5.5'};
+  const was=c.model, to=DEMO_NAME[o.replace(/\[1m\]$/,'')]||o;
+  c.model=to; modelBox(c,{from:was,to,src:'screen'}); toast('info',`ch.${c.num} ${esc(c.name)} のモデルを切り替えました`,esc(modelLabel(o))); dirty=true; }
+function modelBox(c,ev){ const d=document.createElement('div'); d.className='sys';
+  d.innerHTML=`<b>モデルを切り替えました：${esc(ev.from||'—')} → ${esc(ev.to)}</b><span>${ev.src==='screen'?'この画面から切り替えました。':'ターミナルで切り替えました。'}次の返答から、このモデルで答えます。</span>`;
+  if(c.cur) c.cur.flow.appendChild(d); else { const li=document.createElement('li'); li.appendChild(d); c.log.appendChild(li); } }
+
+function openEffort(c){
+  const L=effortsOfCh(c), cur=c.effort||'';
+  openSheet(`<div class="hd"><span class="tag teal">effort</span><button class="btn small" type="button" data-close>閉じる</button></div>
+    <h2 id="sheetT">ch.${c.num} ${esc(c.name)} の考える深さ（effort）</h2>
+    <p class="sub">今：<b>${esc(effortLabel(cur))}</b>${cur?`（<code>${esc(cur)}</code>）`:'（まだ分かりません。最初の返答で分かります）'}。選ぶと、ターミナルで <code>/effort</code> を実行したのと同じになります。新しいセッションの既定にも保存されるかは、会話の欄に出る結果の 1 行に書かれます（<code>max</code> はこのセッションだけ）。深くするほど、返答に時間とトークンがかかります。</p>
+    ${busyNote(c)}
+    <div class="eff" id="efList">${L.map((x,i)=>`<button type="button" class="${x===cur?'on':''}" data-i="${i}" aria-pressed="${x===cur}"><b>${esc(effortLabel(x))}</b><code>${esc(x)}</code><small>${esc(EFFORT_NOTE[x]||'')}</small></button>`).join('')}</div>`,'pick');
+  $('efList').querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{ const x=L[+b.dataset.i]; closeSheet(); if(x!==cur) doEffort(c,x); })); }
+function doEffort(c,x){ if(LIVE){ liveEffort(c,x); return; }
+  c.effort=x; cmdOut(c,'effort',x,`Set effort level to ${x} (saved as your default for new sessions)`); toast('info',`ch.${c.num} ${esc(c.name)} の effort を変えました`,esc(effortLabel(x))); dirty=true; }
+$('osd').addEventListener('click',e=>{ const b=e.target.closest('[data-pick]'); if(b) openPick(chN(sel),b.dataset.pick); });
 
 async function loop(c){ const lid=++c.loopId; await sleep(c.delay);
   while(lid===c.loopId&&c.status!=='off'){
