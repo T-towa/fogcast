@@ -141,7 +141,8 @@ h1,h2,h3{text-wrap:balance}
 .main{display:grid;grid-template-columns:minmax(0,1fr) 388px;gap:16px;align-items:start}
 .tv{--r:32px;padding:12px;display:grid;gap:10px;min-width:0}
 .tv::after{content:"";position:absolute;left:28px;right:28px;top:5px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(255,217,49,.5) 18%,rgba(63,230,214,.5) 82%,transparent);pointer-events:none}
-.screen{position:relative;height:clamp(470px,calc(100vh - 252px),1000px);border-radius:22px;overflow:hidden;
+/* the message box below takes the room it grows by (--askGrow) from here, down to a floor */
+.screen{position:relative;height:clamp(max(300px,calc(470px - var(--askGrow,0px))),calc(100vh - 252px - var(--askGrow,0px)),1000px);border-radius:22px;overflow:hidden;
   background:radial-gradient(120% 90% at 50% 38%,#0d1627 0%,#070b14 55%,#04060b 100%);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),inset 0 0 70px rgba(0,0,0,.85),inset 0 0 140px rgba(63,230,214,.05)}
 .view{position:absolute;inset:0;z-index:1;overflow:auto;padding:16px 18px 18px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
@@ -311,7 +312,8 @@ h1,h2,h3{text-wrap:balance}
 
 /* controls under the screen */
 .ctl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:end;padding:0 2px 2px}
-.ctl textarea{width:100%;min-height:46px;max-height:150px;resize:vertical;background:rgba(0,0,0,.38);border:1px solid var(--rim);border-radius:14px;padding:11px 14px;line-height:1.5}
+/* it grows with what is typed (askFit sets its height), then scrolls inside */
+.ctl textarea{width:100%;min-height:46px;resize:none;overflow-y:hidden;background:rgba(0,0,0,.38);border:1px solid var(--rim);border-radius:14px;padding:11px 14px;line-height:1.5;scrollbar-width:thin}
 .ctl textarea::placeholder{color:var(--faint)}
 .btns{display:flex;flex-wrap:wrap;gap:8px}
 .btn{border:1px solid var(--rim);background:rgba(255,255,255,.06);border-radius:12px;padding:9px 14px;font-size:13px;line-height:1.3;white-space:nowrap}
@@ -654,6 +656,12 @@ h1,h2,h3{text-wrap:balance}
 .po .kd.k-op{color:var(--yolk);border-color:rgba(255,217,49,.45)}
 .po .kd.k-pick{color:var(--teal);border-color:rgba(63,230,214,.45);background:rgba(63,230,214,.08)}
 .po .kd.k-term{color:var(--faint);border-style:dashed}
+/* after @: the channel's files, the folder dim and the name bright */
+.po.pf{grid-template-columns:minmax(0,1fr) auto;align-items:center}
+.po.pf code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.po.pf .dp{color:var(--faint);font-weight:500}
+.po.on.pf .dp{color:rgba(21,17,10,.62)}
+.po .kd.k-dir{color:var(--sky);border-color:rgba(147,180,255,.4)}
 .po:hover{background:rgba(255,255,255,.06)}
 .po.on{background:var(--yolk);color:var(--yolk-ink)}
 .po.on code,.po.on .d,.po.on .h{color:var(--yolk-ink)}
@@ -792,6 +800,12 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 .you .body::after{content:"";position:absolute;right:-10px;bottom:7px;width:14px;height:13px;background:var(--yolk);clip-path:polygon(0 0,100% 62%,0 100%)}
 .you .body code{background:rgba(0,0,0,.12);color:var(--yolk-ink)}
 .you .more{color:rgba(21,17,10,.6)}
+/* under a request from this screen: the files it named with @, as they went to Claude */
+.you .att{display:flex;flex-wrap:wrap;gap:5px 6px;align-items:center;margin-top:8px;padding-top:7px;border-top:1px dashed rgba(21,17,10,.28)}
+.you .att .ak{font:700 10.5px/1 var(--f-body);letter-spacing:.12em;color:rgba(21,17,10,.6)}
+.you .att .af{display:inline-flex;gap:6px;align-items:baseline;max-width:100%;padding:2px 9px 3px;border-radius:999px;background:rgba(21,17,10,.12);font:600 11.5px/1.5 var(--f-mono);overflow-wrap:anywhere}
+.you .att .af small{font:600 10.5px/1 var(--f-body);color:rgba(21,17,10,.62)}
+.you .att .af.bad{background:none;outline:1px dashed rgba(21,17,10,.4);color:rgba(21,17,10,.6)}
 
 .flow{position:relative;padding-left:54px;gap:9px}
 .solo .flow{padding-left:0}

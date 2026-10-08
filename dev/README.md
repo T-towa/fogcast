@@ -12,6 +12,7 @@ Fogcast を作るときに使った確認用のスクリプトです。Mod 本�
 | `probe/` | エンジンの振る舞いを調べる Mod。質問・次の入力の提案・コマンド一覧まわりの出来事を、来た順にファイルへ書き出す | `PLUGIN=$PWD/dev/probe python3 dev/term/run-term.py ... log`（書き出し先は `hooks/register.ts` の `LOG`） |
 | `e2e/live-pick.py` | 模擬ターミナルを相手に、/resume の一覧と再開、見出しのモデルと effort、コマンドの結果（表）を通す | `python3 dev/e2e/live-pick.py 1440x900`（`FONTS` に Web フォントのフォルダ、`OUT` に撮影の置き場所） |
 | `e2e/real-pick.py` | 本物の Claude Code のターミナルを相手に同じことを通す。`run-term.py` の `browser:` 手順から動かす | `... "browser:dev/e2e/real-pick.py 1440x900 all"`（`all`・`resume`・`model`・`effort`・`context`） |
+| `e2e/real-at.py` | 本物の Claude Code のターミナルを相手に、送信欄の `@`（ファイルの一覧・フォルダの中・添付して送る）と、長い文で送信欄が広がってからスクロールになるところを通す。`run-term.py` の `browser:` 手順から動かす | `... "browser:dev/e2e/real-at.py 1440x900"`（作業フォルダに git とファイルを用意しておく。`STUB_FIND` にファイルの中の文字を入れると、API に届いたかが stub.log に出る） |
 | `e2e/live-*.py` | 本物の受け皿と模擬ターミナル（`test/simulate.mjs`）を相手に、ブラウザ（Playwright）で画面の操作を通す | `python3 dev/e2e/live-new.py` など（要 Playwright と Chromium） |
 | `e2e/demo-*.py` | デモ版の画面（`ui-src/demo.html`）の動きを撮影して確かめる | 同上 |
 | `e2e/set-shot.py`・`setstates.py`・`guide-*.py` | 設定ボタンの状態と、取扱説明書の各節を撮影する | 同上 |

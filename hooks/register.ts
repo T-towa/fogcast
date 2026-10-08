@@ -4,13 +4,13 @@
 // Nothing here adds to the model's context: the hooks watch and pass everything on as
 // it was. The one exception is /fog's one-line answer, which says where the screen is.
 import type { Register } from 'claude-code'
-import { linkFor, verb, summarize, outline, fileChange, todosOf, textOf, srcLabel, statusLine, older, isLocalSrc, midTurnText, clip, str, keepText, questionsOf, answersFor, commandRow, effortLevels, modelKey, settingOf, effortSet, type Reading } from './shape'
+import { linkFor, verb, summarize, outline, fileChange, todosOf, textOf, srcLabel, statusLine, older, isLocalSrc, midTurnText, clip, str, keepText, questionsOf, answersFor, commandRow, effortLevels, modelKey, settingOf, effortSet, mentionsOf, mentionCandidates, numbered, type Reading } from './shape'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any
 
 /** Keep in step with .claude-plugin/plugin.json and hub/hub.mjs (a test checks). */
-export const VERSION = '0.5.2'
+export const VERSION = '0.5.3'
 const DEFAULT_PORT = 4317
 /** Claude Code drops a toast asked to stay longer than this (0.1.0 lost its pairing notice that way). */
 const TOAST_MAX = 60000
@@ -56,7 +56,7 @@ const st = {
   /** the address with its key, drawn under /fog's row when no browser could be opened (the stored row, which the model reads, never has it) */
   fogShow: '',
   /** prompts the screen sent, until their turn starts: the hub's id rides along so the screen can swap its pending bubble for the turn */
-  submitted: [] as Array<{ text: string; cid: string }>,
+  submitted: [] as Array<{ text: string; cid: string; files?: Attached[] }>,
   /** each command's argument hint (`[model]`), as the engine lists it for the typeahead */
   hints: new Map<string, string>(),
   /** what each agent type is for (its definition's description), as the engine offers it to the model */
@@ -334,8 +334,12 @@ function perform($: Any, c: Any) {
   const fail = (err: unknown) => push({ k: 'did', cid: c.id, what: c.type, ok: false, error: clip(String((err as Any)?.message ?? err), 200) })
   try {
     if (c.type === 'prompt') {
-      st.submitted.push({ text: String(c.text), cid: String(c.id) }); if (st.submitted.length > 8) st.submitted.shift()
-      void $.prompt.submit({ text: String(c.text), asUser: true }).catch(fail)        // starts once the session is idle
+      const text = String(c.text), entry: { text: string; cid: string; files?: Attached[] } = { text, cid: String(c.id) }
+      st.submitted.push(entry); if (st.submitted.length > 8) st.submitted.shift()
+      if (!mentionsOf(text).length) void $.prompt.submit({ text, asUser: true }).catch(fail)        // starts once the session is idle
+      // with files named by @: while a turn runs, the files and the prompt wait for it together, so the row lands right before the prompt
+      else if (st.turnId) st.afterTurn.push(() => { void sendPrompt($, text, entry).catch(fail) })
+      else void sendPrompt($, text, entry).catch(fail)
     } else if (c.type === 'answer') {
       st.qWait.get(String(c.qid))?.(c.answers)                                          // a question still open here takes it
     } else if (c.type === 'command') {
@@ -417,6 +421,72 @@ function cmdTell(run: CmdRun) {
   if (run.name === 'resume' && !run.text.trim()) return
   run.told = true
   push({ k: 'cmd', name: run.name, args: run.args, text: keepText(run.text, 5000), via: run.via, run: run.id })
+}
+
+/* ---------------- files named with @ in a prompt from the screen ---------------- */
+// The terminal attaches what a typed prompt names with @; a plugin's prompt gets no such expansion. So the files go in
+// here, as a row the model reads (the person does not see it) right before the prompt, read as the Read tool shows
+// them. Only what lies inside this terminal's folder is read; anything else stays a name, for Claude to read or not.
+type Attached = { p: string; kind?: 'file' | 'dir'; lines?: number; shown?: number; err?: string }
+const PER_FILE = 100_000, ALL_FILES = 200_000, MAX_LINES = 2000, MAX_BYTES = 1 << 20
+const NOT_TEXT = /\.(png|jpe?g|gif|webp|bmp|ico|pdf|zip|gz|tgz|7z|jar|exe|dll|so|dylib|woff2?|ttf|otf|mp[34]|mov|wav)$/i
+async function attachments($: Any, text: string): Promise<{ row: string; items: Attached[] }> {
+  const names = mentionsOf(text)
+  const items: Attached[] = [], parts: string[] = []
+  if (!names.length) return { row: '', items }
+  // every path is read from this terminal's folder (what the terminal's @ resolves against), and must land inside it
+  const base = String(st.cwd || '').replace(/[\\/]+$/, '')
+  const at = (p: string) => `${base}/${p}`
+  const root = (await $.fs.stat(base || '.', { resolve: true }).catch(() => null))?.realPath || base
+  const inside = (real: string) => !!real && (real === root || real.startsWith(root.endsWith('/') ? root : root + '/'))
+  let budget = ALL_FILES
+  for (const name of names) {
+    if (/^(~|\/|[A-Za-z]:[\\/]|\\\\)/.test(name)) { items.push({ p: name, err: 'outside' }); continue }
+    let hit: { p: string; s: Any } | null = null
+    for (const p of mentionCandidates(name)) {
+      const s = await $.fs.stat(at(p), { resolve: true }).catch(() => null)
+      if (s && s.realPath) { hit = { p, s }; break }
+    }
+    if (!hit) { items.push({ p: name, err: 'missing' }); continue }
+    const { p, s } = hit
+    if (!inside(s.realPath)) { items.push({ p, err: 'outside' }); continue }
+    if (s.kind !== 'file' && s.kind !== 'dir') { items.push({ p, err: 'missing' }); continue }
+    if (s.kind === 'dir') {
+      const list = ((await $.fs.list(at(p)).catch(() => [])) as Any[]).filter(x => x && x.name)
+      const names2 = list.map(x => x.kind === 'dir' ? `${x.name}/` : x.name).sort((a: string, b: string) => Number(b.endsWith('/')) - Number(a.endsWith('/')) || a.localeCompare(b))
+      const body = names2.slice(0, 300).join('\n') + (names2.length > 300 ? `\n… (${names2.length - 300} more)` : '')
+      if (body.length > budget) { items.push({ p, kind: 'dir', err: 'budget' }); continue }
+      budget -= body.length
+      parts.push(`<directory path="${p.replace(/\/?$/, '/')}">\n${body}\n</directory>`)
+      items.push({ p: p.replace(/\/?$/, '/'), kind: 'dir', lines: names2.length })
+      continue
+    }
+    if (NOT_TEXT.test(p)) { items.push({ p, kind: 'file', err: 'binary' }); continue }
+    if (Number(s.size) > MAX_BYTES) { items.push({ p, kind: 'file', err: 'large' }); continue }
+    const raw = await $.fs.read(at(p)).catch(() => null)
+    if (typeof raw !== 'string') { items.push({ p, kind: 'file', err: 'missing' }); continue }
+    if (raw.includes('\u0000')) { items.push({ p, kind: 'file', err: 'binary' }); continue }
+    if (budget < 2000) { items.push({ p, kind: 'file', err: 'budget' }); continue }
+    const n = numbered(raw, MAX_LINES, Math.min(PER_FILE, budget))
+    budget -= n.body.length
+    const range = n.shown < n.lines ? `1-${n.shown} of ${n.lines}` : String(n.lines)
+    parts.push(`<file path="${p}" lines="${range}">\n${n.body}\n</file>${n.shown < n.lines ? `\n(The rest of ${p} is not shown here; read it with the Read tool when needed.)` : ''}`)
+    items.push({ p, kind: 'file', lines: n.lines, shown: n.shown })
+  }
+  const row = parts.length
+    ? `The user named these with @ in the message that follows, sent from the Fogcast screen (where Claude Code does not attach @ mentions itself). Here is what they held when it was sent, as the terminal's @ would have attached them:\n\n${parts.join('\n\n')}`
+    : ''
+  return { row, items }
+}
+/** A prompt from the screen: the files it names go in first, then the prompt, as the person's own words. */
+async function sendPrompt($: Any, text: string, entry: { files?: Attached[] }) {
+  const a = await attachments($, text)
+  if (a.items.length) entry.files = a.items
+  if (a.row) {
+    const r = await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: a.row }] } }).catch(() => null)
+    if (!r || r.deny) entry.files = a.items.map(x => (x.err ? x : { p: x.p, kind: x.kind, err: 'refused' }))
+  }
+  await $.prompt.submit({ text, asUser: true })
 }
 
 /* ---------------- approving from the screen (only when it was turned on and paired there) ---------------- */
@@ -534,9 +604,9 @@ export const register: Register = (on) => {
       const text = lc ? `/${lc.name}${lc.args ? ' ' + lc.args : ''}` : e.text
       const i = st.submitted.findIndex(x => x.text === e.text)
       const via = i >= 0 || lc?.screen ? 'screen' : undefined
-      const cid = i >= 0 ? st.submitted.splice(i, 1)[0]!.cid : undefined
+      const sent = i >= 0 ? st.submitted.splice(i, 1)[0]! : undefined
       st.lastCmd = null
-      push({ k: 'turn', id: e.turnId, text, via, cid })
+      push({ k: 'turn', id: e.turnId, text, via, cid: sent?.cid, ...(sent?.files ? { files: sent.files } : {}) })
     } catch {}
     return next(e)
   })

@@ -58,7 +58,7 @@ SESS=[]
 def evline(e):
     k=e.get('k'); keep={'resumed':('from','sid','title','src'),'hist':('more','partial'),'cmd':('name','args','text','out','via'),'cmdOut':('name','text','ref'),
         'model':('from','to','src'),'info':('sid','model','effort','tp','branch'),'clear':('prev',),'end':('reason','resume'),'did':('what','ok','error'),
-        'turn':('text','via'),'say':('text',),'turnEnd':('aborted',),'compact':('trigger',),'note':('text',)}.get(k)
+        'turn':('text','via','files'),'say':('text',),'turnEnd':('aborted',),'compact':('trigger',),'note':('text',)}.get(k)
     if keep is None: return None
     d={x:e[x] for x in keep if x in e}
     for x in ('from','sid','prev','resume'):

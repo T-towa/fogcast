@@ -206,7 +206,7 @@ const EVH={
   turn(c,ev){ foldOld(c); if(ev.cid) pendDone(c,x=>x.id===ev.cid);
     const li=document.createElement('li'); li.className='turn'; const n=ev.n||++c.turnNo; c.turnNo=Math.max(c.turnNo,n);
     li.innerHTML=`${foldHTML(n,ev.t,esc(clip1(ev.text,120)||'（続き）'),'進行中')}
-      <div class="full">${youHTML(userText(ev.text||'（続き）'),ev.via==='screen'?'この画面から':'ターミナルから',ev.t)}<div class="flow">${aiHead(c,ev.t)}</div><div class="turnFt"></div></div>`;
+      <div class="full">${youHTML(userText(ev.text||'（続き）'),ev.via==='screen'?'この画面から':'ターミナルから',ev.t,filesHTML(ev.files))}<div class="flow">${aiHead(c,ev.t)}</div><div class="turnFt"></div></div>`;
     foldBind(li); li.dataset.turn=ev.id||'';
     c.log.appendChild(li); c.cur={li,flow:li.querySelector('.flow'),ops:0,id:ev.id};
     if(!c.role&&ev.text) c.role=clip1(ev.text,28); },

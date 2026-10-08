@@ -41,11 +41,11 @@
       </div>
       <form class="ctl" id="ctl" hidden autocomplete="off">
         <div class="pal" id="pal" hidden>
-          <div class="palhd"><span class="tag teal">コマンド</span><span class="s" id="palSub">このチャンネルで使えるもの</span></div>
+          <div class="palhd"><span class="tag teal" id="palTag">コマンド</span><span class="s" id="palSub">このチャンネルで使えるもの</span></div>
           <ul id="palList" role="listbox" aria-label="コマンド"></ul>
           <div class="palft">↑↓ で選ぶ · Enter で入れる · Esc で閉じる</div>
         </div>
-        <textarea id="ask" rows="1" aria-label="このチャンネルに送る文" aria-autocomplete="list" aria-controls="palList" aria-expanded="false" placeholder="このチャンネルに送る（Enter で送信、Shift+Enter で改行）"></textarea>
+        <textarea id="ask" rows="1" aria-label="このチャンネルに送る文（「/」でコマンド、「@」でファイル）" aria-autocomplete="list" aria-controls="palList" aria-expanded="false" placeholder="このチャンネルに送る（Enter で送信、Shift+Enter で改行）"></textarea>
         <div class="btns">
           <button class="btn" type="button" id="bCmd" aria-label="コマンドの一覧を開く"><b>/</b> コマンド</button>
           <button class="btn primary" type="submit" id="bSend">送信</button>
@@ -53,7 +53,7 @@
           <button class="btn" type="button" id="bCompact">圧縮</button>
           <button class="btn danger" type="button" id="bForget" hidden>チャンネルを消す</button>
         </div>
-        <div class="ctlFoot"><div class="hint" id="ctlHint">送った文は、そのターミナルで入力したのと同じ扱いになります。「/」で始めると組み込みのコマンドやスキルを実行できます。作業中に送ると、終わってから始まります。</div><button class="setBtn" type="button" id="bSetCh"><span class="in"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg><span class="l"><b>設定</b><small class="setSt">画面で承認<em class="pill">オフ</em></small></span></span></button></div>
+        <div class="ctlFoot"><div class="hint" id="ctlHint">送った文は、そのターミナルで入力したのと同じ扱いになります。「/」で始めると組み込みのコマンドやスキルを実行でき、「@」でファイルを指定できます。作業中に送ると、終わってから始まります。</div><button class="setBtn" type="button" id="bSetCh"><span class="in"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg><span class="l"><b>設定</b><small class="setSt">画面で承認<em class="pill">オフ</em></small></span></span></button></div>
       </form>
       <div class="ctl0" id="ctl0"><span class="tips" id="ctl0Tips"><span><kbd>0</kbd>〜<kbd>9</kbd> でチャンネル切り替え</span><span class="apTip">承認はターミナルの確認ダイアログで行います</span><span>タイルを押すとそのチャンネルを開きます</span></span><button class="setBtn" type="button" id="bSet"><span class="in"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg><span class="l"><b>設定</b><small class="setSt">画面で承認<em class="pill">オフ</em></small></span></span></button></div>
     </section>

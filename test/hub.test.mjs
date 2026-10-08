@@ -2,7 +2,7 @@
 // mod and the screen do.  node --test test/
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
@@ -615,5 +615,53 @@ test('model and effort from the screen are checked against the terminal\'s own c
   const marked = await s.wait(m => m.type === 'chan' && m.chan.id === 'chan-me' && m.chan.models && m.chan.models.value === 'sonnet')
   assert.equal(marked.chan.models.options.includes('sonnet'), true)
   assert.equal(s.msgs.filter(m => m.type === 'ev' && m.ev.k === 'models').length, 0)       // state, not a line of the conversation
+  s.stop()
+})
+
+test('@ in the message box lists the terminal\'s files: what git does not ignore, folders too, best match first; outside a repository the folder is walked', async () => {
+  const proj = mkdtempSync(join(tmpdir(), 'fogcast-proj-'))
+  const put = (rel, text = 'x', ageMin = 60) => { const f = join(proj, rel); mkdirSync(dirname(f), { recursive: true }); writeFileSync(f, text); const t = (Date.now() - ageMin * 60e3) / 1000; utimesSync(f, t, t) }
+  put('README.md', '# r', 50); put('src/app.ts', 'a', 5); put('src/lib/apply.ts', 'b', 30); put('src/lib/util.ts', 'c', 40); put('docs/api.md', 'd', 20)
+  put('secret.env', 's', 1); put('node_modules/pkg/index.js', 'n', 2); put('.gitignore', 'secret.env\nnode_modules/\n', 90)
+  const git = spawnSync('git', ['-C', proj, 'init', '-q']).status === 0
+  await req('POST', '/api/mod/hello', { chan: 'chan-files', mod: '0.5.3', sid: U(30), cwd: proj })
+  const files = async q => (await req('POST', '/api/ui/files', { chan: 'chan-files', q })).json
+  const app = await files('app')
+  assert.equal(app.ok, true)
+  assert.deepEqual(app.files.slice(0, 2).map(f => f.p), ['src/app.ts', 'src/lib/apply.ts'])     // the name that starts with it, the shorter first
+  assert.equal((await files('src/l')).files[0].p, 'src/lib')                                  // a folder, by its path
+  assert.equal((await files('src/l')).files[0].d, true)
+  const all = (await files('s')).files.map(f => f.p)
+  assert.equal(all.includes('node_modules/pkg/index.js'), false)
+  if (git) assert.equal(all.includes('secret.env'), false)                                     // ignored by git, as the terminal's @ leaves it out
+  const recent = await files('')
+  assert.equal(recent.recent, true)
+  assert.deepEqual(recent.files.slice(0, 2).map(f => f.p), git ? ['src/app.ts', 'docs/api.md'] : ['secret.env', 'src/app.ts'])
+  assert.equal((await files('zzzq')).files.length, 0)
+  assert.equal((await req('POST', '/api/ui/files', { chan: 'nope', q: 'a' })).status, 404)
+  // outside a repository: walked, the folders that are never meant left out
+  const plain = mkdtempSync(join(tmpdir(), 'fogcast-plain-'))
+  mkdirSync(join(plain, 'node_modules', 'x'), { recursive: true }); writeFileSync(join(plain, 'node_modules', 'x', 'i.js'), 'n'); writeFileSync(join(plain, 'notes.txt'), 'n')
+  await req('POST', '/api/mod/hello', { chan: 'chan-plain', mod: '0.5.3', sid: U(31), cwd: plain })
+  const listed = async q => (await req('POST', '/api/ui/files', { chan: 'chan-plain', q })).json.files.map(f => f.p)
+  assert.deepEqual(await listed('notes'), ['notes.txt'])
+  assert.deepEqual(await listed('i.js'), [])
+  // a terminal whose folder is gone: said so
+  await req('POST', '/api/mod/hello', { chan: 'chan-gone', mod: '0.5.3', sid: U(32), cwd: join(plain, 'gone') })
+  const gone = (await req('POST', '/api/ui/files', { chan: 'chan-gone', q: 'a' })).json
+  assert.equal(gone.ok, false)
+  rmSync(proj, { recursive: true, force: true }); rmSync(plain, { recursive: true, force: true })
+})
+
+test('a turn carries the files its prompt named with @, as the terminal attached them', async () => {
+  await req('POST', '/api/mod/hello', { chan: 'chan-att', mod: '0.5.3', sid: U(33), cwd: '/home/me/dev/att' })
+  const s = stream('screen-att'); await s.wait(m => m.type === 'hello')
+  await req('POST', '/api/mod/sync', { chan: 'chan-att', events: [{ k: 'turn', t: Date.now(), id: 'ta', text: '@src/a.ts を見て', via: 'screen', files: [
+    { p: 'src/a.ts', kind: 'file', lines: 120, shown: 120 }, { p: 'src/', kind: 'dir', lines: 4 }, { p: 'x.ts', err: 'missing' }, { p: 'y', err: '<script>' }, { nope: 1 },
+  ] }] })
+  const t = await s.wait(m => m.type === 'ev' && m.ev.k === 'turn' && m.ev.id === 'ta')
+  assert.deepEqual(t.ev.files, [
+    { p: 'src/a.ts', kind: 'file', lines: 120, shown: 120 }, { p: 'src/', kind: 'dir', lines: 4 }, { p: 'x.ts', kind: 'file', err: 'missing' }, { p: 'y', kind: 'file' },
+  ])
   s.stop()
 })

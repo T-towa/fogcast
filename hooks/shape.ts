@@ -201,6 +201,47 @@ export function effortSet(text: string): string {
   return /(?:set effort level to|effort level set to)\s+([a-z]+)/i.exec(String(text || ''))?.[1]?.toLowerCase() ?? ''
 }
 
+/**
+ * The files a prompt names with @ (`@src/a.ts`, `@"notes/my file.md"`), as the terminal takes them: at the start or
+ * after a space, an opening bracket or Japanese punctuation (not inside a word, so mail@example.com is no mention),
+ * ten at most, each once.
+ */
+export function mentionsOf(text: string): string[] {
+  const out: string[] = []
+  const re = /(^|[\s(（「『【、。，．：；])@(?:"([^"\n]+)"|([^\s"]+))/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(String(text || ''))) && out.length < 10) {
+    const p = (m[2] ?? m[3] ?? '').trim()
+    if (p && !out.includes(p)) out.push(p)
+  }
+  return out
+}
+
+/**
+ * The spellings a mention may stand for, longest first: as written, without the punctuation that follows it in a
+ * sentence, and its plain-path head (`@src/a.tsを直して` names src/a.ts; a path with Japanese in it is tried whole first).
+ */
+export function mentionCandidates(p: string): string[] {
+  const out = [p]
+  const trimmed = p.replace(/[,.;:!?)\]}」』】、。，．！？）]+$/u, ''); if (trimmed && !out.includes(trimmed)) out.push(trimmed)
+  const head = /^[\w./~@+#%=,-]+/.exec(p)?.[0]?.replace(/[,.]+$/, ''); if (head && !out.includes(head)) out.push(head)
+  return out
+}
+
+/** A file's text as the Read tool shows it to the model: numbered lines, long ones cut, at most `maxLines` and `maxChars`. */
+export function numbered(text: string, maxLines: number, maxChars: number): { body: string; lines: number; shown: number } {
+  const all = String(text).replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n')
+  const out: string[] = []
+  let size = 0
+  for (let i = 0; i < all.length && i < maxLines; i++) {
+    const l = all[i]!.length > 2000 ? all[i]!.slice(0, 2000) + '…' : all[i]!
+    const row = `${String(i + 1).padStart(6)}\t${l}`
+    if (size + row.length > maxChars && out.length) break
+    out.push(row); size += row.length + 1
+  }
+  return { body: out.join('\n'), lines: all.length, shown: out.length }
+}
+
 /** A longer text kept with its line breaks (a skill's description): trimmed, blank runs closed up, cut at `n`. */
 export function keepText(s: string, n: number): string {
   const t = s.replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()

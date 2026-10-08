@@ -65,7 +65,7 @@ function hub(on: Any, opts: { approvals?: boolean; decision?: string; wait?: () 
     const body = e.init?.body ? JSON.parse(e.init.body) : null
     const ok = (v: unknown) => ({ value: { status: 200, ok: true, headers: {}, text: JSON.stringify(v) } })
     if (path === '/api/health') {
-      const v = opts.version ? opts.version() : '0.5.2'
+      const v = opts.version ? opts.version() : '0.5.3'
       return v === null ? { value: { status: 502, ok: false, headers: {}, text: '' } } : ok({ ok: true, app: 'fogcast', version: v })
     }
     if (e.init?.headers?.['x-fogcast-token'] !== TOKEN) return { value: { status: 401, ok: false, headers: {}, text: '{}' } }
@@ -152,6 +152,70 @@ test('what the screen sends is run in the terminal', async ($: Any, on: Any) => 
   await clock.settle()
   expect(submitted.map(e => e.text)).toEqual(['続けて'])
   expect(ran.map(e => e.command)).toEqual(['context'])
+})
+
+// a project for @: the terminal's folder is /home/t/dev/shop; a link inside it leads out, a file beside it is outside
+const ROOT = '/home/t/dev/shop'
+const FILES: Record<string, string> = { 'src/a.ts': 'const a = 1\nexport default a\n', 'notes/my file.md': '# メモ\n', 'logo.png': 'PNG' }
+const norm = (p: string) => { const out: string[] = []; for (const s of p.split('/')) { if (s === '..') out.pop(); else if (s && s !== '.') out.push(s) } return '/' + out.join('/') }
+function project(on: Any) {
+  const rel = (p: string) => { const a = norm(String(p)); return a === ROOT ? '.' : a.startsWith(ROOT + '/') ? a.slice(ROOT.length + 1) : a }
+  on('fs.read', (_$: Any, e: Any) => {
+    const p = String(e.path)
+    if (p.endsWith('/token')) return { value: TOKEN }
+    const r = rel(p); if (r in FILES) return { value: FILES[r] }
+    throw Object.assign(new Error(`ENOENT: ${p}`), { code: 'ENOENT' })
+  })
+  on('fs.stat', (_$: Any, e: Any) => {
+    const r = rel(e.path)
+    const isDir = r === '.' || r === 'src' || r === 'notes', isFile = r in FILES || r === 'out-link' || r === '/home/t/dev/secret.txt'
+    if (!isDir && !isFile) throw Object.assign(new Error(`ENOENT: ${r}`), { code: 'ENOENT' })
+    const realPath = r === 'out-link' ? '/home/t/secret.txt' : r.startsWith('/') ? r : r === '.' ? ROOT : `${ROOT}/${r}`
+    return { value: { kind: isDir ? 'dir' : 'file', size: isFile ? (FILES[r] ?? 'x').length : 0, mtimeMs: 1, isLink: r === 'out-link', realPath } }
+  })
+  on('fs.list', (_$: Any, e: Any) => ({ value: rel(e.path) === 'src' ? [{ name: 'a.ts', kind: 'file', size: 30, mtimeMs: 1, isLink: false }, { name: 'lib', kind: 'dir', size: 0, mtimeMs: 0, isLink: false }] : [] }))
+}
+
+test('a prompt from the screen that names files with @ brings them in first, as the terminal would; only what lies in its folder is read', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on, ['fs.read', 'fs.list']); project(on); const h = hub(on)
+  const order: string[] = [], appended: Any[] = []
+  on('session.append', async (_$: Any, e: Any, next: Any) => { if (e.door === 'note') { appended.push(e); order.push('row') } return next(e) })
+  on('prompt.submit', (_$: Any, e: Any) => { order.push('prompt'); return { text: e.text } })
+  await started($, on, clock)
+  const text = '@src/a.tsと @"notes/my file.md" と @src/ を見て。@../secret.txt @out-link @/etc/passwd @logo.png @nothere.ts も'
+  h.queue.push({ id: 'p1', type: 'prompt', text })
+  await clock.advance(700); await clock.settle()
+  expect(order).toEqual(['row', 'prompt'])
+  const row = appended[0].message.content[0].text as string
+  expect(row).toContain('<file path="src/a.ts" lines="2">\n     1\tconst a = 1\n     2\texport default a\n</file>')
+  expect(row).toContain('<file path="notes/my file.md" lines="1">')
+  expect(row).toContain('<directory path="src/">\nlib/\na.ts\n</directory>')
+  expect(row).not.toContain('secret')
+  await $.turn.start({ text, turnId: 'tp' })
+  await clock.advance(700)
+  const t = h.events.find(e => e.k === 'turn')
+  expect([t.via, t.cid]).toEqual(['screen', 'p1'])
+  expect(t.files).toEqual([
+    { p: 'src/a.ts', kind: 'file', lines: 2, shown: 2 }, { p: 'notes/my file.md', kind: 'file', lines: 1, shown: 1 }, { p: 'src/', kind: 'dir', lines: 2 },
+    { p: '../secret.txt', err: 'outside' }, { p: 'out-link', err: 'outside' }, { p: '/etc/passwd', err: 'outside' }, { p: 'logo.png', kind: 'file', err: 'binary' }, { p: 'nothere.ts', err: 'missing' },
+  ])
+})
+
+test('a prompt with @ sent while a turn runs waits for it, its files going in right before it', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on, ['fs.read', 'fs.list']); project(on); const h = hub(on)
+  const order: string[] = []
+  on('session.append', async (_$: Any, e: Any, next: Any) => { if (e.door === 'note') order.push('row') ; return next(e) })
+  on('prompt.submit', (_$: Any, e: Any) => { order.push(`prompt:${e.text}`); return { text: e.text } })
+  await started($, on, clock)
+  await $.turn.start({ text: '作業中', turnId: 'tw' })
+  h.queue.push({ id: 'p2', type: 'prompt', text: '@src/a.ts を直して' }, { id: 'p3', type: 'prompt', text: 'ふつうの依頼' })
+  await clock.advance(700); await clock.settle()
+  expect(order).toEqual(['prompt:ふつうの依頼'])               // one without @ is queued by Claude Code at once, as before
+  await $.turn.complete({ answer: 'ok', durationMs: 10, isAborted: false, turnId: 'tw', reason: 'answer', usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, model: 'm' } })
+  await clock.advance(700); await clock.settle()
+  expect(order).toEqual(['prompt:ふつうの依頼', 'row', 'prompt:@src/a.ts を直して'])
 })
 
 test('a dialog stays in the terminal unless the screen was paired', async ($: Any, on: Any) => {
@@ -296,7 +360,7 @@ test('a hub left running from an older version is stopped once, and this version
   on('process.run', (_$: Any, e: Any) => {
     runs.push([...e.argv])
     if (e.argv.includes('--stop')) version = null
-    if (e.argv.includes('--daemon')) version = '0.5.2'
+    if (e.argv.includes('--daemon')) version = '0.5.3'
     return { value: { exitCode: 0, stdout: 'main\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   hub(on, { version: () => version })

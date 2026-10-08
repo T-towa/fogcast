@@ -13,7 +13,16 @@ function tail(c){ const p=c.pendLi; if(p&&p.isConnected&&c.log.lastElementChild!
 const AV='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><path d="M3.5 8c2.2-1.6 4.3-1.6 6.5 0s4.3 1.6 6.5 0c1.2-.9 2.4-1.1 4-.6"/><path d="M3.5 13c2.2-1.6 4.3-1.6 6.5 0s4.3 1.6 6.5 0c1.2-.9 2.4-1.1 4-.6"/><path d="M3.5 18c2.2-1.6 4.3-1.6 6.5 0s4.3 1.6 6.5 0"/></svg>';
 const mdl=c=> typeof modelName==='function'? modelName(c.model) : (c.model||'');
 function aiHead(c,t){ const m=mdl(c); return `<div class="aihd"><i class="av">${AV}</i><b>Claude</b><span>${esc(m)}${m&&t?' · ':''}${t?hm(t):''}</span></div>`; }
-function youHTML(body,src,t){ return `<div class="you"><div class="meta"><span>${src}</span>${t?`<time>${hm(t)}</time>`:''}</div><div class="body">${body}</div></div>`; }
+function youHTML(body,src,t,extra){ return `<div class="you"><div class="meta"><span>${src}</span>${t?`<time>${hm(t)}</time>`:''}</div><div class="body">${body}${extra||''}</div></div>`; }
+/* the files a prompt from this screen named with @: what went to Claude with it, and what did not (and why) */
+const ATT_ERR={missing:['見つかりません','このターミナルのフォルダにありません。'],outside:['フォルダの外','このターミナルのフォルダの外なので添付していません。Claude が必要なら自分で読みます。'],
+  binary:['テキストでない','画像やバイナリは添付していません。Claude が必要なら Read で読みます。'],large:['大きすぎます','1 MB を超えるので添付していません。Claude が必要なら Read で読みます。'],
+  budget:['上限超え','ほかのファイルで添付の上限（20 万字）に達したので、添付していません。'],refused:['添付できません','Claude Code が受け付けませんでした。']};
+function filesHTML(files){ if(!files||!files.length) return '';
+  return `<div class="att"><span class="ak">添付</span>${files.map(f=>{ const e=f.err&&ATT_ERR[f.err];
+    if(f.err) return `<span class="af bad" title="${esc(e?e[1]:f.err)}">@${esc(f.p)}<small>${esc(e?e[0]:f.err)}</small></span>`;
+    const n= f.kind==='dir'? `${fmtN(f.lines||0)} 件` : f.shown&&f.lines&&f.shown<f.lines? `${fmtN(f.shown)} / ${fmtN(f.lines)} 行` : `${fmtN(f.lines||0)} 行`;
+    return `<span class="af" title="${f.kind==='dir'?'フォルダの中の一覧':'ファイルの中身'}を、この依頼といっしょに Claude に渡しました">@${esc(f.p)}<small>${n}</small></span>`; }).join('')}</div>`; }
 function foldHTML(n,t,preview,k){ return `<button class="fold" type="button" aria-expanded="true"><span class="tn">ターン ${n}</span>${t?`<span class="tm">${hm(t)}</span>`:''}<span class="p">${preview}</span><span class="k">${k}</span><span class="chev" aria-hidden="true"></span></button>`; }
 /* a turn's header opens and closes it; one the person opened or closed by hand stays as they left it */
 function foldBind(li){ const b=li.querySelector('.fold'); b.setAttribute('aria-expanded',String(!li.classList.contains('folded')));
@@ -117,12 +126,12 @@ async function demoAsk(c,ev,ops,tid){
   q.qs.forEach((x,i)=>{ const a=answer&&answer[i]; A[x.q]= a? [...a.pick.map(k=>x.opts[k].l),...(a.text?[a.text]:[])].join(', ') : x.opts[0].l; });
   qDone(card,{by,answers:A}); li.querySelector('.r').textContent=Object.values(A).join(' / ');
   block(c,'work',q.qs[0].q); setStatus(c,'work',by==='screen'?'この画面で答えました':'質問に答えました'); await sleep(700); }
-async function turn(c,T,text,byUser){
+async function turn(c,T,text,byUser,files){
   const tid=++c.turnId, t0=Date.now(), num=++c.turnNo;
   foldOld(c); c.suggest='';
   const li=document.createElement('li'); li.className='turn';
   li.innerHTML=`${foldHTML(num,t0,esc(strip(text)),'進行中')}
-    <div class="full">${youHTML(text,byUser?'この画面から':'ターミナルから',t0)}<div class="flow">${aiHead(c,t0)}<ul class="ops"></ul><div class="ans"></div></div><div class="turnFt"></div></div>`;
+    <div class="full">${youHTML(text,byUser?'この画面から':'ターミナルから',t0,filesHTML(files))}<div class="flow">${aiHead(c,t0)}<ul class="ops"></ul><div class="ans"></div></div><div class="turnFt"></div></div>`;
   foldBind(li);
   c.log.appendChild(li); tail(c); scrollIf(c);
   const ops=li.querySelector('.ops'), ans=li.querySelector('.ans'), st={ops:0,tok:0};
@@ -340,7 +349,7 @@ async function loop(c){ const lid=++c.loopId; await sleep(c.delay);
     if(!c.script.length) continue;
     const T=c.script[c.idx%c.script.length]; c.idx++;
     if(it&&it.lid) pendDone(c,x=>x.lid===it.lid);       // its bubble gives way to the turn
-    await turn(c,T,it? it.text : esc(T.prompt),!!it);
+    await turn(c,T,it? it.text : esc(T.prompt),!!it,it&&it.files);
     await sleep(2500+Math.random()*3000); } }
 function stopTurn(c){ if(c.status!=='work'&&c.status!=='wait') return; c.turnId++;
   c.log.querySelectorAll('.op.run').forEach(li=>{ li.classList.remove('run'); li.querySelector('.r').textContent='中断'; });
@@ -355,7 +364,7 @@ function stopTurn(c){ if(c.status!=='work'&&c.status!=='wait') return; c.turnId+
 function select(n){ if(n!==0&&!chN(n)) return; const changed=n!==sel; sel=n;
   const swap=()=>{ if(sel!==n) return;
     CH.forEach(c=>{ c.log.hidden= c.num!==n; });
-    $('wall').hidden= n!==0; $('chan').hidden= n===0; $('ctl').hidden= n===0; $('ctl0').hidden= n!==0; closePal();
+    $('wall').hidden= n!==0; $('chan').hidden= n===0; $('ctl').hidden= n===0; $('ctl0').hidden= n!==0; closePal(); askFit();
     if(n){ renderOsd(chN(n)); requestAnimationFrame(()=>{ $('chan').scrollTop=$('chan').scrollHeight; }); }
     else { $('sfog').style.setProperty('--fog','0'); $('screen').classList.remove('off'); renderWall(); renderGuide(); }
     if(rtab==='D') renderDetail(true); if(rtab==='S') renderSkills(true); };
@@ -381,24 +390,83 @@ document.addEventListener('keydown',e=>{
   if(e.key==='/'&&sel){ e.preventDefault(); $('ask').value='/'; $('ask').focus(); openPal(); } });
 
 /* ================= composer and its command palette ================= */
-const pal={items:[],i:0,open:false};
+const pal={items:[],i:0,open:false,mode:'cmd',tok:null,seq:0,wait:false,err:'',recent:false};
 function palQuery(){ const v=$('ask').value; return v.startsWith('/')? v.slice(1).split(/\s/)[0].toLowerCase() : ''; }
-function openPal(){ const c=chN(sel); if(!c||c.status==='off') return; const q=palQuery();
+function openPal(){ const c=chN(sel); if(!c||c.status==='off') return; const q=palQuery(); pal.mode='cmd'; pal.seq++; $('palTag').textContent='コマンド';
   const all=commandsFor(c); pal.items=all.filter(x=>!q||x.n.toLowerCase().includes(q)||x.d.toLowerCase().includes(q));
   pal.items.sort((a,b)=>(q&&a.n.startsWith(q)?0:1)-(q&&b.n.startsWith(q)?0:1)); pal.i=Math.min(pal.i,Math.max(0,pal.items.length-1));
   $('palSub').textContent=`ch.${c.num} ${c.name} で使えるもの ${all.length} 件（起動したフォルダで変わります）`;
   renderPal(); $('pal').hidden=false; pal.open=true; $('ask').setAttribute('aria-expanded','true'); }
-function closePal(){ $('pal').hidden=true; pal.open=false; $('ask').setAttribute('aria-expanded','false'); $('ask').removeAttribute('aria-activedescendant'); }
-function renderPal(){ let g='', html='';
+function closePal(){ const was=pal.open; $('pal').hidden=true; pal.open=false; pal.seq++; $('ask').setAttribute('aria-expanded','false'); $('ask').removeAttribute('aria-activedescendant'); if(was) ctlHint(); }
+function renderPal(){ if(pal.mode==='file'){ renderFiles(); return; } let g='', html='';
   const groups={}; pal.items.forEach(x=>{ groups[x.g]=(groups[x.g]||0)+1; });
   const order=['組み込み','スキル','プラグイン','MCP']; const items=[...pal.items].sort((a,b)=>order.indexOf(a.g)-order.indexOf(b.g)); pal.items=items;
   items.forEach((x,i)=>{ if(x.g!==g){ g=x.g; html+=`<li class="pg" role="presentation">${g}（${groups[g]}）</li>`; }
     html+=`<li role="option" id="po${i}" class="po${i===pal.i?' on':''}" aria-selected="${i===pal.i}" data-i="${i}"><code>/${esc(x.n)}</code><span class="h">${esc(x.h)}</span><span class="d">${esc(x.d)}</span><span class="kd k-${x.k}">${CKIND[x.k]}</span></li>`; });
   $('palList').innerHTML=html||'<li class="pg" role="presentation">一致するコマンドはありません</li>';
   if(items.length){ $('ask').setAttribute('aria-activedescendant','po'+pal.i); const on=$('palList').querySelector('.po.on'); on&&on.scrollIntoView({block:'nearest'}); } }
-function pickPal(i){ const x=pal.items[i]; if(!x) return; $('ask').value='/'+x.n+' '; closePal(); $('ask').focus(); ctlHint(); }
+function pickPal(i){ if(pal.mode==='file'){ pickFile(i); return; } const x=pal.items[i]; if(!x) return; $('ask').value='/'+x.n+' '; closePal(); $('ask').focus(); askFit(); ctlHint(); }
+
+/* @ in the message box: the channel's files, as the terminal's @ offers them; sent, what they hold goes to Claude */
+// the @ being typed at the caret: where it starts, where its word ends, and what follows the @
+function atToken(){ const a=$('ask'), v=a.value, i=a.selectionStart==null? v.length : a.selectionStart; if(a.selectionEnd!==i) return null;
+  const m=/(^|[\s(（「『【、。，．：；])@("?)([^\s"]*)$/.exec(v.slice(0,i)); if(!m) return null;
+  const rest=/^[^\s"]*"?/.exec(v.slice(i))[0];
+  return {from:i-m[3].length-m[2].length-1,to:i+rest.length,q:m[3]}; }
+let fileTimer=0;
+function openFiles(t){ const c=chN(sel); if(!c||c.status==='off') return;
+  if(pal.mode!=='file'||!pal.open||!pal.tok||pal.tok.q!==t.q) pal.i=0;
+  pal.mode='file'; pal.tok=t; $('palTag').textContent='ファイル';
+  $('palSub').textContent=`ch.${c.num} ${c.name} のフォルダ（${c.cwd}）から。送ると、選んだファイルの中身がこの依頼といっしょに Claude に渡ります`;
+  if(!pal.open){ pal.items=[]; pal.wait=true; pal.err=''; renderPal(); $('pal').hidden=false; pal.open=true; $('ask').setAttribute('aria-expanded','true'); }
+  clearTimeout(fileTimer); const seq=++pal.seq;
+  const got=r=>{ if(seq!==pal.seq||!pal.open||pal.mode!=='file') return; pal.wait=false;
+    pal.err= r&&r.ok===false? (r.error||'一覧を読めませんでした。') : ''; pal.recent=!!(r&&r.recent);
+    pal.items=((r&&r.files)||[]).map(f=>({p:f.p,dir:!!f.d})); pal.i=Math.min(pal.i,Math.max(0,pal.items.length-1)); renderPal(); };
+  if(LIVE) fileTimer=setTimeout(()=>api('/api/ui/files',{chan:c.id,q:t.q}).then(got).catch(err=>got({ok:false,error:`一覧を読めませんでした（${err.message}）`})),70);
+  else got(demoFiles(t.q)); }
+function renderFiles(){ const L=pal.items;
+  $('palList').innerHTML= pal.wait? '<li class="pg" role="presentation">読み込んでいます…</li>'
+    : pal.err? `<li class="pg" role="presentation">${esc(pal.err)}</li>`
+    : !L.length? '<li class="pg" role="presentation">一致するファイルはありません</li>'
+    : (pal.recent?'<li class="pg" role="presentation">最近変わったファイル（続けて打つと名前で探します）</li>':'')+L.map((x,i)=>{ const k=x.p.lastIndexOf('/'), dir=k>=0? x.p.slice(0,k+1) : '', base=x.p.slice(k+1);
+      return `<li role="option" id="po${i}" class="po pf${i===pal.i?' on':''}" aria-selected="${i===pal.i}" data-i="${i}"><code><span class="dp">@${esc(dir)}</span>${esc(base)}${x.dir?'/':''}</code><span class="kd k-${x.dir?'dir':'file'}">${x.dir?'フォルダ':'ファイル'}</span></li>`; }).join('');
+  if(L.length&&!pal.wait){ $('ask').setAttribute('aria-activedescendant','po'+pal.i); const on=$('palList').querySelector('.po.on'); on&&on.scrollIntoView({block:'nearest'}); }
+  else $('ask').removeAttribute('aria-activedescendant'); }
+/* the demo: its folder's files, ranked as the hub ranks them, and what a prompt's @ would attach */
+function fileScore(p,q){ const pl=p.toLowerCase(), base=pl.slice(pl.lastIndexOf('/')+1);
+  if(q.includes('/')){ if(pl.startsWith(q)) return pl.length/1e4; if(pl.includes(q)) return 2+pl.length/1e4; }
+  else { if(base===q) return 0; if(base.startsWith(q)) return 1+pl.length/1e4; if(base.includes(q)) return 2+pl.length/1e4; if(pl.includes(q)) return 3+pl.length/1e4; }
+  let i=0, gaps=0, last=-1; for(const ch of q){ const j=pl.indexOf(ch,i); if(j<0) return -1; if(last>=0&&j>last+1) gaps++; last=j; i=j+1; }
+  return 4+gaps/10+pl.length/1e4; }
+function demoTree(){ const dirs=new Set(); DEMO_FILES.forEach(p=>{ let i=p.lastIndexOf('/'); while(i>0){ dirs.add(p.slice(0,i)); i=p.lastIndexOf('/',i-1); } });
+  return [...DEMO_FILES.map(p=>({p,d:false})),...[...dirs].map(p=>({p,d:true}))]; }
+function demoFiles(q){ q=String(q||'').toLowerCase().replace(/^\.\//,'');
+  if(!q) return {ok:true,recent:true,files:['hooks/register.ts','hub/hub.mjs','ui-src/fc4.js','README.md','hooks/shape.ts','ui-src/fc-head.html'].map(p=>({p,d:false}))};
+  const hits=demoTree().map(f=>[fileScore(f.p,q),f]).filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]||Number(a[1].d)-Number(b[1].d)||a[1].p.localeCompare(b[1].p));
+  return {ok:true,files:hits.slice(0,40).map(x=>x[1])}; }
+function demoAttach(text){ const out=[], re=/(^|[\s(（「『【、。，．：；])@(?:"([^"\n]+)"|([^\s"]+))/g; let m;
+  while((m=re.exec(String(text)))&&out.length<10){ const raw=(m[2]||m[3]||'').trim(), p=(/^[\w./~@+#%=,-]+/.exec(raw)||[raw])[0].replace(/[,.]+$/,''), dir=p.replace(/\/$/,'');
+    if(out.some(x=>x.p===p||x.p===dir+'/')) continue;
+    if(DEMO_FILES.includes(p)) out.push({p,kind:'file',lines:60+(p.length*37)%400});
+    else if(DEMO_FILES.some(f=>f.startsWith(dir+'/'))) out.push({p:dir+'/',kind:'dir',lines:DEMO_FILES.filter(f=>f.startsWith(dir+'/')&&!f.slice(dir.length+1).includes('/')).length});
+    else out.push({p:raw,err:/^(~|\/)/.test(raw)?'outside':'missing'}); }
+  return out; }
+// a file goes in as @path and a space; a folder as @folder/, its files listed next
+function pickFile(i){ const x=pal.items[i], t=atToken()||pal.tok; if(!x||!t) return; const a=$('ask'), v=a.value;
+  const p=x.dir? x.p+'/' : x.p, q=/\s/.test(p), put=(q? `@"${p}"` : `@${p}`)+(x.dir? '' : ' ');
+  a.value=v.slice(0,t.from)+put+v.slice(t.to); const at=t.from+put.length-(x.dir&&q? 1 : 0);
+  a.focus(); a.setSelectionRange(at,at); askFit();
+  if(x.dir){ const nt=atToken(); if(nt){ openFiles(nt); return; } }
+  closePal(); ctlHint(); }
 $('palList').addEventListener('mousedown',e=>{ const li=e.target.closest('.po'); if(li){ e.preventDefault(); pickPal(+li.dataset.i); } });
-$('ask').addEventListener('input',()=>{ const v=$('ask').value; if(v.startsWith('/')&&!/\s/.test(v)) { pal.i=0; openPal(); } else if(pal.open) closePal(); ctlHint(); });
+$('ask').addEventListener('input',()=>{ const v=$('ask').value, t=atToken(); askFit();
+  if(t) openFiles(t);
+  else if(v.startsWith('/')&&!/\s/.test(v)) { pal.i=0; openPal(); }
+  else if(pal.open) closePal();
+  ctlHint(); });
+// the caret moved off the @ word: its list closes
+['click','keyup'].forEach(k=>$('ask').addEventListener(k,e=>{ if(k==='keyup'&&!/^(ArrowLeft|ArrowRight|Home|End)$/.test(e.key)) return; if(pal.open&&pal.mode==='file'&&!atToken()) closePal(); }));
 $('ask').addEventListener('keydown',e=>{
   if(pal.open){
     if(e.key==='ArrowDown'){ e.preventDefault(); pal.i=Math.min(pal.items.length-1,pal.i+1); renderPal(); return; }
@@ -409,10 +477,23 @@ $('ask').addEventListener('keydown',e=>{
   if((e.key==='Tab'&&!e.shiftKey||e.key==='ArrowRight')&&!e.isComposing&&!$('ask').value&&takeSugg()){ e.preventDefault(); return; }
   if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); $('ctl').requestSubmit(); } });
 $('ask').addEventListener('blur',()=>setTimeout(()=>{ if(document.activeElement!==$('ask')) closePal(); },120));
-$('bCmd').addEventListener('click',()=>{ if(pal.open){ closePal(); return; } if(!$('ask').value.startsWith('/')) $('ask').value='/'; $('ask').focus(); pal.i=0; openPal(); });
+$('bCmd').addEventListener('click',()=>{ if(pal.open&&pal.mode==='cmd'){ closePal(); return; } if(!$('ask').value.startsWith('/')) $('ask').value='/'; $('ask').focus(); pal.i=0; openPal(); askFit(); });
 $('ctl').addEventListener('submit',e=>{ e.preventDefault(); const c=chN(sel), v=$('ask').value.trim(); if(!c||!v||c.status==='off') return;
-  if(v.startsWith('/')){ const m=v.slice(1).match(/^(\S+)\s*([\s\S]*)$/); if(!m) return; if(queueCmd(c,m[1],m[2].trim())){ $('ask').value=''; closePal(); } return; }
-  sendText(c,v); $('ask').value=''; ctlHint(); });
+  if(v.startsWith('/')){ const m=v.slice(1).match(/^(\S+)\s*([\s\S]*)$/); if(!m) return; if(queueCmd(c,m[1],m[2].trim())){ $('ask').value=''; closePal(); askFit(); } return; }
+  sendText(c,v); $('ask').value=''; closePal(); askFit(); ctlHint(); });
+
+/* the message box grows with what is typed, a line at a time, up to a share of the window; past that it scrolls inside.
+   The screen above gives up the room it takes (down to a floor), and a channel read to its end stays at its end */
+const ASK_MIN=46;
+function askFit(){ const a=$('ask'), root=document.documentElement;
+  if($('ctl').hidden){ root.style.setProperty('--askGrow','0px'); return; }
+  const max=Math.round(Math.max(120,Math.min(innerHeight*(innerWidth<=620? .3 : .36),360)));
+  const view=$('chan'), atEnd=!view.hidden&&view.scrollHeight-view.scrollTop-view.clientHeight<40;
+  a.style.height='auto'; const want=Math.max(ASK_MIN,a.scrollHeight+2), h=Math.min(want,max);
+  a.style.height=h+'px'; a.style.overflowY= want>max? 'auto' : 'hidden';
+  root.style.setProperty('--askGrow',Math.max(0,h-ASK_MIN)+'px');
+  if(atEnd) view.scrollTop=view.scrollHeight; }
+addEventListener('resize',askFit);
 $('bStop').addEventListener('click',()=>{ const c=chN(sel); if(c) LIVE? liveStop(c) : stopTurn(c); });
 $('bCompact').addEventListener('click',()=>{ const c=chN(sel); if(!c||c.status==='off') return; if(LIVE){ liveCompact(c); return; }
   if(c.status!=='idle'){ queueCmd(c,'compact',''); return; } compact(c,true); });
@@ -438,7 +519,7 @@ function pendDone(c,pred){ const n=(c.pend||[]).length; c.pend=(c.pend||[]).filt
 function sendText(c,text){ c.suggest='';           // as in the terminal, a prompt sent puts the suggestion away
   if(LIVE){ liveSend(c,text); return; }
   const lid=rid(); (c.pend||(c.pend=[])).push({lid,text,t:Date.now(),st:c.status==='idle'?'sent':'queued'}); renderPend(c);
-  c.queue.push({type:'prompt',text:esc(text),lid}); }
+  c.queue.push({type:'prompt',text:esc(text),lid,files:demoAttach(text)}); askFit(); }
 
 /* ================= Claude's questions (AskUserQuestion): answer here or in the terminal; the first answer counts ================= */
 // q: {id, qs:[{q, h, multi, opts:[{l, d}]}]}; send(answers) resolves once the answer is on its way
@@ -480,12 +561,13 @@ function ctlHint(){ const c=chN(sel); if(!c) return; const v=$('ask').value, h=$
   let html='';
   if(cmd&&cmd.h) html=`<span class="hk">引数</span><code>/${esc(cmd.n)}</code> <span class="ah">${esc(cmd.h)}</span>${cmd.d?` <span class="ad">${esc(cmd.d)}</span>`:''}`;
   else if(!v&&c.suggest&&c.status==='idle') html=`<span class="hk">次の提案</span><span class="sgt">${esc(c.suggest)}</span><button class="linkbtn" type="button" id="bSugg">入れる（Tab）</button>`;
+  else if(pal.open&&pal.mode==='file') html=`<span class="hk">@</span><span>選んだファイルは <code>@パス</code> で入り、送るとその中身がこの依頼といっしょに Claude に渡ります（ターミナルの <code>@</code> と同じ）。このターミナルのフォルダの中のものだけです。</span>`;
   else if(c.status==='off') html=`<span>終了したチャンネルです。「チャンネルを消す」でこの画面から片付けられます（セッションは残り、<code>claude --resume</code> で続きから始められます）。</span>`;
   const key=html||'-'; if(h.dataset.key===key) return; h.dataset.key=key;
   h.classList.toggle('alt',!!html);
-  h.innerHTML= html || '送った文は、そのターミナルで入力したのと同じ扱いになります。「/」で始めると組み込みのコマンドやスキルを実行できます。作業中に送ると、終わってから始まります。';
+  h.innerHTML= html || '送った文は、そのターミナルで入力したのと同じ扱いになります。「/」で始めると組み込みのコマンドやスキルを実行でき、「@」でファイルを指定できます。作業中に送ると、終わってから始まります。';
   const b=$('bSugg'); if(b) b.addEventListener('click',takeSugg); }
-function takeSugg(){ const c=chN(sel); if(!c||!c.suggest||$('ask').value) return false; $('ask').value=c.suggest; $('ask').focus(); $('ask').setSelectionRange(c.suggest.length,c.suggest.length); ctlHint(); return true; }
+function takeSugg(){ const c=chN(sel); if(!c||!c.suggest||$('ask').value) return false; $('ask').value=c.suggest; $('ask').focus(); $('ask').setSelectionRange(c.suggest.length,c.suggest.length); askFit(); ctlHint(); return true; }
 
 /* ================= putting away channels whose terminal has gone ================= */
 function confirmForget(list){ if(!list.length) return; const one=list.length===1;

@@ -275,6 +275,9 @@ const PAST=LIVE? [] : [
   {n:'CI のテストを速くする',cwd:'~/dev/shop-api',t:'日曜',id:'5d2e8b13'},
 ];
 /* the demo's conversations on disk, by folder: what the resume picker lists (the live page reads the terminal's) */
+/* the demo channels' folder, for @ in the message box (the live screen asks the hub for the terminal's own) */
+const DEMO_FILES=['README.md','CLAUDE.md','package.json','tsconfig.json','.claude-plugin/plugin.json','hooks/hooks.json','hooks/register.ts','hooks/register.test.ts','hooks/shape.ts','hooks/bridge.ts',
+  'hub/hub.mjs','hub/ui.html','hub/guide.html','ui-src/build.sh','ui-src/fc1.js','ui-src/fc2.js','ui-src/fc3.js','ui-src/fc4.js','ui-src/fc-head.html','ui-src/guide.html','test/hub.test.mjs','test/simulate.mjs','docs/forecast.md','docs/statusline.md'];
 const DEMO_CONVOS=LIVE? {} : {
   '~/dev/fogcast':[
     {id:'7f3a9c2e-1b4d-4e8a-9c21-3d4e5f6a8b90',title:'statusline-fix',first:'ステータスラインの幅が崩れる不具合を直して',last:'狭い端末でも 1 行に収まるか確かめて',age:95,size:412e3,

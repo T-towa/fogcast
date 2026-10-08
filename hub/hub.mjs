@@ -23,7 +23,7 @@ import { join, dirname, basename, isAbsolute } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
-export const VERSION = '0.5.2'
+export const VERSION = '0.5.3'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ARGS = process.argv.slice(2)
 const PORT = Number(process.env.FOGCAST_PORT) || 4317
@@ -391,6 +391,11 @@ function apply(c, ev) {
         c.pending.splice(i >= 0 ? i : 0, 1)
       }
       if (ev.cid) e.cid = str(ev.cid, 40)
+      // the files a prompt from the screen named with @, as the terminal attached them (or why not)
+      e.files = Array.isArray(ev.files) && ev.files.length ? ev.files.slice(0, 10).map(f => ({
+        p: str(f && f.p, 300), kind: f && f.kind === 'dir' ? 'dir' : 'file', lines: num(f && f.lines) || undefined,
+        shown: num(f && f.shown) || undefined, err: /^[a-z]{1,12}$/.test(str(f && f.err, 12)) ? f.err : undefined,
+      })).filter(f => f.p) : undefined
       setStatus(c, 'work', '依頼を受け取りました', t); block(c, 'work', ev.text || '続きの作業', t)
       e.text = str(ev.text, 8000); e.n = c.turnNo
       break
@@ -727,6 +732,88 @@ function loadHist(c, sid) {
   }).catch(err => log('could not read the resumed conversation:', err.message))
 }
 
+/* ---------------- the project's files, for @ in the screen's message box ---------------- */
+// What the terminal's @ offers: the files under the terminal's folder that git does not ignore (tracked or not), and
+// their folders. Outside a repository the folder is walked, leaving out what is never meant (.git, node_modules, build
+// output). Kept for a moment, so typing does not list the folder again at every key.
+const WALK_SKIP = new Set(['.git', 'node_modules', '.venv', 'venv', '__pycache__', '.next', '.nuxt', 'dist', 'build', 'target', '.cache', '.turbo', '.parcel-cache', 'coverage', '.idea', '.gradle', '.terraform'])
+const FILES_MAX = 30000
+const fileLists = new Map()   // cwd -> { t, files: [{ p, d }], mtimes: Map | null }
+function gitFiles(cwd) {
+  return new Promise(resolve => {
+    let out = '', done = false
+    const fin = v => { if (!done) { done = true; resolve(v) } }
+    try {
+      const p = spawn('git', ['-C', cwd, 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], { stdio: ['ignore', 'pipe', 'ignore'] })
+      const kill = setTimeout(() => { try { p.kill() } catch {} fin(null) }, 6000)
+      p.stdout.on('data', d => { out += d; if (out.length > 8e6) { try { p.kill() } catch {} } })
+      p.on('error', () => { clearTimeout(kill); fin(null) })
+      p.on('close', code => { clearTimeout(kill); fin(code === 0 ? out.split('\0').filter(Boolean).slice(0, FILES_MAX) : null) })
+    } catch { fin(null) }
+  })
+}
+async function walkFiles(cwd) {
+  const out = [], queue = [['', 0]], until = Date.now() + 3000
+  while (queue.length && out.length < FILES_MAX && Date.now() < until) {
+    const [rel, depth] = queue.shift()
+    let ents; try { ents = await readdir(rel ? join(cwd, rel) : cwd, { withFileTypes: true }) } catch { continue }
+    for (const d of ents) {
+      const p = rel ? `${rel}/${d.name}` : d.name
+      if (d.isDirectory()) { if (!WALK_SKIP.has(d.name) && depth < 12) queue.push([p, depth + 1]) }   // a link to a folder is not followed
+      else if (d.isFile()) out.push(p)
+      if (out.length >= FILES_MAX) break
+    }
+  }
+  return out
+}
+async function projectFiles(cwd) {
+  const hit = fileLists.get(cwd)
+  if (hit && now() - hit.t < 20000) return hit
+  const list = (await gitFiles(cwd)) || (await walkFiles(cwd))
+  const dirs = new Set()
+  for (const p of list) { let i = p.lastIndexOf('/'); while (i > 0) { const d = p.slice(0, i); if (dirs.has(d)) break; dirs.add(d); i = d.lastIndexOf('/') } }
+  const files = [...list.map(p => ({ p, d: false })), ...[...dirs].map(p => ({ p, d: true }))]
+  const v = { t: now(), files, mtimes: null }
+  fileLists.set(cwd, v); if (fileLists.size > 20) fileLists.delete(fileLists.keys().next().value)
+  return v
+}
+// the files changed last, for an @ with nothing typed after it yet (the first few thousand looked at)
+async function recentFiles(cwd, v, n) {
+  if (!v.mtimes) {
+    v.mtimes = new Map()
+    const some = v.files.filter(f => !f.d).slice(0, 4000)
+    for (let i = 0; i < some.length; i += 200) await Promise.all(some.slice(i, i + 200).map(f => stat(join(cwd, f.p)).then(s => v.mtimes.set(f.p, s.mtimeMs)).catch(() => {})))
+  }
+  return [...v.mtimes].sort((a, b) => b[1] - a[1]).slice(0, n).map(([p]) => ({ p, d: false }))
+}
+/** How well a path answers what was typed after @: a name that starts with it first, then one that holds it, then letters in order. */
+function fileScore(f, q) {
+  const pl = f.p.toLowerCase(), base = pl.slice(pl.lastIndexOf('/') + 1)
+  if (q.includes('/')) {
+    if (pl.startsWith(q)) return 0 + pl.length / 1e4
+    if (pl.includes(q)) return 2 + pl.length / 1e4
+  } else {
+    if (base === q) return 0
+    if (base.startsWith(q)) return 1 + pl.length / 1e4
+    if (base.includes(q)) return 2 + pl.length / 1e4
+    if (pl.includes(q)) return 3 + pl.length / 1e4
+  }
+  let i = 0, gaps = 0, last = -1
+  for (const ch of q) { const j = pl.indexOf(ch, i); if (j < 0) return -1; if (last >= 0 && j > last + 1) gaps++; last = j; i = j + 1 }
+  return 4 + gaps / 10 + pl.length / 1e4
+}
+async function filesFor(c, q) {
+  const cwd = absPath(c.cwd); if (!cwd) return null
+  try { if (!statSync(cwd).isDirectory()) return null } catch { return null }
+  const v = await projectFiles(cwd)
+  q = str(q, 200).trim().replace(/^@/, '').replace(/^"/, '').replace(/^\.\//, '').toLowerCase()
+  if (!q) return { files: await recentFiles(cwd, v, 30), total: v.files.length, recent: true }
+  const hits = []
+  for (const f of v.files) { const s = fileScore(f, q); if (s >= 0) hits.push([s, f]) }
+  hits.sort((a, b) => a[0] - b[0] || Number(a[1].d) - Number(b[1].d) || a[1].p.localeCompare(b[1].p))
+  return { files: hits.slice(0, 40).map(([, f]) => f), total: v.files.length, more: hits.length > 40 }
+}
+
 /* ---------------- the screen's streams ---------------- */
 const streams = new Set()   // { res, client }
 function emit(s, msg) { try { s.res.write(`data: ${JSON.stringify(msg)}\n\n`) } catch {} }
@@ -943,6 +1030,13 @@ const routes = {
     return [200, { ok: true, queued: c.status !== 'idle' }]
   },
   // the project's conversations this terminal could return to (read from its folder when asked; nothing is kept)
+  // what @ in the message box offers: the channel's files, by what was typed after it
+  'POST /api/ui/files': async (b) => {
+    const c = chans.get(str(b.chan, 64)); if (!c) return [404, { error: 'chan' }]
+    const r = await filesFor(c, b.q)
+    if (!r) return [200, { ok: false, files: [], error: 'このターミナルのフォルダが見つかりません。' }]
+    return [200, { ok: true, ...r }]
+  },
   'POST /api/ui/sessions': async (b) => {
     const c = chans.get(str(b.chan, 64)); if (!c) return [404, { error: 'chan' }]
     const r = await sessionsOf(c)
