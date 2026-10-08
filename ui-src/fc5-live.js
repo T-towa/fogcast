@@ -103,7 +103,7 @@ function chanFrom(x){ let c=LV.byId.get(x.id);
   if(x.endedAt!==undefined) c.endedAt=x.endedAt; if(x.resume!==undefined) c.resume=x.resume; if(x.sid) c.sid=x.sid;
   if(x.loaded) c.loaded=liveLoaded(x.loaded);
   if(x.commands) c.commands=x.commands;
-  if(x.effort!==undefined) c.effort=x.effort||''; if(x.title!==undefined) c.title=x.title||'';
+  if(x.effort!==undefined) c.effort=x.effort||''; if(x.effortUsed!==undefined) c.effortUsed=x.effortUsed||''; if(x.title!==undefined) c.title=x.title||'';
   if(x.models!==undefined) c.models=x.models; if(x.efforts!==undefined) c.efforts=x.efforts||[];
   if(x.breakdown) c.breakdownRaw=x.breakdown;
   c.log.setAttribute('aria-label',`ch.${c.num} ${c.name} の会話`);
@@ -297,9 +297,9 @@ function cmdFill(d,text){ const x=d.dataset; d.className='cmdo'+(text?'':' panel
 /* the pickers' choices, carried out in that terminal */
 function liveResume(c,sid,title){ api('/api/ui/resume',{chan:c.id,sid}).then(r=>{ if(r.queued) toast('queue','再開を予約しました',`ch.${c.num} ${esc(c.name)} の今のターンが終わったら「${esc(cut1(title||sid,40))}」に切り替えます。`); })
   .catch(err=>toast('info','再開できませんでした',esc(err.message==='sid'?'会話の ID が正しくありません。':err.message))); }
-function liveModel(c,o){ api('/api/ui/model',{chan:c.id,value:o}).then(r=>{ toast(r.queued?'queue':'info',r.queued?'モデルの切り替えを予約しました':`ch.${c.num} ${esc(c.name)} のモデルを切り替えます`,`${esc(modelLabel(o))}${r.queued?'（今のターンが終わったら）':''}`); })
+function liveModel(c,o){ api('/api/ui/model',{chan:c.id,value:o}).then(r=>{ if(c.models&&!r.queued) c.models={...c.models,value:o}; toast(r.queued?'queue':'info',r.queued?'モデルの切り替えを予約しました':`ch.${c.num} ${esc(c.name)} のモデルを切り替えます`,`${esc(modelLabel(o))}${r.queued?'（今のターンが終わったら）':''}`); })
   .catch(err=>toast('info','モデルを切り替えられませんでした',esc(err.message==='model'?'このターミナルでは選べないモデルです。':err.message))); }
-function liveEffort(c,x){ api('/api/ui/effort',{chan:c.id,value:x}).then(r=>{ toast(r.queued?'queue':'info',r.queued?'effort の変更を予約しました':`ch.${c.num} ${esc(c.name)} の effort を変えます`,`${esc(effortLabel(x))}（${esc(x)}）${r.queued?' · 今のターンが終わったら':''}`); })
+function liveEffort(c,x){ api('/api/ui/effort',{chan:c.id,value:x}).then(r=>{ if(!r.queued){ c.effort=x; dirty=true; } toast(r.queued?'queue':'info',r.queued?'effort の変更を予約しました':`ch.${c.num} ${esc(c.name)} の effort を変えます`,`${esc(effortLabel(x))}（${esc(x)}）${r.queued?' · 今のターンが終わったら':''}`); })
   .catch(err=>toast('info','effort を変えられませんでした',esc(err.message==='effort'?'このターミナルでは選べない値です。':err.message))); }
 // shown at once as a bubble; the hub hands it to the terminal, which starts it when it is free
 function liveSend(c,text){ const lid=rnd(); LV.lids.add(lid); const x={lid,text,t:Date.now(),st:'sending'}; (c.pend||(c.pend=[])).push(x); c.pendKey=null; renderPend(c);

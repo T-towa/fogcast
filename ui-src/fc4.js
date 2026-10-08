@@ -260,21 +260,26 @@ function openResume(c){
     ${busyNote(c)}
     <input class="psearch" id="rsQ" type="search" placeholder="名前や依頼の言葉で絞り込む" aria-label="会話を絞り込む" autocomplete="off">
     <ul class="plist" id="rsList"><li class="pempty">読み込んでいます…</li></ul>
-    <p class="sub">ほかのフォルダの会話は、そのフォルダで起動したターミナルのチャンネルから戻れます。開いているターミナルがなければ、「＋ 追加」の過去のセッションから再開コマンドをコピーできます。</p>`,'pick');
+    <div class="pfoot"><p class="sub">ほかのフォルダの会話は、そのフォルダで起動したターミナルのチャンネルから戻れます。開いているターミナルがなければ、「＋ 追加」の過去のセッションから再開コマンドをコピーできます。</p>
+      <button class="btn small" type="button" id="rsTerm">ターミナルの一覧で選ぶ</button></div>`,'pick');
+  // the terminal's own /resume list, for whatever this one does not show
+  $('rsTerm').addEventListener('click',()=>{ closeSheet(); if(LIVE) liveCommand(c,'resume','',{k:'panel'}); else toast('info',`/resume をターミナルで開きます`,`ch.${c.num} ${esc(c.name)} のターミナルに一覧が出ます。`); });
   let all=[];
   const draw=()=>{ const el=$('rsList'); if(!el) return; const q=$('rsQ').value.trim().toLowerCase();
     const list=all.filter(x=>!q||`${x.title} ${x.first} ${x.last}`.toLowerCase().includes(q));
-    el.innerHTML= list.map(x=>`<li><div class="pt"><b>${esc(x.title||cut1(x.first,80)||'（名前のない会話）')}</b>${x.title&&x.first?`<span>${esc(cut1(x.first,90))}</span>`:''}</div>
-      <small>${sinceTxt(Date.now()-x.t)} · ${kb(x.size)}${x.last&&x.last!==x.first?` · 最後の依頼：${esc(cut1(x.last,60))}`:''}</small>
-      <span class="btns">${x.open?`<span class="pbusy">ch.${x.open.num} ${esc(x.open.name)} で開いています</span>`:`<button class="btn small primary" type="button" data-i="${all.indexOf(x)}">再開</button>`}</span></li>`).join('')
-      || `<li class="pempty">${all.length?'一致する会話はありません。':'このフォルダで前に話した会話はありません。'}</li>`;
+    // named as the terminal's list names it: the name given with /rename or the one Claude Code made up, else the first prompt
+    el.innerHTML= list.map(x=>{ const name=x.title||x.first||x.last||'';
+      return `<li><div class="pt"><b>${esc(cut1(name,80)||'（名前のない会話）')}</b>${x.title&&x.first?`<span>${esc(cut1(x.first,90))}</span>`:''}</div>
+      <small>${sinceTxt(Date.now()-x.t)} · ${kb(x.size)}${x.last&&x.last!==x.first&&x.last!==name?` · 最後の依頼：${esc(cut1(x.last,60))}`:''}</small>
+      <span class="btns">${x.open?`<span class="pbusy">ch.${x.open.num} ${esc(x.open.name)} で開いています</span>`:`<button class="btn small primary" type="button" data-i="${all.indexOf(x)}">再開</button>`}</span></li>`; }).join('')
+      || `<li class="pempty">${all.length?'一致する会話はありません。':'このフォルダで前に話した会話は見つかりませんでした。下の「ターミナルの一覧で選ぶ」で、ターミナルの一覧からも選べます。'}</li>`;
     el.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{ const x=all[+b.dataset.i]; closeSheet(); doResume(c,x); })); };
   $('rsQ').addEventListener('input',draw);
-  const got=r=>{ if(!$('rsList')) return; if(!r||r.ok===false){ $('rsList').innerHTML=`<li class="pempty">${esc((r&&r.error)||'一覧を読めませんでした。')}</li>`; return; } all=r.sessions||[]; draw(); };
+  const got=r=>{ if(!$('rsList')) return; if(!r||r.ok===false){ $('rsList').innerHTML=`<li class="pempty">${esc((r&&r.error)||'一覧を読めませんでした。')} 下の「ターミナルの一覧で選ぶ」で、ターミナルの一覧からは選べます。</li>`; return; } all=r.sessions||[]; draw(); };
   if(LIVE) api('/api/ui/sessions',{chan:c.id}).then(got).catch(err=>got({ok:false,error:`一覧を読めませんでした（${err.message}）`}));
   else setTimeout(()=>got({ok:true,sessions:(DEMO_CONVOS[c.cwd]||[]).filter(x=>x.id!==c.sid).map(x=>({...x,t:Date.now()-x.age*60e3}))}),250);
 }
-function doResume(c,x){ if(LIVE){ liveResume(c,x.id,x.title||x.first); return; }
+function doResume(c,x){ if(LIVE){ liveResume(c,x.id,x.title||x.first||x.last); return; }
   if(c.status!=='idle'){ c.queue.push({type:'cmd',name:'resume',args:x.id,k:'pick',x}); toast('queue','再開を予約しました',`ch.${c.num} ${esc(c.name)} の今のターンが終わったら切り替えます。`); return; }
   demoResume(c,x); }
 function demoResume(c,x){ const old=c.sid||rid(), last=[...c.log.querySelectorAll('.turn .fold .p')].pop(), first=[...c.log.querySelectorAll('.turn .fold .p')][0];
@@ -318,7 +323,7 @@ function openEffort(c){
   const L=effortsOfCh(c), cur=c.effort||'';
   openSheet(`<div class="hd"><span class="tag teal">effort</span><button class="btn small" type="button" data-close>閉じる</button></div>
     <h2 id="sheetT">ch.${c.num} ${esc(c.name)} の考える深さ（effort）</h2>
-    <p class="sub">今：<b>${esc(effortLabel(cur))}</b>${cur?`（<code>${esc(cur)}</code>）`:'（まだ分かりません。最初の返答で分かります）'}。選ぶと、ターミナルで <code>/effort</code> を実行したのと同じになります。新しいセッションの既定にも保存されるかは、会話の欄に出る結果の 1 行に書かれます（<code>max</code> はこのセッションだけ）。深くするほど、返答に時間とトークンがかかります。</p>
+    <p class="sub">今：<b>${esc(effortLabel(cur))}</b>${cur?`（<code>${esc(cur)}</code>）`:'（まだ分かりません。最初の返答で分かります）'}${c.effortUsed&&cur&&c.effortUsed!==cur?`。最後の返答は ${esc(effortLabel(c.effortUsed))}（<code>${esc(c.effortUsed)}</code>）でした`:''}。選ぶと、ターミナルで <code>/effort</code> を実行したのと同じになります。新しいセッションの既定にも保存されるかは、会話の欄に出る結果の 1 行に書かれます（<code>max</code> はこのセッションだけ）。深くするほど、返答に時間とトークンがかかります。</p>
     ${busyNote(c)}
     <div class="eff" id="efList">${L.map((x,i)=>`<button type="button" class="${x===cur?'on':''}" data-i="${i}" aria-pressed="${x===cur}"><b>${esc(effortLabel(x))}</b><code>${esc(x)}</code><small>${esc(EFFORT_NOTE[x]||'')}</small></button>`).join('')}</div>`,'pick');
   $('efList').querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{ const x=L[+b.dataset.i]; closeSheet(); if(x!==cur) doEffort(c,x); })); }

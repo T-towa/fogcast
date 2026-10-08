@@ -43,12 +43,24 @@ async def main():
             print('status:', await pg.evaluate("document.querySelector('#osd')?.innerText.replace(/\\n/g,' ').slice(0,160)"))
             await pg.evaluate("document.getElementById('chan').scrollTop=1e9"); await pg.wait_for_timeout(300)
             await pg.screenshot(path=os.path.join(OUT,f'R-resumed-{W}.png'))
+        if PART=='resumeterm':
+            # the terminal's own /resume list, opened from the picker's footer
+            await pg.click('#ask'); await pg.fill('#ask','/resume'); await pg.keyboard.press('Escape'); await pg.keyboard.press('Enter')
+            await pg.wait_for_selector('#rsList li',timeout=6000); await pg.wait_for_timeout(400)
+            print('resume list:', await pg.evaluate("[...document.querySelectorAll('#rsList li')].map(li=>li.innerText.replace(/\\n/g,' | '))"))
+            await pg.screenshot(path=os.path.join(OUT,f'R-resume-{W}.png'))
+            await pg.click('#rsTerm'); await pg.wait_for_timeout(1500)
+            print('toast:', await pg.evaluate("[...document.querySelectorAll('.toast')].slice(-1).map(t=>t.innerText.replace(/\\n/g,' '))"))
         if PART in ('all','model'):
             await pg.click('#osd .osdPick[data-pick="model"]'); await pg.wait_for_selector('#mdList',timeout=4000); await pg.wait_for_timeout(200)
             print('models:', await pg.evaluate("[...document.querySelectorAll('#mdList li')].map(li=>li.querySelector('.pt b').textContent+(li.classList.contains('on')?'*':''))"))
             await pg.screenshot(path=os.path.join(OUT,f'R-model-{W}.png'))
-            await pg.click("#mdList li:has(code:text-is('sonnet')) .btn")
-            await until(pg,"[...document.querySelectorAll('#osd .osdPick')][0].innerText.startsWith('Sonnet')")
+            # a model other than the one set: the first of these without the 設定中 mark
+            pick=await pg.evaluate("['sonnet','opus','haiku'].find(o=>{ const li=[...document.querySelectorAll('#mdList li')].find(l=>l.querySelector('code')?.textContent===o); return li&&li.querySelector('.btn'); })")
+            fam={'sonnet':'Sonnet','opus':'Opus','haiku':'Haiku'}[pick]
+            print('picking:', pick)
+            await pg.click(f"#mdList li:has(code:text-is('{pick}')) .btn")
+            await until(pg,f"[...document.querySelectorAll('#osd .osdPick')][0].innerText.startsWith('{fam}')")
             await pg.wait_for_timeout(1500)
             print('header after model:', await pg.evaluate("[...document.querySelectorAll('#osd .osdPick')].map(b=>b.innerText)"))
             await pg.click('#osd .osdPick[data-pick="model"]'); await pg.wait_for_selector('#mdList',timeout=4000); await pg.wait_for_timeout(200)

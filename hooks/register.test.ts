@@ -1,5 +1,5 @@
 import { test, expect, mock } from 'claude-code/testing'
-import { linkFor, summarize, outline, fileChange, todosOf, statusLine, textOf, rel, older, midTurnText, questionsOf, answersFor, keepText, commandRow, effortLevels, modelKey } from './shape'
+import { linkFor, summarize, outline, fileChange, todosOf, statusLine, textOf, rel, older, midTurnText, questionsOf, answersFor, keepText, commandRow, effortLevels, modelKey, settingOf, effortSet } from './shape'
 
 // ---------------------------------------------------------------- shape
 
@@ -65,7 +65,7 @@ function hub(on: Any, opts: { approvals?: boolean; decision?: string; wait?: () 
     const body = e.init?.body ? JSON.parse(e.init.body) : null
     const ok = (v: unknown) => ({ value: { status: 200, ok: true, headers: {}, text: JSON.stringify(v) } })
     if (path === '/api/health') {
-      const v = opts.version ? opts.version() : '0.5.1'
+      const v = opts.version ? opts.version() : '0.5.2'
       return v === null ? { value: { status: 502, ok: false, headers: {}, text: '' } } : ok({ ok: true, app: 'fogcast', version: v })
     }
     if (e.init?.headers?.['x-fogcast-token'] !== TOKEN) return { value: { status: 401, ok: false, headers: {}, text: '{}' } }
@@ -296,7 +296,7 @@ test('a hub left running from an older version is stopped once, and this version
   on('process.run', (_$: Any, e: Any) => {
     runs.push([...e.argv])
     if (e.argv.includes('--stop')) version = null
-    if (e.argv.includes('--daemon')) version = '0.5.1'
+    if (e.argv.includes('--daemon')) version = '0.5.2'
     return { value: { exitCode: 0, stdout: 'main\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   hub(on, { version: () => version })
@@ -484,6 +484,17 @@ test('a command\'s printed line is read off its rows; the effort levels off /eff
   expect(effortLevels('[low|medium|high|xhigh|max|auto|ultracode [on|off]]')).toEqual(['low', 'medium', 'high', 'xhigh', 'max', 'auto'])
   expect(effortLevels(undefined)).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
   expect(modelKey('claude-opus-5-5[1m]')).toBe('claude-opus-5-5')
+  // the /config Model row holds a label before anything is set, and can hold a model id: the picker needs the choice
+  const opts = ['default', 'sonnet', 'opus', 'haiku', 'best', 'sonnet[1m]', 'opus[1m]', 'opusplan']
+  expect(settingOf('Default (recommended)', opts)).toBe('default')
+  expect(settingOf('sonnet', opts)).toBe('sonnet')
+  expect(settingOf('claude-opus-5-5', opts)).toBe('opus')
+  expect(settingOf('claude-opus-5-5[1m]', opts)).toBe('opus[1m]')
+  expect(settingOf('opusplan', opts)).toBe('opusplan')
+  expect(settingOf('', opts)).toBe('')
+  expect(effortSet('Set effort level to high (saved as your default for new sessions): Comprehensive …')).toBe('high')
+  expect(effortSet('Effort level set to auto')).toBe('auto')
+  expect(effortSet('Cancelled')).toBe('')
 })
 
 test('a /resume in the terminal swaps the conversation: the channel goes on and is told which one it is on now', async ($: Any, on: Any) => {
@@ -587,6 +598,36 @@ test('each command run gets one row: with the line it printed, from the screen o
   expect(h.events.filter(e => e.k === 'info' && e.effort).map(e => e.effort)).toEqual(['high'])
 })
 
+test('a compaction asked for on the screen is told once it is done (its own hook does not see it), or why it did not happen', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on); const h = hub(on)
+  let veto = ''
+  on('session.messages', () => ({ value: [{ role: 'user', text: '依頼', toolUses: [] }, { role: 'assistant', text: '答え', toolUses: [] }] }))
+  on('session.compact', () => (veto ? { skip: veto } : { messages: [{ role: 'user', text: '要約', toolUses: [] }], tokensBefore: 50000, tokensAfter: 4000 }))
+  await started($, on, clock)
+  h.queue.push({ id: 'k1', type: 'compact' })
+  await clock.advance(700); await clock.settle(); await clock.advance(700)
+  expect(h.events.filter(e => e.k === 'compact').map(e => [e.trigger, e.via])).toEqual([['manual', 'screen']])
+  veto = 'a plugin keeps this conversation whole'
+  h.queue.push({ id: 'k2', type: 'compact' })
+  await clock.advance(2100); await clock.settle(); await clock.advance(2100)
+  expect(h.events.filter(e => e.k === 'compact').length).toBe(1)
+  expect(h.events.find(e => e.k === 'did')).toEqual(expect.objectContaining({ cid: 'k2', what: 'compact', ok: false, error: 'a plugin keeps this conversation whole' }))
+})
+
+test('a command that starts no turn does not lend its name to the prompt typed next', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on); const h = hub(on)
+  on('command.run', () => ({}))                                  // its line comes as a row of the conversation, not as text
+  await started($, on, clock)
+  h.queue.push({ id: 'e1', type: 'effort', value: 'auto' })
+  await clock.advance(700); await clock.settle(); await clock.advance(1500)
+  await $.turn.start({ text: 'READMEを直して', turnId: 'tn' })
+  await clock.advance(700)
+  const t = h.events.find(e => e.k === 'turn')
+  expect([t.text, t.via]).toEqual(['READMEを直して', undefined])
+})
+
 test('a model switch is told in the conversation, with the effort the settings keep for the new model; a resume\'s restore is not', async ($: Any, on: Any) => {
   const clock = mock.clock(on, { now: 1_800_000_000_000 })
   engine(on); const h = hub(on)
@@ -596,9 +637,55 @@ test('a model switch is told in the conversation, with the effort the settings k
   await $.classic.PostModelSwitch({ from_model: 'claude-opus-5-5', to_model: 'claude-sonnet-5-5', requested_model: 'sonnet', source: 'command', context_tokens: 0, cache_warm: true })
   await $.classic.PostModelSwitch({ from_model: 'claude-sonnet-5-5', to_model: 'claude-haiku-5-5', requested_model: null, source: 'resume', context_tokens: 0, cache_warm: false })
   await clock.advance(700)
-  expect(h.events.filter(e => e.k === 'model')).toEqual([expect.objectContaining({ from: 'claude-opus-5-5', to: 'claude-sonnet-5-5', src: 'command', asked: 'sonnet' })])
+  expect(h.events.filter(e => e.k === 'model')).toEqual([expect.objectContaining({ from: 'claude-opus-5-5', to: 'claude-sonnet-5-5', src: 'command' })])
   expect(h.events.filter(e => e.k === 'info' && e.effort).map(e => e.effort)).toEqual(['high'])
   expect(h.events.filter(e => e.k === 'info' && e.model).map(e => e.model)).toEqual(['claude-haiku-5-5'])
+})
+
+test('the picker marks the model /config holds, read back after every change: also a pick of the model in use, and one made in the terminal', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on); const h = hub(on)
+  let setting = 'Default (recommended)'
+  const opts = ['default', 'sonnet', 'opus', 'haiku']
+  on('config.list', () => ({ value: [{ key: 'model', label: 'Model', kind: 'choice', value: setting, options: opts, provider: { plugin: 'engine', tier: 'core' }, isLocked: false }] }))
+  on('config.set', (_$: Any, e: Any) => { setting = e.value; return { value: e.value } })
+  on('classic.PostModelSwitch', () => ({}))
+  on('command.run', () => ({}))
+  await started($, on, clock)
+  expect(h.posts.find(p => p.path === '/api/mod/hello')!.body.models).toEqual({ options: opts, value: 'default' })   // the label stands for its choice
+  // the screen picks the model already in use: no switch follows, the setting changes all the same
+  h.queue.push({ id: 'm1', type: 'model', value: 'opus' })
+  await clock.advance(700); await clock.settle(); await clock.advance(700)
+  expect(h.events.filter(e => e.k === 'models').map(e => e.value)).toEqual(['opus'])
+  // a moment later the terminal's /model switches: told as the terminal's, and the mark follows it
+  await clock.advance(2000)
+  await $.command.run({ command: 'model', args: 'haiku' })
+  setting = 'haiku'
+  await $.classic.PostModelSwitch({ from_model: 'claude-opus-5-5', to_model: 'claude-haiku-5-5', requested_model: 'haiku', source: 'command', context_tokens: 0, cache_warm: true })
+  await clock.advance(1500)
+  expect(h.events.filter(e => e.k === 'model').map(e => [e.to, e.src])).toEqual([['claude-haiku-5-5', 'command']])
+  expect(h.events.filter(e => e.k === 'models').map(e => e.value)).toEqual(['opus', 'haiku'])
+  // changed in the terminal's /config: the mark follows that too
+  setting = 'sonnet'
+  await $.config.set({ key: 'model', value: 'sonnet' })
+  await clock.advance(1500)
+  expect(h.events.filter(e => e.k === 'models').map(e => e.value)).toEqual(['opus', 'haiku', 'sonnet'])
+})
+
+test('effort: the setting stands as set (auto too); what a request really went with is kept beside it', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on); const h = hub(on)
+  on('command.run', () => ({ text: 'Effort level set to auto' }))
+  await started($, on, clock)
+  const step = async (effort: string, turnId: string) => { const g = $.turn.step({ effort, model: 'claude-opus-5-5', turnId }); if (g && typeof g[Symbol.asyncIterator] === 'function') { for await (const _ of g) { /* drained */ } } else await g }
+  await step('medium', 't0').catch(() => {})
+  await clock.advance(700)
+  expect(h.events.filter(e => e.k === 'info' && (e.effort || e.effortUsed)).map(e => [e.effort, e.effortUsed])).toEqual([[undefined, 'medium'], ['medium', undefined]])
+  await $.command.run({ command: 'effort', args: 'auto' })
+  await step('high', 't1').catch(() => {})
+  await clock.advance(1500)
+  const told = h.events.filter(e => e.k === 'info' && (e.effort || e.effortUsed)).map(e => [e.effort, e.effortUsed])
+  expect(told.slice(2)).toEqual([['auto', undefined], [undefined, 'high']])      // auto stays the setting; it came to high
 })
 
 test('the pickers\' choices ride with the hello; a built-in that is a skill is marked, and one found out later is told', async ($: Any, on: Any) => {

@@ -498,6 +498,42 @@ test('the resume list is read from the project\'s conversation files: the one op
   assert.equal(none.json.ok, false)
 })
 
+test('conversations are listed as they really look: the editor\'s tags, a pasted image, a summary first, a name Claude Code made up; the folder is found from the terminal\'s own', async () => {
+  const dir = join(HOME, 'projects', '-home-me-dev-vs'); mkdirSync(dir, { recursive: true })
+  const ide = { type: 'text', text: '<ide_opened_file>The user opened the file /home/me/dev/vs/a.ts in the IDE. This may or may not be related to the current task.</ide_opened_file>' }
+  convo(dir, U(11), [{ type: 'mode', sessionId: U(11) }, { type: 'user', message: { role: 'user', content: [ide, { type: 'text', text: 'VS Code から頼んだこと' }] } }, say('ai', 'はい'),
+    { type: 'ai-title', aiTitle: 'VS Code での修正', sessionId: U(11) }, { type: 'last-prompt', lastPrompt: 'VS Code から頼んだこと', sessionId: U(11) }], 5)
+  const image = { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'A'.repeat(200 * 1024) } }
+  convo(dir, U(12), [{ type: 'user', message: { role: 'user', content: [image, { type: 'text', text: '画像つきの依頼' }] } }, say('ai', '見ました'), say('user', '次の依頼'),
+    { type: 'last-prompt', lastPrompt: '次の依頼', sessionId: U(12) }], 6)
+  convo(dir, U(13), [{ type: 'user', isCompactSummary: true, isVisibleInTranscriptOnly: true, message: { role: 'user', content: 'This session is being continued. ' + 'x'.repeat(150 * 1024) } },
+    { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't', content: 'ok' }] } }, say('user', '要約のあとの依頼'), { type: 'user', message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] } }], 7)
+  const huge = { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'B'.repeat(1200 * 1024) } }
+  convo(dir, U(14), [{ type: 'user', message: { role: 'user', content: [huge, { type: 'text', text: 'とても大きい画像' }] } }, say('ai', 'ok'), { type: 'last-prompt', lastPrompt: 'その続き', sessionId: U(14) }], 8)
+  convo(dir, U(15), [{ type: 'mode', sessionId: U(15) }, { type: 'permission-mode', permissionMode: 'auto', sessionId: U(15) }], 9)
+  // no conversation file named yet (an older Claude Code, or none written): the folder comes from Claude Code's own and the terminal's path
+  await req('POST', '/api/mod/hello', { chan: 'chan-vs', mod: '0.5.2', sid: U(19), cwd: '/home/me/dev/vs', cfg: HOME })
+  const r = await req('POST', '/api/ui/sessions', { chan: 'chan-vs' })
+  assert.equal(r.json.ok, true)
+  assert.deepEqual(r.json.sessions.map(x => [x.id, x.title, x.first, x.last]), [
+    [U(11), 'VS Code での修正', 'VS Code から頼んだこと', 'VS Code から頼んだこと'],
+    [U(12), '', '画像つきの依頼', '次の依頼'],
+    [U(13), '', '要約のあとの依頼', ''],
+    [U(14), '', '', 'その続き'],            // its first prompt lies past what is read: it goes by its last
+  ])
+  // a resumed conversation's history: a command that set Claude working reads as its request; one that only printed, not at all
+  const cmdRow = (name, args) => ({ type: 'user', message: { role: 'user', content: `<command-name>/${name}</command-name>\n<command-message>${name}</command-message>\n<command-args>${args}</command-args>` } })
+  convo(dir, U(16), [say('user', 'ふつうの依頼'), say('ai', 'やりました'),
+    cmdRow('model', 'sonnet'), { type: 'user', message: { role: 'user', content: '<local-command-stdout>Set model to Sonnet 5.5</local-command-stdout>' } },
+    { type: 'assistant', message: { role: 'assistant', model: '<synthetic>', content: [{ type: 'text', text: 'No response requested.' }] } },
+    cmdRow('init', ''), { type: 'user', isMeta: true, message: { role: 'user', content: [{ type: 'text', text: 'Please analyze this codebase…' }] } }, say('ai', 'CLAUDE.md を作りました')], 3)
+  const s = stream('screen-vs'); await s.wait(m => m.type === 'hello')
+  await req('POST', '/api/mod/sync', { chan: 'chan-vs', events: [{ k: 'resumed', t: Date.now(), from: U(19), sid: U(16), title: '', tp: join(dir, `${U(16)}.jsonl`), source: 'resume' }] })
+  const hist = await s.wait(m => m.type === 'ev' && m.ev.k === 'hist' && m.ev.sid === U(16))
+  assert.deepEqual(hist.ev.items.map(x => [x.u, x.a]), [['ふつうの依頼', 'やりました'], ['/init', 'CLAUDE.md を作りました']])
+  s.stop()
+})
+
 test('a resume from the screen goes to its terminal; the one open here or elsewhere, or not an id, is refused', async () => {
   assert.equal((await req('POST', '/api/ui/resume', { chan: 'chan-res', sid: U(2) })).json.ok, true)
   assert.equal((await req('POST', '/api/ui/resume', { chan: 'chan-res', sid: U(3) })).status, 409)
@@ -560,7 +596,9 @@ test('model and effort from the screen are checked against the terminal\'s own c
     { k: 'info', t: t + 7, effort: 'high' },
     { k: 'cmd', t: t + 8, name: 'diff', args: '', text: 'The diff panel shows git changes', run: 'r3' },
     { k: 'cmdOut', t: t + 9, name: 'diff', text: 'The diff panel shows git changes', run: 'r3' },
-    { k: 'model', t: t + 10, from: 'claude-opus-5-5', to: 'claude-sonnet-5-5', src: 'command', asked: 'sonnet' },
+    { k: 'model', t: t + 10, from: 'claude-opus-5-5', to: 'claude-sonnet-5-5', src: 'command', asked: 'opus' },
+    { k: 'info', t: t + 10, effortUsed: 'xhigh' },
+    { k: 'models', t: t + 10, options: ['default', 'sonnet', 'opus', 'opus[1m]'], value: 'sonnet' },
     { k: 'cmdOut', t: t + 11, name: 'resume', args: '0f0f0f0f-0000-4000-8000-000000000000', via: 'screen', text: 'Session 0f0f0f0f-0000-4000-8000-000000000000 was not found.' },
   ] })
   const cmd = await s.wait(m => m.type === 'ev' && m.ev.k === 'cmd' && m.ev.name === 'effort' && m.ev.args === 'high')
@@ -571,8 +609,11 @@ test('model and effort from the screen are checked against the terminal\'s own c
   assert.equal(lone.ev.ref, undefined); assert.equal(lone.ev.via, 'screen'); assert.equal(lone.ev.args, '0f0f0f0f-0000-4000-8000-000000000000')
   assert.equal(s.msgs.filter(m => m.type === 'ev' && m.ev.k === 'cmdOut').length, 2)   // the second line and the echo of a row that had its text are dropped
   const ch = await s.wait(m => m.type === 'chan' && m.chan.id === 'chan-me' && m.chan.effort === 'high')
-  assert.equal(ch.chan.model, 'claude-sonnet-5-5')
-  const marked = await s.wait(m => m.type === 'chan' && m.chan.id === 'chan-me' && m.chan.models && m.chan.models.value === 'sonnet')   // the picker marks what was asked for
+  assert.equal(ch.chan.model, 'claude-sonnet-5-5'); assert.equal(ch.chan.effortUsed, 'xhigh')
+  // the picker marks what /config holds, as the terminal read it back; a switch's own word for it is not taken
+  assert.equal(s.msgs.some(m => m.type === 'chan' && m.chan.id === 'chan-me' && m.chan.models && m.chan.models.value === 'opus' && m !== h), false)
+  const marked = await s.wait(m => m.type === 'chan' && m.chan.id === 'chan-me' && m.chan.models && m.chan.models.value === 'sonnet')
   assert.equal(marked.chan.models.options.includes('sonnet'), true)
+  assert.equal(s.msgs.filter(m => m.type === 'ev' && m.ev.k === 'models').length, 0)       // state, not a line of the conversation
   s.stop()
 })

@@ -27,7 +27,7 @@ Claude Code を何本ものターミナルで動かしているときに、す�
 zip で受け取ったときは、先に解凍してホームフォルダに置きます（`marketplace add` はフォルダを指定します）。
 
 ```sh
-unzip ~/Downloads/fogcast-0.5.1.zip -d ~      # ~/fogcast ができます
+unzip ~/Downloads/fogcast-0.5.2.zip -d ~      # ~/fogcast ができます
 ```
 
 まず試す（そのセッションだけ）:
@@ -56,7 +56,7 @@ GitHub に置いた場合は、Claude Code のプロンプトで:
 Claude Code を WSL の中で動かしているなら、すべて WSL のターミナルで行います。置き場所は WSL の中のホームフォルダ（`/home/<WSLのユーザー名>/fogcast`）で、Windows 側（`C:\Users\…`）には置きません。Node.js 18 以上も WSL の中に必要です。
 
 ```sh
-unzip "/mnt/c/Users/<Windowsのユーザー名>/Downloads/fogcast-0.5.1.zip" -d ~
+unzip "/mnt/c/Users/<Windowsのユーザー名>/Downloads/fogcast-0.5.2.zip" -d ~
 ```
 
 画面は Windows のブラウザで見ます。`/fog` は Windows の既定のブラウザを開きます（WSL2 は localhost を Windows に転送するので、`http://127.0.0.1:4317` で届きます）。

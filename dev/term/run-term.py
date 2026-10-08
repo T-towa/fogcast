@@ -58,7 +58,7 @@ SESS=[]
 def evline(e):
     k=e.get('k'); keep={'resumed':('from','sid','title','src'),'hist':('more','partial'),'cmd':('name','args','text','out','via'),'cmdOut':('name','text','ref'),
         'model':('from','to','src'),'info':('sid','model','effort','tp','branch'),'clear':('prev',),'end':('reason','resume'),'did':('what','ok','error'),
-        'turn':('text','via'),'say':('text',),'turnEnd':('aborted',)}.get(k)
+        'turn':('text','via'),'say':('text',),'turnEnd':('aborted',),'compact':('trigger',),'note':('text',)}.get(k)
     if keep is None: return None
     d={x:e[x] for x in keep if x in e}
     for x in ('from','sid','prev','resume'):
@@ -83,7 +83,7 @@ try:
         elif kind=='key': send({'tab':'\t','esc':'\x1b','ctrlx':'\x18','down':'\x1b[B','up':'\x1b[A','right':'\x1b[C','left':'\x1b[D','space':' '}[arg])
         elif kind=='chan':
             m=snapshot(); ch=m['chans'][-1]
-            print('chan:',{k:(ch.get(k)[:8] if k=='sid' and ch.get(k) else ch.get(k)) for k in ('num','status','sid','title','model','effort','efforts')},'| models:',(ch.get('models') or {}).get('options'),'| tdir:',bool(ch.get('tdir')))
+            print('chan:',{k:(ch.get(k)[:8] if k=='sid' and ch.get(k) else ch.get(k)) for k in ('num','status','sid','title','model','effort','effortUsed')},'| models value:',repr((ch.get('models') or {}).get('value')),'| tdir:',bool(ch.get('tdir')))
             evs=[x for x in (evline(e) for e in ch.get('events',[])) if x]
             print('\n'.join('  '+x for x in evs[-int(arg or 12):]))
             print('past:',[(p.get('id','')[:8],p.get('title') or p.get('name'),p.get('how')) for p in m.get('past',[])][:6])
@@ -98,6 +98,9 @@ try:
             else: send(f'/resume {sid}'); pump(.6); send('\r'); print('typed /resume',sid[:8])
         elif kind in ('model','effort'):
             ch=snapshot()['chans'][-1]; print(kind,arg,'->',api(f'/api/ui/{kind}',{'chan':ch['id'],'value':arg}))
+        elif kind=='uapi':
+            # any screen request for this channel: "uapi:/api/ui/compact {}" (the channel's id is filled in)
+            path,_,body=arg.partition(' '); ch=snapshot()['chans'][-1]; print(path,'->',api(path,{'chan':ch['id'],**json.loads(body or '{}')}))
         elif kind=='ucmd':
             name,_,args=arg.partition(' '); ch=snapshot()['chans'][-1]; print('command',name,args,'->',api('/api/ui/command',{'chan':ch['id'],'name':name,'args':args}))
         elif kind=='stub':

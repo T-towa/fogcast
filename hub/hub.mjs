@@ -23,7 +23,7 @@ import { join, dirname, basename, isAbsolute } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
-export const VERSION = '0.5.1'
+export const VERSION = '0.5.2'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ARGS = process.argv.slice(2)
 const PORT = Number(process.env.FOGCAST_PORT) || 4317
@@ -133,6 +133,7 @@ const absPath = p => { p = str(p, 1000); return p && isAbsolute(p) ? p : '' }
 // what the screen's pickers offer: the /config Model row's options, the levels /effort takes
 const modelsOf = m => m && Array.isArray(m.options) ? { options: m.options.filter(o => typeof o === 'string' && /^[\w.:[\]-]{1,60}$/.test(o)).slice(0, 40), value: str(m.value, 60) } : null
 const effortsOf = a => (Array.isArray(a) ? a : []).filter(x => typeof x === 'string' && /^[a-z]{2,20}$/.test(x)).slice(0, 12)
+const level = v => typeof v === 'string' && /^[a-z]{1,20}$/.test(v) ? v : ''
 function makeChan(id, h) {
   const c = {
     id, num: freeNum(id), name: nameFor(h.cwd, id), cwd: str(h.cwd, 1000), root: str(h.root, 1000), branch: str(h.branch, 200), model: str(h.model, 100),
@@ -142,7 +143,8 @@ function makeChan(id, h) {
     turn: null, waits: new Map(), queue: [], events: [], seq: 0, turnNo: 0, viaScreen: new Set(),
     q: null, pending: [], suggest: '',
     // the conversation's file and its folder (the project's other conversations, for /resume), its name, effort and model choices
-    tp: absPath(h.tp), tdir: absPath(h.tdir), title: '', effort: str(h.effort, 20), models: modelsOf(h.models), efforts: effortsOf(h.efforts),
+    tp: absPath(h.tp), tdir: absPath(h.tdir), title: '', effort: level(h.effort), models: modelsOf(h.models), efforts: effortsOf(h.efforts),
+    effortUsed: level(h.effortUsed), cfg: absPath(h.cfg),
   }
   if (Array.isArray(h.breakdown)) c.ctx.tokens = h.breakdown.reduce((a, b) => a + num(b && b.v), 0)
   if (h.loaded && num(h.loaded.window)) c.ctx.window = num(h.loaded.window)
@@ -156,7 +158,7 @@ function pub(c) {
     status: c.status, now: c.now, since: c.since, startedAt: c.startedAt, endedAt: c.endedAt, ctx: c.ctx, usd: c.usd, tok: c.tok, perTurn: c.perTurn,
     blocks: c.blocks, tasks: c.tasks, files: c.files, agents: c.agents, ops: c.ops, active: c.active,
     turn: c.turn && { id: c.turn.id, t0: c.turn.t0, ops: c.turn.ops }, turnNo: c.turnNo,
-    ask: c.q ? c.q.id : null, pending: c.pending, suggest: c.suggest, effort: c.effort, title: c.title,
+    ask: c.q ? c.q.id : null, pending: c.pending, suggest: c.suggest, effort: c.effort, effortUsed: c.effortUsed, title: c.title,
   }
 }
 // what the terminal loaded at start: sent with the channel's first view and when it changes
@@ -473,12 +475,15 @@ function apply(c, ev) {
       break
     }
     case 'model': {
-      e.from = str(ev.from, 100); e.to = str(ev.to, 100); e.src = str(ev.src, 20); if (e.to) c.model = e.to; else return null
-      // the picker's mark follows what was asked for, when it is one of its choices
-      const asked = str(ev.asked, 60); delete e.asked
-      // (a replay leaves it: the hello that comes with it says what is set now)
-      if (asked && !replaying && c.models && c.models.options.includes(asked) && c.models.value !== asked) { c.models.value = asked; broadcast({ type: 'chan', chan: { ...pub(c), ...meta(c) } }) }
+      e.from = str(ev.from, 100); e.to = str(ev.to, 100); e.src = str(ev.src, 20); delete e.asked; if (e.to) c.model = e.to; else return null
       break
+    }
+    case 'models': {
+      // the choices and the one /config holds, read back by the terminal after any change: what the picker marks.
+      // A replay leaves them: the hello that comes with it says what is set now
+      const m = modelsOf(ev)
+      if (m && !replaying && JSON.stringify(m) !== JSON.stringify(c.models)) { c.models = m; broadcast({ type: 'chan', chan: { ...pub(c), ...meta(c) } }) }
+      return null
     }
     case 'skillCmd': {
       // a built-in command that turned out to be a skill: the screen runs it as a turn from now on
@@ -560,7 +565,9 @@ function apply(c, ev) {
     }
     case 'info': {
       if (ev.branch != null) c.branch = str(ev.branch, 200); if (ev.model) c.model = str(ev.model, 100); if (ev.sid) c.sid = str(ev.sid, 100)
-      if (ev.effort != null) c.effort = str(ev.effort, 20)
+      // a level is a plain word (low, xhigh, auto): anything else is not taken
+      if (ev.effort != null && /^[a-z]{0,20}$/.test(str(ev.effort, 20))) c.effort = str(ev.effort, 20)
+      if (ev.effortUsed != null && /^[a-z]{0,20}$/.test(str(ev.effortUsed, 20))) c.effortUsed = str(ev.effortUsed, 20)
       const tp = absPath(ev.tp); if (tp) { c.tp = tp; c.tdir = dirname(tp) }
       return null
     }
@@ -592,6 +599,9 @@ function remember(c, reason) {
   let first = null, began = null
   for (let i = c.events.length - 1; i >= 0; i--) { const e = c.events[i]; if (e.k === 'resumed' || e.k === 'clear') { if (e.k === 'resumed') began = e; break } if (e.k === 'turn' && e.text) first = e }
   const was = began && (began.title || began.label)
+  // left inside the terminal (/resume, /clear) with nothing asked in it: nothing to come back to (an ended terminal's
+  // session is kept all the same: it may have been resumed at start, with its history before this hub saw it)
+  if ((reason === 'resume' || reason === 'clear') && !c.title && !was && !first) return
   S.past = S.past.filter(p => p.id !== (c.resume || c.sid))
   S.past.unshift({ id: c.resume || c.sid, cwd: c.cwd, name: c.name, title: c.title ? str(c.title, 60) : was ? str(was, 60) : first ? str(first.text, 60) : '', endedAt: now(), reason: str(reason, 20) })
   S.past = S.past.slice(0, 30); markSave()
@@ -602,39 +612,65 @@ function remember(c, reason) {
 const atLeast = (v, min) => { const a = String(v || '0').split('.').map(Number), m = min.split('.').map(Number); for (let i = 0; i < 3; i++) if ((a[i] || 0) !== (m[i] || 0)) return (a[i] || 0) > (m[i] || 0); return true }
 const canPick = c => atLeast(c.mod, '0.5.0')
 const OLD_MOD = 'このターミナルの Fogcast は前の版です。ターミナルで claude を起動し直すと使えます。'
-// Claude Code keeps each conversation as <session id>.jsonl, one folder per project; the mod says which folder (its own
-// conversation's file is in it). Only files named like a conversation are read, and only their beginning and end.
+// Claude Code keeps each conversation as <session id>.jsonl, one folder per project, named after the project's path with
+// every character but a letter or digit made '-'. The mod says which folder (its own conversation's file is in it); until
+// it can, the folder is worked out the same way from the terminal's. Only files named like a conversation are read, and
+// only their beginning and end.
 const isSid = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''))
-const convDir = c => absPath(c.tdir) || (absPath(c.tp) ? dirname(c.tp) : '')
+const projDir = c => c.cfg && isAbsolute(c.cwd || '') ? join(c.cfg, 'projects', c.cwd.replace(/[^a-zA-Z0-9]/g, '-')) : ''
+const convDir = c => absPath(c.tdir) || (absPath(c.tp) ? dirname(c.tp) : '') || projDir(c)
 async function readRange(fh, pos, len) { const buf = Buffer.alloc(len); const { bytesRead } = await fh.read(buf, 0, len, pos); return buf.subarray(0, bytesRead).toString('utf8') }
 function rows(text, cutAtStart) {
   const lines = text.split('\n'); if (cutAtStart) lines.shift()        // a read that starts mid-file starts mid-line
   const out = []; for (const l of lines) { if (!l.trim()) continue; try { out.push(JSON.parse(l)) } catch {} }
   return out
 }
-/** What the person typed in a row: not a command's row, a reminder or a tool's result. */
+/**
+ * What the person typed in a row: not a command's row, a reminder, a summary, a tool's result or an interruption.
+ * What Claude Code or the editor sets around the words (<system-reminder>, VS Code's <ide_opened_file>, a command's
+ * own <command-name> rows) comes in blocks or at the head of the text, and is left out.
+ */
+const LEAD_TAGS = /^\s*(?:<([a-z][\w-]*)\b[^>]*>[\s\S]*?<\/\1>\s*|<[a-z][\w-]*\b[^>]*\/>\s*)+/i
 function promptOf(r) {
-  if (!r || r.type !== 'user' || r.isMeta || !r.message || r.message.role !== 'user') return ''
+  if (!r || r.type !== 'user' || r.isMeta || r.isCompactSummary || r.isVisibleInTranscriptOnly || !r.message || r.message.role !== 'user') return ''
   const m = r.message.content
-  const t = typeof m === 'string' ? m : Array.isArray(m) ? m.filter(b => b && b.type === 'text').map(b => b.text || '').join('\n') : ''
-  return /^\s*</.test(t) ? '' : t.trim()
+  const parts = typeof m === 'string' ? [m] : Array.isArray(m) ? m.filter(b => b && b.type === 'text').map(b => String(b.text || '')) : []
+  return parts.map(t => t.replace(LEAD_TAGS, '').trim()).filter(t => t && !t.startsWith('<') && !/^\[Request interrupted/.test(t)).join('\n').trim()
+}
+/** A command's own row ("/init", "/review 12"): in the history, a command that set Claude working reads as its request. */
+function commandOf(r) {
+  if (!r || r.type !== 'user' || !r.message) return ''
+  const m = r.message.content
+  const t = typeof m === 'string' ? m : Array.isArray(m) ? m.filter(b => b && b.type === 'text').map(b => String(b.text || '')).join('\n') : ''
+  const name = /<command-name>\/?([^<\s]+)<\/command-name>/.exec(t)?.[1]; if (!name) return ''
+  const args = (/<command-args>([\s\S]*?)<\/command-args>/.exec(t)?.[1] || '').trim()
+  return `/${name}${args ? ' ' + args : ''}`
 }
 function answerOf(r) {
   // the engine's own placeholder rows ("No response requested." after a command) are not Claude's answers
   if (!r || r.type !== 'assistant' || !r.message || !Array.isArray(r.message.content) || r.message.model === '<synthetic>') return ''
   return r.message.content.filter(b => b && b.type === 'text').map(b => b.text || '').join('\n').trim()
 }
-const PEEK = 128 * 1024
-/** A conversation as the resume list shows it: its name (if it was given one), its first and last prompts. */
+const PEEK = 128 * 1024, HEAD_MAX = 1024 * 1024
+/**
+ * A conversation as the resume list shows it: its name (the one given with /rename, else the one Claude Code made up
+ * for it), its first and last prompts. A first row can be long (a pasted image): while no prompt has turned up in the
+ * first part, up to HEAD_MAX of the beginning is read.
+ */
 async function peek(path, size) {
   const fh = await open(path, 'r')
   try {
-    const head = await readRange(fh, 0, Math.min(size, PEEK)), cut = size > PEEK
-    const tail = cut ? await readRange(fh, size - PEEK, PEEK) : head
-    let first = '', title = '', last = ''
-    for (const r of rows(head, false)) { if (!first) first = promptOf(r); if (r.type === 'custom-title' && r.customTitle) title = r.customTitle }
-    for (const r of rows(tail, cut)) { if (r.type === 'custom-title' && r.customTitle) title = r.customTitle; if (r.type === 'last-prompt' && r.lastPrompt) last = r.lastPrompt }
-    return { first, title, last }
+    let first = '', named = '', made = '', last = ''
+    const take = r => {
+      if (r.type === 'custom-title' && r.customTitle) named = String(r.customTitle)
+      else if (r.type === 'ai-title' && r.aiTitle) made = String(r.aiTitle)
+      else if (r.type === 'summary' && r.summary && !made) made = String(r.summary)
+      else if (r.type === 'last-prompt' && r.lastPrompt) last = String(r.lastPrompt)
+    }
+    for (const r of rows(await readRange(fh, 0, Math.min(size, PEEK)), false)) { if (!first) first = promptOf(r); take(r) }
+    if (!first && size > PEEK) for (const r of rows(await readRange(fh, 0, Math.min(size, HEAD_MAX)), false)) if ((first = promptOf(r))) break
+    if (size > PEEK) for (const r of rows(await readRange(fh, size - PEEK, PEEK), true)) take(r)
+    return { first, title: named || made, last }
   } finally { await fh.close() }
 }
 async function sessionsOf(c) {
@@ -649,7 +685,7 @@ async function sessionsOf(c) {
   for (const f of files) {
     if (f.id === c.sid) continue
     let info; try { info = await peek(join(dir, `${f.id}.jsonl`), f.size) } catch { continue }
-    if (!info.first && !info.title) continue        // nothing was asked in it
+    if (!info.first && !info.title && !info.last) continue        // nothing was asked in it
     const o = openIn.get(f.id)
     out.push({ id: f.id, title: str(info.title, 200), first: str(info.first, 300), last: str(info.last, 300), t: Math.round(f.t), size: f.size, ...(o ? { open: { num: o.num, name: o.name } } : {}) })
     if (out.length >= 50) break
@@ -662,12 +698,15 @@ async function histOf(path) {
   const fh = await open(path, 'r')
   let text; try { text = await readRange(fh, s.size - len, len) } finally { await fh.close() }
   const items = []
+  let cmd = null        // a command's row, until Claude answers it (it started a turn) or something else comes
   for (const r of rows(text, s.size > len)) {
     const p = promptOf(r)
-    if (p) { items.push({ u: p, a: '', t: Date.parse(r.timestamp) || 0 }); continue }
+    if (p) { items.push({ u: p, a: '', t: Date.parse(r.timestamp) || 0 }); cmd = null; continue }
+    const k = commandOf(r); if (k) { cmd = { u: k, t: Date.parse(r.timestamp) || 0 }; continue }
     const a = answerOf(r)
     if (!a) continue
-    if (!items.length) items.push({ u: '', a: '', t: Date.parse(r.timestamp) || 0 })
+    if (cmd) { items.push({ u: cmd.u, a: '', t: cmd.t }); cmd = null }
+    else if (!items.length) items.push({ u: '', a: '', t: Date.parse(r.timestamp) || 0 })
     const it = items[items.length - 1]; it.a = it.a ? `${it.a}\n\n${a}` : a
   }
   const keep = items.slice(-20)
@@ -784,7 +823,9 @@ const routes = {
     if (b.mod) c.mod = str(b.mod, 20)
     if (absPath(b.tp)) c.tp = absPath(b.tp)
     if (absPath(b.tdir)) c.tdir = absPath(b.tdir)
-    if (typeof b.effort === 'string' && b.effort) c.effort = str(b.effort, 20)
+    if (typeof b.effort === 'string' && /^[a-z]{1,20}$/.test(b.effort)) c.effort = b.effort
+    if (typeof b.effortUsed === 'string' && /^[a-z]{1,20}$/.test(b.effortUsed)) c.effortUsed = b.effortUsed
+    if (absPath(b.cfg)) c.cfg = absPath(b.cfg)
     if (b.models) c.models = modelsOf(b.models)
     if (Array.isArray(b.efforts)) c.efforts = effortsOf(b.efforts)
     if (b.loaded) c.loaded = b.loaded
@@ -816,7 +857,8 @@ const routes = {
     }
     chanDirty.add(c.id)
     const commands = c.queue.splice(0)
-    return [200, { ok: true, num: c.num, commands, approvals: { on: AP.on && pairedWatching() }, pair: pairState(), forecast: forecast() }]
+    // watch: a screen is open, so what it asks for should be picked up without the quiet interval
+    return [200, { ok: true, num: c.num, commands, approvals: { on: AP.on && pairedWatching() }, pair: pairState(), forecast: forecast(), watch: streams.size > 0 }]
   },
   'POST /api/mod/ask': (b) => {
     const c = chans.get(str(b.chan, 64)); if (!c) return [200, { mode: 'terminal' }]

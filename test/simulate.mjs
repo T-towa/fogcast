@@ -46,7 +46,7 @@ function terminal(chan, cwd, skills, agents, mcp) {
   const t = { chan, out: [], turn: 0, sid: `${chan}-sess`, model: 'claude-opus-5-5', effort: 'xhigh', convs: '' }
   t.push = ev => t.out.push({ t: Date.now(), ...ev })
   t.hello = () => post('/api/mod/hello', {
-    chan, mod: '0.5.1', sid: t.sid, cwd, branch: 'main', model: t.model, version: '2.1.291', startedAt: Date.now() - 600e3,
+    chan, mod: '0.5.2', sid: t.sid, cwd, branch: 'main', model: t.model, version: '2.1.291', startedAt: Date.now() - 600e3,
     tdir: t.convs || '', effort: t.effort, models: MODELS, efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'auto'],
     commands: [...BUILTIN.map(([name, description, hint]) => ({ name, description, source: 'builtin', hint })), ...skills.map(([s]) => ({ name: s, description: `${s} の手順`, source: 'user' })), { name: 'fog', description: 'Fogcast', source: 'plugin', plugin: 'fogcast' }],
     loaded: { md: true, memory: [{ path: `${cwd}/CLAUDE.md`, type: 'Project', dt: 2400 }], skills: skills.map(([n, src]) => ({ n, src, dt: 160 })), agents: agents.map(([n, src]) => ({ n, src, dt: 70 })), mcp, mods: ['fogcast'], totalSkills: skills.length, includedSkills: skills.length, window: 200000, autoCompactAt: 167000 },
@@ -63,7 +63,7 @@ function terminal(chan, cwd, skills, agents, mcp) {
   }
   // the pickers and commands, as Claude Code answers them (the mod's rows for them)
   t.perform = c => {
-    if (c.type === 'model') { const to = MODEL_ID[c.value] || c.value; t.push({ k: 'model', from: t.model, to, src: 'screen', asked: c.value }); t.model = to }
+    if (c.type === 'model') { const to = MODEL_ID[c.value] || c.value; if (to !== t.model) t.push({ k: 'model', from: t.model, to, src: 'screen' }); t.model = to; t.push({ k: 'models', options: MODELS.options, value: c.value }) }
     else if (c.type === 'effort') { t.effort = c.value; t.push({ k: 'cmd', name: 'effort', args: c.value, via: 'screen', run: c.id, text: `Set effort level to ${c.value} (saved as your default for new sessions)` }); t.push({ k: 'info', effort: c.value }) }
     else if (c.type === 'resume') { const from = t.sid; t.sid = c.sid; t.push({ k: 'resumed', from, sid: c.sid, title: '', tp: join(t.convs, `${c.sid}.jsonl`), source: 'resume' }) }
     else if (c.type === 'command') t.push({ k: 'cmd', name: c.name, args: c.args || '', via: 'screen', run: c.id, text: c.name === 'context' ? '## Context Usage\n\n| Category | Tokens | Percentage |\n|---|---|---|\n| System prompt | 3.1k | 1.6% |\n| Messages | 38.0k | 19.0% |' : '' })

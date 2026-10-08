@@ -179,6 +179,28 @@ export function effortLevels(hint: string | undefined): string[] {
 /** A model id as its key in the settings' `modelSettings` (`claude-opus-5-5[1m]` → `claude-opus-5-5`). */
 export function modelKey(model: string): string { return String(model || '').replace(/\[[^\]]*\]$/, '') }
 
+/**
+ * The /config Model row's value as one of the row's own choices. The row can hold a label rather than a choice
+ * (`Default (recommended)` before anything is set) or a model id; the screen's picker marks the choice.
+ */
+export function settingOf(value: unknown, options: readonly string[]): string {
+  const v = typeof value === 'string' ? value.trim() : ''
+  if (!v) return ''
+  if (options.includes(v)) return v
+  const lo = v.toLowerCase(), bare = lo.replace(/\s*\([^)]*\)\s*$/, '').trim()
+  const same = options.find(o => o.toLowerCase() === bare); if (same) return same
+  // a model id or a longer label (claude-sonnet-5-5[1m], "Opus (1M context)"): its family, long-context when it says so
+  const fam = options.find(o => /^[a-z]+$/.test(o) && new RegExp(`(^|[^a-z])${o}([^a-z]|$)`).test(bare))
+  if (!fam) return v
+  const long = `${fam}[1m]`
+  return /\[1m\]|\b1m\b/.test(lo) && options.includes(long) ? long : fam
+}
+
+/** The level an /effort run set, read off the line it printed (`Set effort level to high …`, `Effort level set to auto`). */
+export function effortSet(text: string): string {
+  return /(?:set effort level to|effort level set to)\s+([a-z]+)/i.exec(String(text || ''))?.[1]?.toLowerCase() ?? ''
+}
+
 /** A longer text kept with its line breaks (a skill's description): trimmed, blank runs closed up, cut at `n`. */
 export function keepText(s: string, n: number): string {
   const t = s.replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()

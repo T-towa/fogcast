@@ -4,13 +4,13 @@
 // Nothing here adds to the model's context: the hooks watch and pass everything on as
 // it was. The one exception is /fog's one-line answer, which says where the screen is.
 import type { Register } from 'claude-code'
-import { linkFor, verb, summarize, outline, fileChange, todosOf, textOf, srcLabel, statusLine, older, isLocalSrc, midTurnText, clip, str, keepText, questionsOf, answersFor, commandRow, effortLevels, modelKey, type Reading } from './shape'
+import { linkFor, verb, summarize, outline, fileChange, todosOf, textOf, srcLabel, statusLine, older, isLocalSrc, midTurnText, clip, str, keepText, questionsOf, answersFor, commandRow, effortLevels, modelKey, settingOf, effortSet, type Reading } from './shape'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any
 
 /** Keep in step with .claude-plugin/plugin.json and hub/hub.mjs (a test checks). */
-export const VERSION = '0.5.1'
+export const VERSION = '0.5.2'
 const DEFAULT_PORT = 4317
 /** Claude Code drops a toast asked to stay longer than this (0.1.0 lost its pairing notice that way). */
 const TOAST_MAX = 60000
@@ -67,8 +67,12 @@ const st = {
   qWait: new Map<string, (sent: unknown) => void>(),
   /** this conversation's file (the engine's transcript): its folder holds the project's other conversations, which /resume can return to */
   tp: '',
-  /** the effort the last request went with (or the one the settings keep for the model, until a request says) */
+  /** the effort as it is set (/effort, or what the settings keep for the model); a request's own level until one is known */
   effort: '',
+  /** the level the last request went with: what `auto` came to, for one */
+  effortUsed: '',
+  /** the model choices last told to the hub, with the one /config holds (the picker marks it) */
+  modelsSent: '',
   /** the conversation a /resume in this terminal is leaving, until the one it returns to has started */
   resumeFrom: '',
   /** the command the conversation's last command row named: what its printed line belongs to */
@@ -79,8 +83,10 @@ const st = {
   hiddenCmds: new Set<string>(),
   /** when the screen last asked for a model: the switch that follows is told as the screen's */
   modelAsked: 0,
-  /** the /config Model value the screen asked for (`sonnet`, `opus[1m]`): the picker marks it as set */
-  modelAskedValue: '',
+  /** where Claude Code keeps its conversations (CLAUDE_CONFIG_DIR, else ~/.claude): the resume list's fallback */
+  cfg: '',
+  /** a screen is open: what it asks for is picked up at every tick */
+  watched: false,
 }
 const outbox: Any[] = []
 const ring: Any[] = []     // what is replayed if the hub restarts
@@ -117,6 +123,7 @@ async function paths($: Any) {
   const custom = await $.env.get('FOGCAST_HOME')
   const home = (await $.env.get('HOME')) || (await $.env.get('USERPROFILE')) || ''
   st.dir = custom || (home ? `${home}/.fogcast` : '')
+  st.cfg = (await $.env.get('CLAUDE_CONFIG_DIR')) || (home ? `${home}/.claude` : '')
 }
 async function readToken($: Any): Promise<string> {
   if (!st.dir) return ''
@@ -215,13 +222,23 @@ async function modelChoices($: Any): Promise<Any> {
   try {
     const row = ((await $.config.list()) || []).find((x: Any) => x && x.key === 'model')
     if (!row) return null
-    return { options: (Array.isArray(row.options) ? row.options : []).filter((o: unknown) => typeof o === 'string').slice(0, 40), value: typeof row.value === 'string' ? row.value : '' }
+    const options = (Array.isArray(row.options) ? row.options : []).filter((o: unknown) => typeof o === 'string').slice(0, 40)
+    return { options, value: settingOf(row.value, options) }
   } catch { return null }
+}
+/** The model setting as /config holds it now, told to the hub when it changed: after the screen's pick, /model, /config, a switch. */
+async function syncModels($: Any) {
+  if (!st.on) return
+  const m = await modelChoices($); if (!m) return
+  const k = JSON.stringify(m); if (k === st.modelsSent) return
+  st.modelsSent = k; push({ k: 'models', ...m })
 }
 /** The effort the settings keep for a model (what `/effort` saved as its default): shown until a request says otherwise. */
 async function savedEffort($: Any, model: string): Promise<string> {
   try { const v = (await $.settings.read())?.modelSettings?.[modelKey(model)]?.effortLevel; return typeof v === 'string' ? v : '' } catch { return '' }
 }
+/** The effort as now set, told to the hub when it changed. */
+function effortIs(level: string) { if (level && level !== st.effort) { st.effort = level; push({ k: 'info', effort: level }) } }
 const dirOf = (p: string) => p.replace(/[\\/][^\\/]*$/, '')
 async function hello($: Any) {
   const list = await commandList($)
@@ -230,11 +247,11 @@ async function hello($: Any) {
     $.session.version().catch(() => null), loaded($, list), branch($), modelChoices($),
   ])
   const cmds = commands(list)
-  st.sid = sid; st.cwd = cwd; st.model = model; st.branch = br
+  st.sid = sid; st.cwd = cwd; st.model = model; st.branch = br; st.modelsSent = models ? JSON.stringify(models) : ''
   if (!st.effort) st.effort = await savedEffort($, model)
   return {
     chan: CHAN, mod: VERSION, sid, cwd, branch: br, model, version: version?.version ?? '', startedAt: st.startedAt || Date.now(), commands: cmds, ...info,
-    tp: st.tp, tdir: st.tp ? dirOf(st.tp) : '', effort: st.effort, models, efforts: effortLevels(st.hints.get('effort')), replay: ring,
+    tp: st.tp, tdir: st.tp ? dirOf(st.tp) : '', cfg: st.cfg, effort: st.effort, effortUsed: st.effortUsed, models, efforts: effortLevels(st.hints.get('effort')), replay: ring,
   }
 }
 async function connect($: Any): Promise<boolean> {
@@ -297,14 +314,15 @@ async function tick($: Any) {
     if (st.ticks % 8 === 0) {
       const [sid, model] = await Promise.all([$.session.id().catch(() => st.sid), $.session.model().catch(() => st.model)])
       if (sid !== st.sid || model !== st.model) { st.sid = sid; st.model = model; push({ k: 'info', sid, model }) }
+      if (st.ticks % 24 === 0) await syncModels($)
     }
     if ((st.band || st.pair) && st.ticks % 2 === 0) $.ui.invalidate('ui.render')    // the band's countdown
-    if (!outbox.length && !st.turnId && st.ticks % 3 !== 0) return       // quiet: every ~2 s is enough
+    if (!outbox.length && !st.turnId && !st.watched && st.ticks % 3 !== 0) return       // quiet: every ~2 s is enough, unless a screen is open
     const events = outbox.splice(0, 400)
     const r = await post($, '/api/mod/sync', { chan: CHAN, events })
     if (!r) { outbox.unshift(...events); st.ready = false; line($); return }
     if (r.ok === false) { st.ready = false; return }   // the hub restarted: say hello again, with the replay
-    st.num = r.num ?? st.num; st.approvals = !!r.approvals?.on; st.forecast = r.forecast ?? null
+    st.num = r.num ?? st.num; st.approvals = !!r.approvals?.on; st.forecast = r.forecast ?? null; st.watched = !!r.watch
     applyPair($, r.pair)
     for (const c of r.commands ?? []) perform($, c)
     line($)
@@ -327,7 +345,14 @@ function perform($: Any, c: Any) {
     } else if (c.type === 'stop') {
       if (st.turnId) void $.turn.abort({ turnId: st.turnId }).catch(fail)
     } else if (c.type === 'compact') {
-      const go = () => { void $.session.compact(c.instructions ? { instructions: String(c.instructions) } : undefined).catch(fail) }
+      // this module's own compaction runs through every hook but its own (session.compact): it is told here.
+      // A hook that vetoed it says why in the terminal; the screen hears it did not happen
+      const go = () => {
+        void $.session.compact(c.instructions ? { instructions: String(c.instructions) } : undefined).then((r: Any) => {
+          if (r?.skip) push({ k: 'did', cid: c.id, what: 'compact', ok: false, error: clip(String(r.skip), 200) })
+          else push({ k: 'compact', trigger: 'manual', via: 'screen' })
+        }).catch(fail)
+      }
       if (st.turnId) st.afterTurn.push(go); else go()
     } else if (c.type === 'toast') {
       $.ui.toast(String(c.text || ''), { timeoutMs: Math.min(TOAST_MAX, Math.max(1, Math.round(Number(c.timeoutMs) || 15000))) })
@@ -338,7 +363,13 @@ function perform($: Any, c: Any) {
     } else if (c.type === 'model') {
       // through the /config Model row: /model would stop at the terminal's "switch model?" question mid-conversation.
       // Like /model, it waits for a running turn to end
-      const go = () => { st.modelAsked = Date.now(); st.modelAskedValue = String(c.value); void $.config.set({ key: 'model', value: String(c.value) }).then((r: Any) => { if (r?.deny) fail(r.deny) }).catch(fail) }
+      // the switch it brings is told as the screen's (PostModelSwitch); a pick of the model already in use brings none,
+      // so the mark is let go a moment after the write, and the setting itself is read back from /config
+      const go = () => {
+        st.modelAsked = Date.now()
+        void $.config.set({ key: 'model', value: String(c.value) }).then((r: Any) => { if (r?.deny) fail(r.deny) }).catch(fail)
+          .finally(() => { $.clock.after(1500, () => { st.modelAsked = 0 }); void syncModels($) })
+      }
       if (st.turnId) st.afterTurn.push(go); else go()
     } else if (c.type === 'effort') {
       const go = () => { void runCommand($, 'effort', String(c.value)).catch(fail) }
@@ -369,8 +400,16 @@ function cmdDone($: Any, run: CmdRun, r: Any) {
   // /context's grid is drawn for the terminal; the table it leaves for the model reads better here
   const text = typeof r?.text === 'string' ? r.text : run.name === 'context' && Array.isArray(r?.context) ? r.context.join('\n\n') : ''
   if (text.trim() && !run.text) run.text = text
+  if (run.name === 'effort') effortIs(effortSet(text))
+  if (run.name === 'model' || run.name === 'config') $.clock.after(400, () => { void syncModels($) })
   if (RELOADS.has(run.name)) void reload($)
-  $.clock.after(800, () => { run.settled = true; cmdTell(run) })
+  $.clock.after(800, () => {
+    run.settled = true
+    // it started no turn: the next prompt is the person's own, not this command's (a prompt typed right after /effort
+    // would otherwise be told as "/effort auto")
+    if (!run.shown && !st.turnId && st.lastCmd && st.lastCmd.name === run.name && st.lastCmd.args === run.args) st.lastCmd = null
+    cmdTell(run)
+  })
 }
 function cmdTell(run: CmdRun) {
   if (run.told || run.shown || SKIP_CMDS.has(run.name)) return
@@ -535,8 +574,7 @@ export const register: Register = (on) => {
               if (!run.told) { if (!run.text.trim()) run.text = row.out; if (run.settled) cmdTell(run) }
               else if (!run.text.trim()) { run.text = row.out; push({ k: 'cmdOut', name: run.name, text: keepText(row.out, 5000), run: run.id }) }
             } else if (row.out) push({ k: 'cmdOut', name: st.appendCmd, text: keepText(row.out, 5000) })
-            const eff = /^Set effort level to ([a-z]+)/.exec(row.out)?.[1]
-            if (eff && eff !== st.effort) { st.effort = eff; push({ k: 'info', effort: eff }) }
+            if (st.appendCmd === 'effort') effortIs(effortSet(row.out))
             st.appendCmd = ''
           }
         } else if (e.door === 'response' && e.message?.type === 'assistant') {
@@ -724,27 +762,34 @@ export const register: Register = (on) => {
   // /model, the /config Model row, the screen's picker or a fallback: the switch shows in the conversation
   on('classic.PostModelSwitch', async ($: Any, e: Any, next: Any) => {
     try {
-      const to = str(e.to_model)
-      if (st.on && to && to !== st.model) {
+      // a switch is one from a model to another (st.model may already have caught up through the periodic check)
+      const to = str(e.to_model), from = str(e.from_model)
+      if (st.on && to && to !== (from || st.model)) {
         // a resume restores the conversation's own model: that is part of the resume, not a switch to tell of
         const screen = Date.now() - st.modelAsked < 15000; if (screen) st.modelAsked = 0
-        // what was asked for (`sonnet`): the setting the picker marks; a resume restores a model without changing the setting
-        const asked = screen ? st.modelAskedValue : str(e.requested_model)
-        push(e.source === 'resume' ? { k: 'info', model: to } : { k: 'model', from: str(e.from_model), to, src: screen ? 'screen' : str(e.source), ...(asked ? { asked } : {}) })
+        push(e.source === 'resume' ? { k: 'info', model: to } : { k: 'model', from: from || st.model, to, src: screen ? 'screen' : str(e.source) })
+        $.clock.after(300, () => { void syncModels($) })
         // `/model sonnet`: the switch says it, with the model it left; the command's own row would say it again
         if (st.cmdRun?.name === 'model' && !st.cmdRun.told && Date.now() - st.cmdRun.t < 60000) st.cmdRun.shown = true
         st.model = to
-        const eff = await savedEffort($, to); if (eff && eff !== st.effort) { st.effort = eff; push({ k: 'info', effort: eff }) }
+        effortIs(await savedEffort($, to))
       }
     } catch {}
     return next(e)
+  })
+  // the Model row changed in the terminal's /config (this module's own writes are not seen here): the picker's mark follows
+  on('config.set', async ($: Any, e: Any, next: Any) => {
+    const r = await next(e)
+    try { if (st.on && e.key === 'model' && !r?.deny) $.clock.after(300, () => { void syncModels($) }) } catch {}
+    return r
   })
   // each request of the main conversation: the effort it really goes with (a model without effort sends none)
   on('turn.step', async function* ($: Any, e: Any, next: Any) {
     try {
       if (st.on && !e.agentId) {
         const eff = e.effort == null ? '' : String(e.effort)
-        if (eff && eff !== st.effort) { st.effort = eff; push({ k: 'info', effort: eff }) }
+        if (eff && eff !== st.effortUsed) { st.effortUsed = eff; push({ k: 'info', effortUsed: eff }) }
+        if (eff && !st.effort) effortIs(eff)            // nothing set that this terminal saw: the model's own level stands for it
       }
     } catch {}
     return yield* next(e)

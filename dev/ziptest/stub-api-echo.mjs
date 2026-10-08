@@ -25,7 +25,9 @@ http.createServer((req, res) => {
     if (req.method === 'POST' && path.endsWith('/v1/messages')) return setTimeout(answer, /SLOW/.test(said) && main ? 9000 : Number(process.env.STUB_DELAY_MS || 0))
     res.writeHead(404, { 'content-type': 'application/json' }); res.end('{}')
     function answer() {
-      const text = main ? `答え：${said.slice(0, 80)}` : 'ok'
+      // a request to compact the conversation gets a summary in the shape Claude Code reads back
+      const compacting = /^CRITICAL: Respond with TEXT ONLY/.test(said) || /summary of the conversation/i.test(said)
+      const text = compacting ? '<analysis>テストの会話です。</analysis>\n<summary>1. Primary Request and Intent: テストの依頼に答えた。\n2. Pending Tasks: なし。</summary>' : main ? `答え：${said.slice(0, 80)}` : 'ok'
       const model = j.model || 'stub', usage = { input_tokens: 12, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }
       const msg = { id: 'msg_stub', type: 'message', role: 'assistant', model, content: [], stop_reason: null, stop_sequence: null, usage }
       if (!j.stream) {
