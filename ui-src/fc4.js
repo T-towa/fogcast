@@ -150,7 +150,7 @@ async function turn(c,T,text,byUser){
   if(c.ctx>WIN*.95) compact(c,false); }
 
 /* ================= your status in the demo: twelve days in, growing as the demo's turns finish (the live screen gets it from the hub) ================= */
-const XPR={cap:400,turn:10,tok:1e4,day:50,streak:10,streakMax:7,first:30}, ST_RANKS=[10,50,200,600,1500], LV_MAX=99;
+const XPR={turn:10,tok:1e4,day:50,streak:10,streakMax:7,first:30}, ST_RANKS=[10,50,200,600,1500], LV_MAX=99;
 const lvFloor=lv=>50*lv*(lv-1), toLv=e=>{ let lv=1; while(lv<LV_MAX&&lvFloor(lv+1)<=e) lv++; return lv; };
 const ST_DEF=[['inq','調査','調べる'],['make','構築','書く'],['run','実行','動かす'],['lead','段取り','任せる'],['ext','拡張','広げる']];
 const statOf=l=> /^(Read|Grep|Glob|WebSearch|WebFetch|ToolSearch|LSP|Explore)$/.test(l.id)? 'inq' : /^(Edit|Write|MultiEdit|NotebookEdit)$/.test(l.id)? 'make'
@@ -159,7 +159,7 @@ const statOf=l=> /^(Read|Grep|Glob|WebSearch|WebFetch|ToolSearch|LSP|Explore)$/.
 const DST={since:dayStart(Date.now())-11*DAY, exp:6480, turns:418, tok:9.62e6, usd:58.4, days:11, streak:6, best:6,
   first:new Set(LINKS.filter(l=>l.uses>0&&l.kind!=='core').map(l=>l.id)), stats:{inq:640,make:410,run:520,lead:150,ext:96},
   n:Object.fromEntries(LINKS.filter(l=>l.kind!=='core'&&l.uses>0).map(l=>[l.id,l.uses])),
-  past:[260,380,420,310,90,0,450,500,470,520,480], today:{vol:110,habit:100,first:0,done:8,tok:310000}};
+  past:[260,380,420,310,90,0,450,500,470,520,480], today:{vol:110,habit:100,first:0,done:8,tok:300000}};      // 8 turns × 10 + 300,000 tokens / 10,000
 function demoStatus(){ const D=DST, lv=toLv(D.exp), t=D.today, today=dayStart(Date.now());
   return {since:D.since,lv,max:LV_MAX,exp:D.exp,from:lvFloor(lv),to:lv>=LV_MAX?null:lvFloor(lv+1),
     today:{xp:t.vol+t.habit+t.first,vol:t.vol,habit:t.habit,first:t.first,done:t.done,tok:t.tok},
@@ -173,7 +173,7 @@ function stGain(kind,n){ if(n>0){ DST.today[kind]+=n; DST.exp+=n; } }
 function stUse(l){ if(LIVE) return; const k=statOf(l); if(k) DST.stats[k]+=l.kind==='agent'?3:l.kind==='skill'?2:1;
   DST.n[l.id]=(DST.n[l.id]||0)+1; if(!DST.first.has(l.id)){ DST.first.add(l.id); stGain('first',XPR.first); } stChanged(); }
 function stTurn(tok){ if(LIVE) return; const t=DST.today; t.done++; t.tok+=tok; DST.turns++; DST.tok+=tok; DST.usd+=tok*1.1e-6;
-  stGain('vol',Math.min(XPR.cap,t.done*XPR.turn+Math.floor(t.tok/XPR.tok))-t.vol); stChanged(); }
+  stGain('vol',t.done*XPR.turn+Math.floor(t.tok/XPR.tok)-t.vol); stChanged(); }
 if(!LIVE) G.status=demoStatus();
 
 /* ================= slash commands, as $.command.run would run them ================= */

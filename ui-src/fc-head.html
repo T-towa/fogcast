@@ -649,10 +649,13 @@ h1,h2,h3{text-wrap:balance}
 .po .kd.k-panel{color:var(--sky);border-color:rgba(147,180,255,.4)}
 .po .kd.k-danger{color:var(--alarm);border-color:rgba(255,106,85,.5)}
 .po .kd.k-op{color:var(--yolk);border-color:rgba(255,217,49,.45)}
+.po .kd.k-pick{color:var(--teal);border-color:rgba(63,230,214,.45);background:rgba(63,230,214,.08)}
+.po .kd.k-term{color:var(--faint);border-style:dashed}
 .po:hover{background:rgba(255,255,255,.06)}
 .po.on{background:var(--yolk);color:var(--yolk-ink)}
 .po.on code,.po.on .d,.po.on .h{color:var(--yolk-ink)}
-.po.on .kd{border-color:rgba(0,0,0,.35);color:var(--yolk-ink)}
+/* on the chosen (yellow) row every kind turns to ink: no teal or red on yellow */
+.po.on .kd{background:var(--yolk-ink);border-color:var(--yolk-ink);border-style:solid;color:var(--yolk)}
 .palft{font-size:11px;color:var(--faint);padding:7px 14px;border-top:1px solid var(--line)}
 #bCmd b{font-family:var(--f-mono);color:var(--yolk)}
 .cmdo{display:grid;gap:8px;border-radius:14px;padding:11px 13px;background:rgba(63,230,214,.05);border:1px solid rgba(63,230,214,.25)}
@@ -667,8 +670,6 @@ h1,h2,h3{text-wrap:balance}
 .histBox summary{cursor:pointer;display:flex;gap:4px 10px;align-items:baseline;flex-wrap:wrap;font-size:12.5px;color:var(--mute)}
 .histBox summary b{color:var(--ink);font-weight:600}
 .histIn{display:grid;gap:12px;margin-top:10px;opacity:.88}
-.po .kd.k-pick{color:var(--teal);border-color:rgba(63,230,214,.45);background:rgba(63,230,214,.08)}
-.po .kd.k-term{color:var(--faint);border-style:dashed}
 
 /* ---------- approvals from the browser ---------- */
 .pbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
@@ -982,8 +983,6 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
 .stParts span{font-size:12.5px;font-weight:700;color:var(--mute)}
 .stParts b{font:400 19px/1 var(--f-disp);color:var(--yolk);font-variant-numeric:tabular-nums}
 .stParts small{grid-column:1/-1;font-size:11.5px;color:var(--faint);line-height:1.5}
-.stParts .cap{grid-column:3;align-self:center;height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;position:relative}
-.stParts .cap i{position:absolute;left:0;top:0;bottom:0;background:var(--yolk)}
 .stHist{display:grid;gap:6px}
 .stHist .xpBars{display:flex;align-items:flex-end;justify-content:space-between;gap:5px;height:70px;padding:0 2px;border-bottom:1px solid var(--line)}
 .stHist .xpBars i{flex:1;max-width:30px;min-height:2px;background:rgba(63,230,214,.55);border-radius:3px 3px 0 0;transform-origin:bottom;animation:barUp .6s cubic-bezier(.2,.9,.25,1) both;animation-delay:calc(var(--i)*30ms)}
@@ -994,11 +993,13 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
 @keyframes barUp{from{transform:scaleY(0)}}
 .stRadar{display:grid;justify-items:center;gap:6px;padding-top:6px}
 .stRadar svg{width:100%;max-width:400px;height:auto;overflow:visible}
+.stRadar .lab{font:700 17px var(--f-body);letter-spacing:.12em;paint-order:stroke;stroke:rgba(7,9,15,.85);stroke-width:4px;stroke-linejoin:round}
 .stRadar .poly{animation:radarIn .7s cubic-bezier(.2,1.2,.35,1) both;transform-origin:center;transform-box:fill-box}
 @keyframes radarIn{from{transform:scale(.2);opacity:0}}
 .stAbs{list-style:none;margin:0;padding:0;display:grid;gap:7px}
 .stAb{--c:var(--teal);display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 14px;align-items:center;padding:9px 12px 9px 14px;background:linear-gradient(90deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border-left:4px solid var(--c);animation:coIn .45s cubic-bezier(.2,.9,.25,1) both;animation-delay:calc(var(--i)*45ms)}
-.stAb .nm b{display:block;font:400 18px/1.15 var(--f-disp);letter-spacing:.05em}
+/* the abilities' names: kanji at this size stay legible only in the body face (the display face fills their strokes in) */
+.stAb .nm b{display:block;font:700 17px/1.2 var(--f-body);letter-spacing:.12em}
 .stAb .nm small{font-size:11.5px;color:var(--faint)}
 .stAb .pips{display:flex;gap:4px}
 .stAb .pips i{width:17px;height:10px;transform:skewX(var(--skew));background:rgba(255,255,255,.13)}

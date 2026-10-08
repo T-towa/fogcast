@@ -308,7 +308,7 @@ function stRadar(stats){
   const at=stats.map((x,i)=>pt(i,Math.max(R*.05,R*val(x)/5)));
   const dots=stats.map((x,i)=>`<circle class="st-${x.k}" cx="${at[i][0].toFixed(1)}" cy="${at[i][1].toFixed(1)}" r="4.5" style="fill:var(--c)" stroke="#000" stroke-width="1.5"/>`).join('');
   const labels=stats.map((x,i)=>{ const [lx,ly]=pt(i,R+30), a=Math.abs(lx-cx)<8?'middle':lx<cx?'end':'start';
-    return `<g class="st-${x.k}"><text x="${lx.toFixed(1)}" y="${(ly-1).toFixed(1)}" text-anchor="${a}" font-family="'Dela Gothic One',sans-serif" font-size="17" style="fill:var(--c)">${x.n}</text><text x="${lx.toFixed(1)}" y="${(ly+15).toFixed(1)}" text-anchor="${a}" font-size="11.5" fill="rgba(243,239,226,.72)">${x.r?`ランク ${x.r}`:'—'}</text></g>`; }).join('');
+    return `<g class="st-${x.k}"><text class="lab" x="${lx.toFixed(1)}" y="${(ly-1).toFixed(1)}" text-anchor="${a}" style="fill:var(--c)">${x.n}</text><text x="${lx.toFixed(1)}" y="${(ly+15).toFixed(1)}" text-anchor="${a}" font-size="11.5" fill="rgba(243,239,226,.72)">${x.r?`ランク ${x.r}`:'—'}</text></g>`; }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="能力のレーダー。${stats.map(x=>`${x.n} ランク ${x.r}`).join('、')}">${grid}${axes}<polygon class="poly" points="${at.map(xy).join(' ')}" fill="rgba(255,217,49,.26)" stroke="#ffd931" stroke-width="2.5" stroke-linejoin="round"/>${dots}${labels}</svg>`; }
 function stvHTML(s){
   const R=s.rules, t=s.today, r=s.rec, left=s.to? s.to-s.exp : 0;
@@ -316,7 +316,7 @@ function stvHTML(s){
     <div class="stXp"><div class="bar" role="img" aria-label="次の Lv まで ${stPct(s).toFixed(0)}%"><i data-w="${stPct(s).toFixed(1)}%"></i></div>
       <div class="nums"><span>EXP <b>${fmtN(s.exp)}</b></span><span>${s.to? `次の Lv まで あと <b>${fmtN(left)}</b>` : '最高レベルです'}</span></div></div></div>`;
   const today=`<div class="blk"><h3>今日<small>+${fmtN(t.xp)} EXP</small></h3><div class="stParts">
-    <div><span>量</span><b>+${fmtN(t.vol)}</b><i class="cap" aria-hidden="true"><i style="width:${Math.min(100,t.vol/R.cap*100).toFixed(1)}%"></i></i><small>やり終えたターン ${fmtN(t.done)} 回・トークン ${fmt(t.tok)}（1 日 ${R.cap} まで）</small></div>
+    <div><span>量</span><b>+${fmtN(t.vol)}</b><small>やり終えたターン ${fmtN(t.done)} 回（+${fmtN(t.done*R.turn)}）・トークン ${fmt(t.tok)}（+${fmtN(Math.floor(t.tok/R.tok))}）</small></div>
     <div><span>習慣</span><b>+${fmtN(t.habit)}</b><small>${t.habit? `作業した日 +${R.day}${t.habit>R.day?`・${r.streak} 日連続 +${t.habit-R.day}`:''}` : `今日はじめてターンをやり終えると +${R.day}（連続した日は上乗せ）`}</small></div>
     <div><span>初めて</span><b>+${fmtN(t.first)}</b><small>${t.first? `初めて使った道具 ${Math.round(t.first/R.first)} 種` : `初めての道具を使うと +${R.first}`}</small></div></div></div>`;
   // the last 14 days, one slot each, today at the right; a day without EXP keeps its slot
@@ -335,7 +335,7 @@ function stvHTML(s){
     <div><b>${fmt(r.tok)}</b><span>トークン</span></div><div><b>$${(r.usd||0).toFixed(2)}</b><span>料金（目安）</span></div><div><b>${fmtN(r.kinds)}</b><span>使った道具の種類</span></div></div>
     ${s.top.length? `<ul class="stTop">${s.top.map(x=>`<li><span class="k k-${x.kind}">${KIND[x.kind]||x.kind}</span><b>${esc(x.label)}</b><span class="n">${fmtN(x.n)} 回</span></li>`).join('')}</ul>` : '<p class="note">まだ道具は使われていません。</p>'}</div>`;
   const how=`<details class="blk stHow"><summary>EXP と能力のしくみ</summary><ul>
-    <li><b>量</b>：やり終えたターン 1 回で +${R.turn}、トークン ${fmtN(R.tok)} ごとに +1（入力・出力・キャッシュ作成。キャッシュの読み込みは数えません）。1 日 ${R.cap} まで。</li>
+    <li><b>量</b>：やり終えたターン 1 回で +${R.turn}、トークン ${fmtN(R.tok)} ごとに +1（入力・出力・キャッシュ作成。キャッシュの読み込みは数えません）。1 日の上限はありません。</li>
     <li><b>習慣</b>：その日はじめてターンをやり終えると +${R.day}。続けて作業した日は 1 日ごとに +${R.streak} ずつ上乗せ（+${R.streak*R.streakMax} まで）。</li>
     <li><b>初めて</b>：ツール・スキル・エージェント・MCP を初めて使うと +${R.first}。</li>
     <li><b>Lv</b>：Lv n から n+1 までに 100 × n EXP（最高 Lv ${s.max}）。</li>

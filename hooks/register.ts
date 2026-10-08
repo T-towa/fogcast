@@ -10,7 +10,7 @@ import { linkFor, verb, summarize, outline, fileChange, todosOf, textOf, srcLabe
 type Any = any
 
 /** Keep in step with .claude-plugin/plugin.json and hub/hub.mjs (a test checks). */
-export const VERSION = '0.5.0'
+export const VERSION = '0.5.1'
 const DEFAULT_PORT = 4317
 /** Claude Code drops a toast asked to stay longer than this (0.1.0 lost its pairing notice that way). */
 const TOAST_MAX = 60000

@@ -325,11 +325,11 @@ test('your status grows from what you did and how you work, from the day it bega
       { k: 'turn', t, id: 'q1', text: 'z' }, ...tool('q2', 'Bash'), { k: 'turnEnd', t, id: 'q1', ms: 5, usage: { in: 90000, out: 0, cw: 0, cr: 0 } },
     ] })
     assert.equal((await h.hello()).usage.status.exp, 163)
-    // volume has a cap a day; how you work does not
+    // volume has no cap a day: 46 turns × 10 + 485,000 tokens / 10,000 = 508
     const many = []; for (let i = 0; i < 45; i++) many.push({ k: 'turn', t, id: `m${i}`, text: 'm' }, { k: 'turnEnd', t, id: `m${i}`, ms: 5, usage: { in: 10000, out: 0, cw: 0, cr: 0 } })
     await h.post('/api/mod/sync', { chan: 'chan-st1', events: [...many, ...tool('w1', 'Write')] })
     st = (await h.hello()).usage.status
-    assert.deepEqual([st.today.vol, st.today.first, st.today.done], [400, 60, 46])
+    assert.deepEqual([st.today.vol, st.today.first, st.today.done], [508, 60, 46])
     assert.equal(st.stats.find(s => s.k === 'make').p, 1)
   } finally { await h.stop() }
 })

@@ -23,7 +23,7 @@ import { join, dirname, basename, isAbsolute } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
-export const VERSION = '0.5.0'
+export const VERSION = '0.5.1'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ARGS = process.argv.slice(2)
 const PORT = Number(process.env.FOGCAST_PORT) || 4317
@@ -238,9 +238,9 @@ function dailyView() {
 }
 
 /* ---------------- your status: Lv, EXP and five abilities, from the day it began ---------------- */
-// EXP comes from both how much you did (finished turns and tokens, up to a cap a day) and how you work
+// EXP comes from both how much you did (finished turns and tokens, with no cap a day) and how you work
 // (each day you work, the run of days, and every tool, skill, agent or MCP server you use for the first time).
-const XP = { cap: 400, turn: 10, tok: 1e4, day: 50, streak: 10, streakMax: 7, first: 30 }
+const XP = { turn: 10, tok: 1e4, day: 50, streak: 10, streakMax: 7, first: 30 }
 const LV_MAX = 99
 const lvFloor = lv => 50 * lv * (lv - 1)                       // the EXP Lv n starts at: Lv n → n+1 takes 100·n
 const toLv = exp => { let lv = 1; while (lv < LV_MAX && lvFloor(lv + 1) <= exp) lv++; return lv }
@@ -265,7 +265,7 @@ function grewBy(id, t) {
   const s = STATS.find(x => x.of(id)); if (s) L.stats[s.k] = (L.stats[s.k] || 0) + weight(id)
   if (!L.first[id]) { L.first[id] = t; gain(t, 'first', XP.first) }
 }
-// a turn that ended: the day's work, the run of days, and the day's volume up to its cap
+// a turn that ended: the day's work, the run of days, and the day's volume (all of it: there is no cap a day)
 function grewTurn(t, tokens, finished) {
   const L = S.life, k = dayKey(t), x = dayXp(t)
   if (finished) {
@@ -277,7 +277,7 @@ function grewTurn(t, tokens, finished) {
     x.done++; L.turns++
   }
   x.tok += tokens; L.tok += tokens
-  gain(t, 'vol', Math.min(XP.cap, x.done * XP.turn + Math.floor(x.tok / XP.tok)) - x.vol)
+  gain(t, 'vol', x.done * XP.turn + Math.floor(x.tok / XP.tok) - x.vol)
   markSave(); broadcastGlobal()
 }
 const xpOf = st => st ? st.vol + st.habit + st.first : 0

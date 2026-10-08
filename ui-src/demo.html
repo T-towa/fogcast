@@ -654,10 +654,13 @@ h1,h2,h3{text-wrap:balance}
 .po .kd.k-panel{color:var(--sky);border-color:rgba(147,180,255,.4)}
 .po .kd.k-danger{color:var(--alarm);border-color:rgba(255,106,85,.5)}
 .po .kd.k-op{color:var(--yolk);border-color:rgba(255,217,49,.45)}
+.po .kd.k-pick{color:var(--teal);border-color:rgba(63,230,214,.45);background:rgba(63,230,214,.08)}
+.po .kd.k-term{color:var(--faint);border-style:dashed}
 .po:hover{background:rgba(255,255,255,.06)}
 .po.on{background:var(--yolk);color:var(--yolk-ink)}
 .po.on code,.po.on .d,.po.on .h{color:var(--yolk-ink)}
-.po.on .kd{border-color:rgba(0,0,0,.35);color:var(--yolk-ink)}
+/* on the chosen (yellow) row every kind turns to ink: no teal or red on yellow */
+.po.on .kd{background:var(--yolk-ink);border-color:var(--yolk-ink);border-style:solid;color:var(--yolk)}
 .palft{font-size:11px;color:var(--faint);padding:7px 14px;border-top:1px solid var(--line)}
 #bCmd b{font-family:var(--f-mono);color:var(--yolk)}
 .cmdo{display:grid;gap:8px;border-radius:14px;padding:11px 13px;background:rgba(63,230,214,.05);border:1px solid rgba(63,230,214,.25)}
@@ -672,8 +675,6 @@ h1,h2,h3{text-wrap:balance}
 .histBox summary{cursor:pointer;display:flex;gap:4px 10px;align-items:baseline;flex-wrap:wrap;font-size:12.5px;color:var(--mute)}
 .histBox summary b{color:var(--ink);font-weight:600}
 .histIn{display:grid;gap:12px;margin-top:10px;opacity:.88}
-.po .kd.k-pick{color:var(--teal);border-color:rgba(63,230,214,.45);background:rgba(63,230,214,.08)}
-.po .kd.k-term{color:var(--faint);border-style:dashed}
 
 /* ---------- approvals from the browser ---------- */
 .pbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
@@ -987,8 +988,6 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
 .stParts span{font-size:12.5px;font-weight:700;color:var(--mute)}
 .stParts b{font:400 19px/1 var(--f-disp);color:var(--yolk);font-variant-numeric:tabular-nums}
 .stParts small{grid-column:1/-1;font-size:11.5px;color:var(--faint);line-height:1.5}
-.stParts .cap{grid-column:3;align-self:center;height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;position:relative}
-.stParts .cap i{position:absolute;left:0;top:0;bottom:0;background:var(--yolk)}
 .stHist{display:grid;gap:6px}
 .stHist .xpBars{display:flex;align-items:flex-end;justify-content:space-between;gap:5px;height:70px;padding:0 2px;border-bottom:1px solid var(--line)}
 .stHist .xpBars i{flex:1;max-width:30px;min-height:2px;background:rgba(63,230,214,.55);border-radius:3px 3px 0 0;transform-origin:bottom;animation:barUp .6s cubic-bezier(.2,.9,.25,1) both;animation-delay:calc(var(--i)*30ms)}
@@ -999,11 +998,13 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
 @keyframes barUp{from{transform:scaleY(0)}}
 .stRadar{display:grid;justify-items:center;gap:6px;padding-top:6px}
 .stRadar svg{width:100%;max-width:400px;height:auto;overflow:visible}
+.stRadar .lab{font:700 17px var(--f-body);letter-spacing:.12em;paint-order:stroke;stroke:rgba(7,9,15,.85);stroke-width:4px;stroke-linejoin:round}
 .stRadar .poly{animation:radarIn .7s cubic-bezier(.2,1.2,.35,1) both;transform-origin:center;transform-box:fill-box}
 @keyframes radarIn{from{transform:scale(.2);opacity:0}}
 .stAbs{list-style:none;margin:0;padding:0;display:grid;gap:7px}
 .stAb{--c:var(--teal);display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 14px;align-items:center;padding:9px 12px 9px 14px;background:linear-gradient(90deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border-left:4px solid var(--c);animation:coIn .45s cubic-bezier(.2,.9,.25,1) both;animation-delay:calc(var(--i)*45ms)}
-.stAb .nm b{display:block;font:400 18px/1.15 var(--f-disp);letter-spacing:.05em}
+/* the abilities' names: kanji at this size stay legible only in the body face (the display face fills their strokes in) */
+.stAb .nm b{display:block;font:700 17px/1.2 var(--f-body);letter-spacing:.12em}
 .stAb .nm small{font-size:11.5px;color:var(--faint)}
 .stAb .pips{display:flex;gap:4px}
 .stAb .pips i{width:17px;height:10px;transform:skewX(var(--skew));background:rgba(255,255,255,.13)}
@@ -2012,7 +2013,7 @@ function stRadar(stats){
   const at=stats.map((x,i)=>pt(i,Math.max(R*.05,R*val(x)/5)));
   const dots=stats.map((x,i)=>`<circle class="st-${x.k}" cx="${at[i][0].toFixed(1)}" cy="${at[i][1].toFixed(1)}" r="4.5" style="fill:var(--c)" stroke="#000" stroke-width="1.5"/>`).join('');
   const labels=stats.map((x,i)=>{ const [lx,ly]=pt(i,R+30), a=Math.abs(lx-cx)<8?'middle':lx<cx?'end':'start';
-    return `<g class="st-${x.k}"><text x="${lx.toFixed(1)}" y="${(ly-1).toFixed(1)}" text-anchor="${a}" font-family="'Dela Gothic One',sans-serif" font-size="17" style="fill:var(--c)">${x.n}</text><text x="${lx.toFixed(1)}" y="${(ly+15).toFixed(1)}" text-anchor="${a}" font-size="11.5" fill="rgba(243,239,226,.72)">${x.r?`ランク ${x.r}`:'—'}</text></g>`; }).join('');
+    return `<g class="st-${x.k}"><text class="lab" x="${lx.toFixed(1)}" y="${(ly-1).toFixed(1)}" text-anchor="${a}" style="fill:var(--c)">${x.n}</text><text x="${lx.toFixed(1)}" y="${(ly+15).toFixed(1)}" text-anchor="${a}" font-size="11.5" fill="rgba(243,239,226,.72)">${x.r?`ランク ${x.r}`:'—'}</text></g>`; }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="能力のレーダー。${stats.map(x=>`${x.n} ランク ${x.r}`).join('、')}">${grid}${axes}<polygon class="poly" points="${at.map(xy).join(' ')}" fill="rgba(255,217,49,.26)" stroke="#ffd931" stroke-width="2.5" stroke-linejoin="round"/>${dots}${labels}</svg>`; }
 function stvHTML(s){
   const R=s.rules, t=s.today, r=s.rec, left=s.to? s.to-s.exp : 0;
@@ -2020,7 +2021,7 @@ function stvHTML(s){
     <div class="stXp"><div class="bar" role="img" aria-label="次の Lv まで ${stPct(s).toFixed(0)}%"><i data-w="${stPct(s).toFixed(1)}%"></i></div>
       <div class="nums"><span>EXP <b>${fmtN(s.exp)}</b></span><span>${s.to? `次の Lv まで あと <b>${fmtN(left)}</b>` : '最高レベルです'}</span></div></div></div>`;
   const today=`<div class="blk"><h3>今日<small>+${fmtN(t.xp)} EXP</small></h3><div class="stParts">
-    <div><span>量</span><b>+${fmtN(t.vol)}</b><i class="cap" aria-hidden="true"><i style="width:${Math.min(100,t.vol/R.cap*100).toFixed(1)}%"></i></i><small>やり終えたターン ${fmtN(t.done)} 回・トークン ${fmt(t.tok)}（1 日 ${R.cap} まで）</small></div>
+    <div><span>量</span><b>+${fmtN(t.vol)}</b><small>やり終えたターン ${fmtN(t.done)} 回（+${fmtN(t.done*R.turn)}）・トークン ${fmt(t.tok)}（+${fmtN(Math.floor(t.tok/R.tok))}）</small></div>
     <div><span>習慣</span><b>+${fmtN(t.habit)}</b><small>${t.habit? `作業した日 +${R.day}${t.habit>R.day?`・${r.streak} 日連続 +${t.habit-R.day}`:''}` : `今日はじめてターンをやり終えると +${R.day}（連続した日は上乗せ）`}</small></div>
     <div><span>初めて</span><b>+${fmtN(t.first)}</b><small>${t.first? `初めて使った道具 ${Math.round(t.first/R.first)} 種` : `初めての道具を使うと +${R.first}`}</small></div></div></div>`;
   // the last 14 days, one slot each, today at the right; a day without EXP keeps its slot
@@ -2039,7 +2040,7 @@ function stvHTML(s){
     <div><b>${fmt(r.tok)}</b><span>トークン</span></div><div><b>$${(r.usd||0).toFixed(2)}</b><span>料金（目安）</span></div><div><b>${fmtN(r.kinds)}</b><span>使った道具の種類</span></div></div>
     ${s.top.length? `<ul class="stTop">${s.top.map(x=>`<li><span class="k k-${x.kind}">${KIND[x.kind]||x.kind}</span><b>${esc(x.label)}</b><span class="n">${fmtN(x.n)} 回</span></li>`).join('')}</ul>` : '<p class="note">まだ道具は使われていません。</p>'}</div>`;
   const how=`<details class="blk stHow"><summary>EXP と能力のしくみ</summary><ul>
-    <li><b>量</b>：やり終えたターン 1 回で +${R.turn}、トークン ${fmtN(R.tok)} ごとに +1（入力・出力・キャッシュ作成。キャッシュの読み込みは数えません）。1 日 ${R.cap} まで。</li>
+    <li><b>量</b>：やり終えたターン 1 回で +${R.turn}、トークン ${fmtN(R.tok)} ごとに +1（入力・出力・キャッシュ作成。キャッシュの読み込みは数えません）。1 日の上限はありません。</li>
     <li><b>習慣</b>：その日はじめてターンをやり終えると +${R.day}。続けて作業した日は 1 日ごとに +${R.streak} ずつ上乗せ（+${R.streak*R.streakMax} まで）。</li>
     <li><b>初めて</b>：ツール・スキル・エージェント・MCP を初めて使うと +${R.first}。</li>
     <li><b>Lv</b>：Lv n から n+1 までに 100 × n EXP（最高 Lv ${s.max}）。</li>
@@ -2482,7 +2483,7 @@ async function turn(c,T,text,byUser){
   if(c.ctx>WIN*.95) compact(c,false); }
 
 /* ================= your status in the demo: twelve days in, growing as the demo's turns finish (the live screen gets it from the hub) ================= */
-const XPR={cap:400,turn:10,tok:1e4,day:50,streak:10,streakMax:7,first:30}, ST_RANKS=[10,50,200,600,1500], LV_MAX=99;
+const XPR={turn:10,tok:1e4,day:50,streak:10,streakMax:7,first:30}, ST_RANKS=[10,50,200,600,1500], LV_MAX=99;
 const lvFloor=lv=>50*lv*(lv-1), toLv=e=>{ let lv=1; while(lv<LV_MAX&&lvFloor(lv+1)<=e) lv++; return lv; };
 const ST_DEF=[['inq','調査','調べる'],['make','構築','書く'],['run','実行','動かす'],['lead','段取り','任せる'],['ext','拡張','広げる']];
 const statOf=l=> /^(Read|Grep|Glob|WebSearch|WebFetch|ToolSearch|LSP|Explore)$/.test(l.id)? 'inq' : /^(Edit|Write|MultiEdit|NotebookEdit)$/.test(l.id)? 'make'
@@ -2491,7 +2492,7 @@ const statOf=l=> /^(Read|Grep|Glob|WebSearch|WebFetch|ToolSearch|LSP|Explore)$/.
 const DST={since:dayStart(Date.now())-11*DAY, exp:6480, turns:418, tok:9.62e6, usd:58.4, days:11, streak:6, best:6,
   first:new Set(LINKS.filter(l=>l.uses>0&&l.kind!=='core').map(l=>l.id)), stats:{inq:640,make:410,run:520,lead:150,ext:96},
   n:Object.fromEntries(LINKS.filter(l=>l.kind!=='core'&&l.uses>0).map(l=>[l.id,l.uses])),
-  past:[260,380,420,310,90,0,450,500,470,520,480], today:{vol:110,habit:100,first:0,done:8,tok:310000}};
+  past:[260,380,420,310,90,0,450,500,470,520,480], today:{vol:110,habit:100,first:0,done:8,tok:300000}};      // 8 turns × 10 + 300,000 tokens / 10,000
 function demoStatus(){ const D=DST, lv=toLv(D.exp), t=D.today, today=dayStart(Date.now());
   return {since:D.since,lv,max:LV_MAX,exp:D.exp,from:lvFloor(lv),to:lv>=LV_MAX?null:lvFloor(lv+1),
     today:{xp:t.vol+t.habit+t.first,vol:t.vol,habit:t.habit,first:t.first,done:t.done,tok:t.tok},
@@ -2505,7 +2506,7 @@ function stGain(kind,n){ if(n>0){ DST.today[kind]+=n; DST.exp+=n; } }
 function stUse(l){ if(LIVE) return; const k=statOf(l); if(k) DST.stats[k]+=l.kind==='agent'?3:l.kind==='skill'?2:1;
   DST.n[l.id]=(DST.n[l.id]||0)+1; if(!DST.first.has(l.id)){ DST.first.add(l.id); stGain('first',XPR.first); } stChanged(); }
 function stTurn(tok){ if(LIVE) return; const t=DST.today; t.done++; t.tok+=tok; DST.turns++; DST.tok+=tok; DST.usd+=tok*1.1e-6;
-  stGain('vol',Math.min(XPR.cap,t.done*XPR.turn+Math.floor(t.tok/XPR.tok))-t.vol); stChanged(); }
+  stGain('vol',t.done*XPR.turn+Math.floor(t.tok/XPR.tok)-t.vol); stChanged(); }
 if(!LIVE) G.status=demoStatus();
 
 /* ================= slash commands, as $.command.run would run them ================= */
