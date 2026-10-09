@@ -124,6 +124,9 @@ h3{margin:26px 0 10px;font:700 17px/1.4 var(--f-body)}
 .sCtlFoot{display:flex;align-items:center;gap:10px;padding-top:6px}
 .sCtlFoot .h{flex:1 1 0;width:0;min-width:0;font-size:10px;color:var(--term-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scr .r.sSet{display:flex;align-items:center;gap:8px;padding:11px 12px 6px;background:#000;border-color:var(--yolk)}
+.scr .sCtl .r.sGear{display:grid;place-items:center;margin-left:18px;padding:3px 7px;border-radius:6px;border-color:var(--yolk);color:var(--yolk)}
+.sGear svg{width:13px;height:13px;display:block}
+.sGear .n{left:-20px;top:-11px}
 .sSet .g{font:700 12px/1 var(--f-body);letter-spacing:.12em;color:#fff}
 .sSet small{display:flex;align-items:center;gap:5px;font-size:9.5px;color:#d9d4c4;white-space:nowrap}
 .sSet small i{font-style:normal;font-weight:800;padding:2px 6px 1px;border-radius:999px;background:#3d4250;color:#f3efe2}
@@ -214,7 +217,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
 <body>
 <div class="page" lang="ja">
   <header class="cover">
-    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.5.5</span></div>
+    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.5.6</span></div>
     <h1><span class="mark">FOGCAST</span><span class="ja">霧読み</span></h1>
     <p class="lead">Claude Code を何本ものターミナルで動かしているときに、すべての会話・道具の呼び出し・使用量を、ブラウザの 1 画面にまとめて映す Mod です。画面から依頼を送る、<code>/</code> のコマンドを実行する、ツールの実行を許可する、といった操作もできます。</p>
     <dl class="facts">
@@ -267,7 +270,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <div class="cmd"><code>node -v &amp;&amp; claude --version</code><button class="copy" type="button">コピー</button></div></li>
           <li><b class="t">zip を解凍して、ホームフォルダに置く</b>
             <p>ダウンロードフォルダにある場合は、次のコマンドで <code>~/fogcast</code> ができます。</p>
-            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.5.5.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.5.6.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>Finder でダブルクリックして、できた <code>fogcast</code> フォルダをホームフォルダに移してもかまいません。中にある <code>.claude-plugin</code> は見えないフォルダなので、中身だけを選ばずにフォルダごと移してください。</p></li>
           <li><b class="t">マーケットプレイスとして追加する</b>
             <div class="cmd"><code>claude plugin marketplace add ~/fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -294,7 +297,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td>画面</td><td>Windows のブラウザで見ます。<code>/fog</code> で Windows の既定のブラウザが開きます（0.1.2 から）。WSL2 は localhost を Windows に転送するので、<code>http://127.0.0.1:4317</code> で届きます。</td></tr>
           </tbody>
         </table></div>
-        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.5.5.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
+        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.5.6.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
         <p class="note"><span class="lb">お知らせ</span><span>Windows のブラウザでつながらないときは、PowerShell で <code>wsl --shutdown</code> を実行してから WSL を開き直すと直ることがあります。</span></p>
       </section>
 
@@ -303,7 +306,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <figure class="parts">
           <div class="scr" aria-hidden="true">
             <div class="sTop">
-              <span class="sBrand"><span class="sRow"><span class="sMark">FOGCAST</span><span class="r sLv"><b class="n">7</b>Lv 3</span></span><span class="r sSet"><b class="n">6</b><b class="g">設定</b><small><i>承認 オフ</i></small></span></span>
+              <span class="sBrand"><span class="sRow"><span class="sMark">FOGCAST</span><span class="r sLv"><b class="n">7</b>Lv 3</span></span></span>
               <div class="r sDial"><b class="n">1</b><i>0</i><i class="on">1</i><i>2</i><i>3</i><i>＋</i></div>
               <div class="r sHud"><b class="n">2</b>10/07 · 5h 44% · 7d 68%</div>
             </div>
@@ -311,7 +314,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
               <div class="r sTv"><b class="n">3</b>
                 <div class="sTiles"><i></i><i class="w"></i><i></i><i></i></div>
                 <div class="sBars"><i style="width:70%"></i><i style="width:45%"></i><i style="width:82%"></i></div>
-                <div class="r sCtl"><b class="n">4</b><span class="f">ch.1 に送る…</span><span>/ コマンド</span><span class="p">送信</span><span>停止</span><span>圧縮</span></div>
+                <div class="r sCtl"><b class="n">4</b><span class="f">ch.1 に送る…</span><span>/ コマンド</span><span class="p">送信</span><span>停止</span><span>圧縮</span><span class="r sGear"><b class="n">6</b><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg></span></div>
               </div>
               <div class="r sRail"><b class="n">5</b>
                 <div class="tb"><span class="on">天気予報</span><span>コミュ</span><span>スキル</span><span>履歴</span><span>詳細</span></div>
@@ -324,9 +327,9 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <li><span class="k">1</span><span><b>ダイヤル</b><span><kbd>0</kbd> は全チャンネル、<kbd>1</kbd>〜<kbd>9</kbd> は各ターミナルです。右端の「＋ 追加」で、新しいチャンネルの始め方と過去のセッションの再開コマンドが出ます。</span></span></li>
             <li><span class="k">2</span><span><b>天気予報の窓</b><span>日付と、5 時間枠・週の枠の今の割合。押すと右の「天気予報」を開きます。</span></span></li>
             <li><span class="k">3</span><span><b>テレビ</b><span>全チャンネルのタイルと番組表（直近 60 分。帯は 1 ターン、黄色の縞は承認待ちで、帯を押すとそのチャンネルへ）。チャンネルを選ぶと、その会話を映します。上に戻って読んでいるときは、右下の「↓」でいちばん下に戻れます。ブラウザの窓が横 1181px・縦 620px 以上あれば、ページ全体はスクロールせずに 1 画面に収まり、会話やレールはそれぞれの中でスクロールします。</span></span></li>
-            <li><span class="k">4</span><span><b>送信欄</b><span>チャンネルを開いたときに出ます。送信、<code>/</code> コマンド、停止、圧縮。Claude Code の次の入力の提案があるときは、空の送信欄に薄く出て、右端に「提案を入れる」が出ます。コマンドを選ぶと、その引数が送信欄の上に出ます。終了したチャンネルでは「チャンネルを消す」になります。</span></span></li>
+            <li><span class="k">4</span><span><b>送信欄</b><span>チャンネルを開いたときに出ます。送信、<code>/</code> コマンド、停止、圧縮。Claude Code の次の入力の提案があるときは、空の送信欄に薄く出て、右端に「提案を入れる」が出ます。コマンドを選ぶと、その引数が送信欄の上に出ます。終了したチャンネルでは「チャンネルを消す」になります。右端の歯車は設定です（6）。</span></span></li>
             <li><span class="k">5</span><span><b>レール</b><span>「天気予報」「コミュ」「スキル」「履歴」「詳細」の 5 つのタブです。高さはテレビとそろいます。</span></span></li>
-            <li><span class="k">6</span><span><b>設定</b><span>FOGCAST の下の行のボタンです。この説明書（使い方）を開くボタンと、この画面から承認するかどうかの切り替えがあります。ボタンの右に、承認の今の状態が出ます（オフ／入力待ち＝合言葉の入力待ち／未接続＝オンだがこの画面はまだつないでいない／オン）。</span></span></li>
+            <li><span class="k">6</span><span><b>設定</b><span>送信欄のボタンの並びの右端の歯車のボタンです。全チャンネルのときは「全チャンネル」の見出しの右端にあります。この説明書（使い方）を開くボタンと、この画面から承認するかどうかの切り替えがあります。歯車の右上の点が承認の今の状態で、灰色はオフ、黄色の点滅は合言葉の入力待ちか、オンだがこの画面がまだつながっていないとき、水色はオンです（マウスを重ねると文字でも出ます）。</span></span></li>
             <li><span class="k">7</span><span><b>Lv</b><span>あなたの Lv と、次の Lv までの EXP のバー。押すとステータス画面が開きます。</span></span></li>
           </ol>
         </figure>
@@ -349,8 +352,8 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td class="w">前の会話に戻る</td><td><code>/resume</code> を選んで一覧から「再開」。</td></tr>
             <tr><td class="w">モデルや effort を変える</td><td>チャンネルの見出しのモデル名か「effort」を押します。</td></tr>
             <tr><td class="w">Claude の質問に答える</td><td>会話に出る質問のカードで、選択肢を押すか「ほかの答え」に書きます。</td></tr>
-            <tr><td class="w">承認をこの画面でする</td><td>「設定」→「この画面から承認する」をオンにして、ターミナルに出る合言葉を入力します。</td></tr>
-            <tr><td class="w">この説明書を開く</td><td>「設定」→「使い方」の「開く」。</td></tr>
+            <tr><td class="w">承認をこの画面でする</td><td>送信欄の右端の歯車（設定）→「この画面から承認する」をオンにして、ターミナルに出る合言葉を入力します。</td></tr>
+            <tr><td class="w">この説明書を開く</td><td>歯車（設定）→「使い方」の「開く」。</td></tr>
           </tbody>
         </table></div>
         <div class="split">
@@ -450,7 +453,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <p>初期設定はオフで、ツールを実行する前の確認はターミナルで行います。オンにすると、その確認を画面でも許可・拒否できます。オンにするときは、ターミナルに出る<b>合言葉</b>を画面に入力して、ブラウザをつなぎます。</p>
         <ol class="steps">
           <li><b class="t">「設定」で「この画面から承認する」をオンにする</b>
-            <p>FOGCAST の下の行にある「設定」から開きます。ボタンに、今オンかオフかが出ています。</p></li>
+            <p>送信欄のボタンの並びの右端の歯車のボタンから開きます（全チャンネルのときは「全チャンネル」の見出しの右端）。歯車の右上の点で、今オンかオフかがわかります（水色がオン）。</p></li>
           <li><b class="t">ターミナルで合言葉を見る</b>
             <p>つながっているすべてのターミナルの<b>入力欄のすぐ上</b>に、黄色い枠で出ます。入力欄の下のステータスラインにも出ます。どのターミナルの合言葉も同じです。</p>
             <div class="tm" role="img" aria-label="ターミナルの表示例：入力欄の上の黄色い枠に合言葉、入力欄の下のステータスラインにも合言葉">
@@ -519,7 +522,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>新しい版に更新する</h3>
         <ol class="steps">
           <li><b class="t">新しい zip で <code>~/fogcast</code> を上書きする</b>
-            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.5.5.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.5.6.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>ファイル名は受け取った版に合わせてください。</p></li>
           <li><b class="t">版を更新する</b>
             <div class="cmd"><code>claude plugin update fogcast@fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -580,7 +583,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>仕様</h3>
         <div class="tbl"><table>
           <tbody>
-            <tr><td>版</td><td>0.5.5</td></tr>
+            <tr><td>版</td><td>0.5.6</td></tr>
             <tr><td>必要なもの</td><td>Claude Code 2.1.290 以降（Mod が使える版）、Node.js 18 以上</td></tr>
             <tr><td>日付の区切り</td><td>画面（ブラウザ）の時計に合わせます。WSL の時計が Windows と違う地域になっていても、カレンダーと連続日数は画面の日付で数えます（0.3.0 から）。</td></tr>
             <tr><td>確かめた環境</td><td>Linux。WSL は、Windows のブラウザを開くところを Linux 上で見立てて確かめました。macOS とネイティブの Windows はまだ確かめていません。</td></tr>
@@ -606,7 +609,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
     </main>
   </div>
 
-  <footer><span>Fogcast（霧読み）0.5.5 取扱説明書</span><span>画面の「設定」の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
+  <footer><span>Fogcast（霧読み）0.5.6 取扱説明書</span><span>画面の歯車（設定）の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
 </div>
 <script>
 (function(){

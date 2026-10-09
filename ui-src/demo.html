@@ -67,18 +67,15 @@ h1,h2,h3{text-wrap:balance}
   .hud{grid-column:3;grid-row:1}
   .dial{grid-column:1/-1;grid-row:2}
 }
-/* 設定: under the logo, with the rest of what is true for every channel; its pill says whether this screen can approve */
-.setBtn{--c:#3d4250;--ci:#f3efe2;display:inline-flex;align-items:center;gap:6px;margin-left:4px;padding:3px 5px 3px 7px;border:1px solid var(--yolk);background:rgba(255,217,49,.08);
-  color:var(--ink);font:700 12px/1 var(--f-body);letter-spacing:.06em;cursor:pointer;white-space:nowrap;transition:background .15s}
-.setBtn svg{width:14px;height:14px;flex:none;color:var(--yolk)}
-.setBtn b{font-weight:700}
-.setBtn .pill{font-style:normal;font:800 10.5px/1 var(--f-body);letter-spacing:.04em;padding:3px 7px 2px;border-radius:999px;background:var(--c);color:var(--ci)}
-.setBtn.on{--c:var(--teal);--ci:var(--teal-ink)}
-.setBtn.half{--c:var(--yolk);--ci:var(--yolk-ink)}
-.setBtn.half .pill::before{content:"";display:inline-block;width:5px;height:5px;margin-right:5px;border-radius:50%;background:currentColor;vertical-align:1px;animation:blink 1.2s steps(2) infinite}
-.setBtn:hover,.setBtn:focus-visible{background:var(--yolk);color:var(--yolk-ink);outline:none}
-.setBtn:hover svg,.setBtn:focus-visible svg{color:var(--yolk-ink)}
-.setBtn:focus-visible{box-shadow:0 0 0 3px #fff}
+/* 設定: a gear at the end of the message box's buttons (on 全チャンネル, at the end of its heading); the dot says whether this screen can approve */
+.setBtn{--c:#8a90a0;position:relative;display:inline-grid;place-items:center;padding:0 11px;min-width:42px;color:var(--yolk)}
+.setBtn svg{width:19px;height:19px;display:block}
+.setBtn .dot{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px #10131c}
+.setBtn.on{--c:var(--teal)}
+.setBtn.half{--c:var(--yolk)}
+.setBtn.half .dot{animation:blink 1.2s steps(2) infinite}
+.setBtn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.wallHead .setBtn{margin-left:auto;height:34px;border-radius:10px}
 .tool{font:700 11px/1 var(--f-body);padding:4px 9px 3px;border:1px solid rgba(243,239,226,.4);background:rgba(255,255,255,.05);color:var(--ink);letter-spacing:.06em;text-decoration:none;cursor:pointer;white-space:nowrap}
 .tool:hover,.tool:focus-visible{background:var(--ink);color:var(--night);border-color:var(--ink);outline:none}
 .rx .tool:first-of-type,.rx .pz{margin-left:2px}
@@ -1148,7 +1145,11 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
   .gGrid{grid-template-columns:64px minmax(0,1fr)}
   .gLab .nm{display:none}
   .ctl{grid-template-columns:minmax(0,1fr)}
-  .btns{grid-column:1;grid-row:2}
+  .btns{grid-column:1;grid-row:2;flex-wrap:nowrap;gap:6px}
+  .btns .btn{flex:1 1 auto;padding-inline:9px}       /* one row, the gear included */
+  .btns .setBtn{flex:0 0 auto;min-width:40px}
+  .wallHead .setBtn{order:1}                           /* the gear stays on the heading's line; the summary goes under */
+  .wallHead .sum{order:2;flex-basis:100%}
   .fold .k{display:none}
   .blk h3{flex-direction:column;align-items:flex-start;gap:2px}
   .blk h3 small{text-align:left}
@@ -1177,7 +1178,7 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
   <header class="top">
     <div class="brand">
       <div class="bRow"><h1 class="mark">FOGCAST</h1><button class="lvChip" id="lvChip" type="button" hidden><b>Lv</b><span id="lvN">1</span><i class="xp" aria-hidden="true"><i id="lvXp"></i></i></button></div>
-      <div class="rx" id="rx"><i></i><span id="rxTxt">受信中</span><span class="demo">DEMO</span><button class="pz" type="button" id="bPause" aria-pressed="false">一時停止</button><button class="setBtn" type="button" id="bSet"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg><b>設定</b><em class="pill">承認 オフ</em></button></div>
+      <div class="rx" id="rx"><i></i><span id="rxTxt">受信中</span><span class="demo">DEMO</span><button class="pz" type="button" id="bPause" aria-pressed="false">一時停止</button></div>
     </div>
     <nav class="dial" aria-label="チャンネル">
       <button class="knob" id="knob" type="button" aria-label="次のチャンネルへ回す" title="次のチャンネル"><span class="kn"><i></i></span></button>
@@ -1195,7 +1196,7 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
       <div class="screen" id="screen">
         <div class="fogl" id="sfog" aria-hidden="true"></div>
         <div class="view" id="wall">
-          <div class="wallHead"><span class="tag">全チャンネル</span><span class="sum" id="wSum"></span></div>
+          <div class="wallHead"><span class="tag">全チャンネル</span><span class="sum" id="wSum"></span><button class="btn setBtn" type="button" id="bSetW" aria-label="設定を開く" title="設定を開く"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg><i class="dot" aria-hidden="true"></i></button></div>
           <div class="tiles" id="tiles"></div>
           <div class="guide">
             <div class="gHead"><span class="tag teal">番組表</span><span class="s">直近 60 分</span></div>
@@ -1228,6 +1229,7 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
           <button class="btn" type="button" id="bStop">停止</button>
           <button class="btn" type="button" id="bCompact">圧縮</button>
           <button class="btn danger" type="button" id="bForget" hidden>チャンネルを消す</button>
+          <button class="btn setBtn" type="button" id="bSet" aria-label="設定を開く" title="設定を開く"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg><i class="dot" aria-hidden="true"></i></button>
         </div>
       </form>
     </section>
@@ -2984,7 +2986,7 @@ $('bStop').addEventListener('click',()=>{ const c=chN(sel); if(c) LIVE? liveStop
 $('bCompact').addEventListener('click',()=>{ const c=chN(sel); if(!c||c.status==='off') return; if(LIVE){ liveCompact(c); return; }
   if(c.status!=='idle'){ queueCmd(c,'compact',''); return; } compact(c,true); });
 $('bPause').addEventListener('click',e=>{ G.paused=!G.paused; e.currentTarget.setAttribute('aria-pressed',String(G.paused)); e.currentTarget.textContent=G.paused?'再開':'一時停止'; });
-$('bSet').addEventListener('click',()=>LIVE? liveSettings() : openSettings());
+['bSet','bSetW'].forEach(id=>$(id).addEventListener('click',()=>LIVE? liveSettings() : openSettings()));
 
 /* ================= what you send shows at once: it waits at the bottom of the channel until its turn starts ================= */
 // c.pend: [{lid, id, text, t, st:'sending'|'queued'|'sent'|'err', err}]; the hub keeps the same list for every screen
@@ -3077,15 +3079,14 @@ $('bForget').addEventListener('click',()=>{ const c=chN(sel); if(c&&c.status==='
 $('wSum').addEventListener('click',e=>{ if(e.target.closest('#bTidy')) confirmForget(CH.filter(c=>c.status==='off')); });
 
 /* ================= settings: approving from this screen ================= */
-// 設定 (under the logo) says, in a word, whether this screen can approve right now
+// 設定 (a gear by the message box, and on the 全チャンネル heading) says with its dot whether this screen can approve right now
 let setKey='';
-function renderSetBtn(){ let cls='', pill, say;
-  if(LIVE){ const a=LV.ap; if(a.on&&a.pairedHere){ cls='on'; pill='オン'; } else if(a.pairing){ cls='half'; pill='入力待ち'; say='合言葉の入力待ち'; } else if(a.on){ cls='half'; pill='未接続'; say='オン · この画面は未接続'; } else pill='オフ'; }
-  else if(G.ap.on&&G.ap.paired){ cls='on'; pill='オン'; } else pill='オフ';
-  say=say||`画面で承認 ${pill}`;
+function renderSetBtn(){ let cls='', say;
+  if(LIVE){ const a=LV.ap; if(a.on&&a.pairedHere){ cls='on'; say='オン'; } else if(a.pairing){ cls='half'; say='合言葉の入力待ち'; } else if(a.on){ cls='half'; say='オン · この画面は未接続'; } else say='オフ'; }
+  else if(G.ap.on&&G.ap.paired){ cls='on'; say='オン'; } else say='オフ';
   if(cls+say===setKey) return; setKey=cls+say;
-  const lab=`設定を開く（${say}）`;
-  const b=$('bSet'); b.className='setBtn'+(cls?' '+cls:''); b.querySelector('.pill').textContent=`承認 ${pill}`; b.setAttribute('aria-label',lab); b.title=lab; }
+  const lab=`設定を開く（画面で承認：${say}）`;
+  ['bSet','bSetW'].forEach(id=>{ const b=$(id); b.className='btn setBtn'+(cls?' '+cls:''); b.setAttribute('aria-label',lab); b.title=lab; }); }
 function openSettings(){
   openSheet(`<div class="hd"><span class="tag" id="sheetT">設定</span><button class="btn small" type="button" data-close>閉じる</button></div>
     <div class="swrow setGuide"><span><b>使い方</b><small>取扱説明書は、Fogcast を入れたあと受け皿の画面（<code>http://127.0.0.1:4317/guide</code>）で開けます。デモでは開けません。</small></span></div>

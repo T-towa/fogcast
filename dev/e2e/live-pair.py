@@ -41,8 +41,8 @@ async def main():
         errs=[]; pg.on('pageerror',lambda e: errs.append('pageerror: '+str(e))); pg.on('console',lambda m: errs.append('console: '+m.text) if m.type=='error' else None)
         await pg.goto(f'http://127.0.0.1:{PORT}/#k={TOKEN}',wait_until='load')
         await pg.wait_for_timeout(2500)
-        print('header 設定 (off):', await pg.evaluate("document.getElementById('bSet').innerText.replace(/\\n/g,' ')"))
-        await pg.click('#bSet'); await pg.wait_for_timeout(400)
+        print('設定 (off):', await pg.evaluate("document.getElementById('bSetW').getAttribute('aria-label')+' '+document.getElementById('bSetW').className"))
+        await pg.click('#bSetW'); await pg.wait_for_timeout(400)
         print('使い方 in the settings:', await pg.evaluate("(document.querySelector('.setGuide a[href=\"/guide\"]')||{}).textContent"))
         print('before: panel hidden', await pg.evaluate("document.getElementById('pair').hidden"), '|', await pg.evaluate("document.getElementById('apState').textContent"))
         await pg.click('#swAp')
@@ -54,7 +54,7 @@ async def main():
         print('where:', await pg.evaluate("document.getElementById('pairMsg').innerText"))
         print('left:', await pg.evaluate("document.getElementById('pairLeft').textContent"), '| switch:', await pg.evaluate("document.getElementById('swAp').getAttribute('aria-checked')"), '|', await pg.evaluate("document.getElementById('apState').textContent"))
         await pg.screenshot(path=os.path.join(SP,'pair-sheet.png'))
-        print('header 設定 (pairing):', await pg.evaluate("document.getElementById('bSet').innerText.replace(/\\n/g,' ')+' '+document.getElementById('bSet').className"))
+        print('設定 (pairing):', await pg.evaluate("document.getElementById('bSetW').getAttribute('aria-label')+' '+document.getElementById('bSetW').className"))
         await pg.fill('#pairIn','0000-0000'); await pg.click('#bPair'); await pg.wait_for_timeout(600)
         print('wrong:', await pg.evaluate("document.getElementById('pairErr').textContent"))
         # issue again: a new code replaces it
@@ -75,7 +75,7 @@ async def main():
         await pg.fill('#pairIn',code3); await pg.click('#bPair'); await pg.wait_for_timeout(1800)
         print('paired:', await pg.evaluate("document.getElementById('apState').textContent"), '| panel hidden', await pg.evaluate("document.getElementById('pair').hidden"))
         await pg.wait_for_timeout(400)
-        print('header 設定 (paired):', await pg.evaluate("document.getElementById('bSet').innerText.replace(/\\n/g,' ')+' '+document.getElementById('bSet').className"))
+        print('設定 (paired):', await pg.evaluate("document.getElementById('bSetW').getAttribute('aria-label')+' '+document.getElementById('bSetW').className"))
         toasts=[x['command']['text'] for x in simlog() if 'command' in x and x['command'].get('type')=='toast']
         print('terminal told:', toasts[-1] if toasts else None, '| legacy code toasts:', sum(1 for t in toasts if '合言葉' in t))
         await pg.screenshot(path=os.path.join(SP,'pair-done.png'))

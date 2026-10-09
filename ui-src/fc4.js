@@ -518,7 +518,7 @@ $('bStop').addEventListener('click',()=>{ const c=chN(sel); if(c) LIVE? liveStop
 $('bCompact').addEventListener('click',()=>{ const c=chN(sel); if(!c||c.status==='off') return; if(LIVE){ liveCompact(c); return; }
   if(c.status!=='idle'){ queueCmd(c,'compact',''); return; } compact(c,true); });
 $('bPause').addEventListener('click',e=>{ G.paused=!G.paused; e.currentTarget.setAttribute('aria-pressed',String(G.paused)); e.currentTarget.textContent=G.paused?'再開':'一時停止'; });
-$('bSet').addEventListener('click',()=>LIVE? liveSettings() : openSettings());
+['bSet','bSetW'].forEach(id=>$(id).addEventListener('click',()=>LIVE? liveSettings() : openSettings()));
 
 /* ================= what you send shows at once: it waits at the bottom of the channel until its turn starts ================= */
 // c.pend: [{lid, id, text, t, st:'sending'|'queued'|'sent'|'err', err}]; the hub keeps the same list for every screen
@@ -611,15 +611,14 @@ $('bForget').addEventListener('click',()=>{ const c=chN(sel); if(c&&c.status==='
 $('wSum').addEventListener('click',e=>{ if(e.target.closest('#bTidy')) confirmForget(CH.filter(c=>c.status==='off')); });
 
 /* ================= settings: approving from this screen ================= */
-// 設定 (under the logo) says, in a word, whether this screen can approve right now
+// 設定 (a gear by the message box, and on the 全チャンネル heading) says with its dot whether this screen can approve right now
 let setKey='';
-function renderSetBtn(){ let cls='', pill, say;
-  if(LIVE){ const a=LV.ap; if(a.on&&a.pairedHere){ cls='on'; pill='オン'; } else if(a.pairing){ cls='half'; pill='入力待ち'; say='合言葉の入力待ち'; } else if(a.on){ cls='half'; pill='未接続'; say='オン · この画面は未接続'; } else pill='オフ'; }
-  else if(G.ap.on&&G.ap.paired){ cls='on'; pill='オン'; } else pill='オフ';
-  say=say||`画面で承認 ${pill}`;
+function renderSetBtn(){ let cls='', say;
+  if(LIVE){ const a=LV.ap; if(a.on&&a.pairedHere){ cls='on'; say='オン'; } else if(a.pairing){ cls='half'; say='合言葉の入力待ち'; } else if(a.on){ cls='half'; say='オン · この画面は未接続'; } else say='オフ'; }
+  else if(G.ap.on&&G.ap.paired){ cls='on'; say='オン'; } else say='オフ';
   if(cls+say===setKey) return; setKey=cls+say;
-  const lab=`設定を開く（${say}）`;
-  const b=$('bSet'); b.className='setBtn'+(cls?' '+cls:''); b.querySelector('.pill').textContent=`承認 ${pill}`; b.setAttribute('aria-label',lab); b.title=lab; }
+  const lab=`設定を開く（画面で承認：${say}）`;
+  ['bSet','bSetW'].forEach(id=>{ const b=$(id); b.className='btn setBtn'+(cls?' '+cls:''); b.setAttribute('aria-label',lab); b.title=lab; }); }
 function openSettings(){
   openSheet(`<div class="hd"><span class="tag" id="sheetT">設定</span><button class="btn small" type="button" data-close>閉じる</button></div>
     <div class="swrow setGuide"><span><b>使い方</b><small>取扱説明書は、Fogcast を入れたあと受け皿の画面（<code>http://127.0.0.1:4317/guide</code>）で開けます。デモでは開けません。</small></span></div>
