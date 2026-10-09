@@ -625,7 +625,7 @@ test('@ in the message box lists the terminal\'s files: what git does not ignore
   put('README.md', '# r', 50); put('src/app.ts', 'a', 5); put('src/lib/apply.ts', 'b', 30); put('src/lib/util.ts', 'c', 40); put('docs/api.md', 'd', 20)
   put('secret.env', 's', 1); put('node_modules/pkg/index.js', 'n', 2); put('.gitignore', 'secret.env\nnode_modules/\n', 90)
   const git = spawnSync('git', ['-C', proj, 'init', '-q']).status === 0
-  await req('POST', '/api/mod/hello', { chan: 'chan-files', mod: '0.5.7', sid: U(30), cwd: proj })
+  await req('POST', '/api/mod/hello', { chan: 'chan-files', mod: '0.5.8', sid: U(30), cwd: proj })
   const files = async q => (await req('POST', '/api/ui/files', { chan: 'chan-files', q })).json
   const app = await files('app')
   assert.equal(app.ok, true)
@@ -643,19 +643,19 @@ test('@ in the message box lists the terminal\'s files: what git does not ignore
   // outside a repository: walked, the folders that are never meant left out
   const plain = mkdtempSync(join(tmpdir(), 'fogcast-plain-'))
   mkdirSync(join(plain, 'node_modules', 'x'), { recursive: true }); writeFileSync(join(plain, 'node_modules', 'x', 'i.js'), 'n'); writeFileSync(join(plain, 'notes.txt'), 'n')
-  await req('POST', '/api/mod/hello', { chan: 'chan-plain', mod: '0.5.7', sid: U(31), cwd: plain })
+  await req('POST', '/api/mod/hello', { chan: 'chan-plain', mod: '0.5.8', sid: U(31), cwd: plain })
   const listed = async q => (await req('POST', '/api/ui/files', { chan: 'chan-plain', q })).json.files.map(f => f.p)
   assert.deepEqual(await listed('notes'), ['notes.txt'])
   assert.deepEqual(await listed('i.js'), [])
   // a terminal whose folder is gone: said so
-  await req('POST', '/api/mod/hello', { chan: 'chan-gone', mod: '0.5.7', sid: U(32), cwd: join(plain, 'gone') })
+  await req('POST', '/api/mod/hello', { chan: 'chan-gone', mod: '0.5.8', sid: U(32), cwd: join(plain, 'gone') })
   const gone = (await req('POST', '/api/ui/files', { chan: 'chan-gone', q: 'a' })).json
   assert.equal(gone.ok, false)
   rmSync(proj, { recursive: true, force: true }); rmSync(plain, { recursive: true, force: true })
 })
 
 test('a turn carries the files its prompt named with @, as the terminal attached them', async () => {
-  await req('POST', '/api/mod/hello', { chan: 'chan-att', mod: '0.5.7', sid: U(33), cwd: '/home/me/dev/att' })
+  await req('POST', '/api/mod/hello', { chan: 'chan-att', mod: '0.5.8', sid: U(33), cwd: '/home/me/dev/att' })
   const s = stream('screen-att'); await s.wait(m => m.type === 'hello')
   await req('POST', '/api/mod/sync', { chan: 'chan-att', events: [{ k: 'turn', t: Date.now(), id: 'ta', text: '@src/a.ts を見て', via: 'screen', files: [
     { p: 'src/a.ts', kind: 'file', lines: 120, shown: 120 }, { p: 'src/', kind: 'dir', lines: 4 }, { p: 'x.ts', err: 'missing' }, { p: 'y', err: '<script>' }, { nope: 1 },
@@ -729,7 +729,7 @@ test('@ hands Claude what an Excel, Word or PowerPoint file says, and a text sav
   writeFileSync(join(dir, 'broken.xlsx'), 'not a zip')
   writeFileSync(join(HOME, 'outside.csv'), 'a,b\n')
   symlinkSync(join(HOME, 'outside.csv'), join(dir, 'link.csv'))
-  await req('POST', '/api/mod/hello', { chan: 'chan-doc', mod: '0.5.7', sid: U(34), cwd: dir })
+  await req('POST', '/api/mod/hello', { chan: 'chan-doc', mod: '0.5.8', sid: U(34), cwd: dir })
   const doc = async p => (await req('POST', '/api/mod/doc', { chan: 'chan-doc', path: p.startsWith('/') ? p : join(dir, p) })).json
   assert.deepEqual(await doc('book.xlsx'), { ok: true, kind: 'xlsx', text: [
     '## 売上', 'row\tA\tB\tC\tD\tE\tF', '1\t日付\t店舗\t数量', '2\t2026-04-01\tA & B\t12\t=C2*2\t36\tTRUE', '4\t2026-04-01 13:45', '## 控え (hidden sheet)', '(empty)'].join('\n') })

@@ -538,11 +538,10 @@ h1,h2,h3{text-wrap:balance}
 .pcur{color:var(--teal);font-weight:700}
 .pnote{margin:0;font-size:12.5px;line-height:1.7;color:var(--yolk);padding:8px 12px;border-radius:12px;background:rgba(255,217,49,.07);border:1px solid rgba(255,217,49,.25)}
 .eff{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
-.eff button{display:grid;gap:2px;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--rim);background:rgba(255,255,255,.04);color:var(--ink);cursor:pointer;font-family:var(--f-body)}
+.eff button{display:grid;align-content:start;gap:2px;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--rim);background:rgba(255,255,255,.04);color:var(--ink);cursor:pointer;font-family:var(--f-body)}
 .eff button:hover{background:rgba(255,255,255,.09)}
 .eff button.on{border-color:var(--teal);background:rgba(63,230,214,.1)}
 .eff b{font-weight:700;font-size:14px}
-.eff code{font-size:11px;color:var(--teal)}
 .eff small{font-size:11.5px;color:var(--mute);line-height:1.5}
 @media (max-width:620px){ .plist li{grid-template-columns:minmax(0,1fr)} .plist .btns{grid-row:auto;grid-column:1} .eff{grid-template-columns:repeat(2,minmax(0,1fr))} }
 .vh{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
@@ -1890,7 +1889,7 @@ function renderOsd(c){
   const off=c.status==='off', old=LIVE&&!c.models&&!off;      // a terminal on an earlier Fogcast: its pickers come with a restart
   const lock=off||old? ` disabled${old?' title="このターミナルの Fogcast は前の版です。claude を起動し直すと使えます"':''}` : '';
   const html=`<span class="n">ch.${c.num}</span><span class="nm">${esc(c.name)}</span><span class="meta" title="${esc(`${c.role} · ${c.cwd} · ${c.branch}`)}">${esc(c.role)} · ${esc(c.cwd)} · ${esc(c.branch)}</span>
-    <span class="picks"><button class="osdPick" type="button" data-pick="model"${lock||' title="モデルを切り替える"'}>${esc(c.model||'モデル')}</button><button class="osdPick" type="button" data-pick="effort"${lock||` title="考える深さ（effort）を変える${c.effortUsed&&c.effort&&c.effortUsed!==c.effort?`。最後の返答は ${esc(effortLabel(c.effortUsed))}（${esc(c.effortUsed)}）`:''}"`}>effort <b>${esc(effortLabel(c.effort))}</b></button></span>
+    <span class="picks"><button class="osdPick" type="button" data-pick="model"${lock||' title="モデルを切り替える"'}>${esc(c.model||'モデル')}</button><button class="osdPick" type="button" data-pick="effort"${lock||` title="考える深さ（effort）を変える${c.effortUsed&&c.effort&&c.effortUsed!==c.effort?`。最後の返答は ${esc(c.effortUsed)}`:''}"`}>effort <b>${esc(effortLabel(c.effort))}</b></button></span>
     <span class="right"><span class="chip ${c.status}">${stl(c)}</span><span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span class="tk"><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span></span>`;
   if($('osd').dataset.k!==html){ $('osd').dataset.k=html; $('osd').innerHTML=html; }
   const el=c.status==='off'? '' : `${Math.floor((Date.now()-c.phaseAt)/1000)}s`;
@@ -2739,9 +2738,9 @@ const cut1=(s,n)=>{ s=String(s||'').replace(/\s+/g,' ').trim(); return s.length>
 const MODEL_LABEL={default:'既定（おすすめ）',opus:'Opus',sonnet:'Sonnet',haiku:'Haiku',fable:'Fable',best:'いちばん賢いモデル',opusplan:'計画は Opus、実装は Sonnet'};
 const MODEL_NOTE={default:'Claude Code が選ぶ既定のモデル',opus:'ふだんの複雑な作業に',sonnet:'決まった作業を手早く',haiku:'短い質問にいちばん速く',fable:'いちばん難しい、長い作業に',best:'使える中でいちばん賢いモデル',opusplan:'計画モードのあいだは Opus、そのほかは Sonnet'};
 function modelLabel(o){ const m=/^(.*?)(\[1m\])?$/.exec(String(o||'')); const base=MODEL_LABEL[m[1]]||m[1]; return m[2]? `${base}（100 万トークン）` : base; }
-const EFFORT_LABEL={low:'低い',medium:'ふつう',high:'高い',xhigh:'とても高い',max:'最大',auto:'おまかせ'};
 const EFFORT_NOTE={low:'速く、トークンを抑える',medium:'ふだんの作業に',high:'丁寧に。確かめも厚く',xhigh:'high より深く考える',max:'いちばん深く考える',auto:'作業に合わせて Claude Code が決める'};
-function effortLabel(e){ return EFFORT_LABEL[e]||e||'—'; }
+// effort goes by Claude Code's own words for it (low … max, auto), as /effort shows them
+function effortLabel(e){ return e||'—'; }
 function sinceTxt(ms){ const m=Math.max(0,Math.round(ms/60000)); if(m<1) return 'たった今'; if(m<60) return `${m} 分前`; const h=Math.round(m/60); if(h<24) return `${h} 時間前`; const d=Math.round(h/24); return d<7? `${d} 日前` : md(Date.now()-ms); }
 const kb=n=> n>=1e6? `${(n/1e6).toFixed(1)} MB` : `${Math.max(1,Math.round(n/1e3))} KB`;
 const modelsOfCh=c=>(LIVE? c.models : (c.models||DEMO_MODELS))||{options:[],value:''};
@@ -2828,9 +2827,9 @@ function openEffort(c){
   const L=effortsOfCh(c), cur=c.effort||'';
   openSheet(`<div class="hd"><span class="tag teal">effort</span><button class="btn small" type="button" data-close>閉じる</button></div>
     <h2 id="sheetT">ch.${c.num} ${esc(c.name)} の考える深さ（effort）</h2>
-    <p class="sub">今：<b>${esc(effortLabel(cur))}</b>${cur?`（<code>${esc(cur)}</code>）`:'（まだ分かりません。最初の返答で分かります）'}${c.effortUsed&&cur&&c.effortUsed!==cur?`。最後の返答は ${esc(effortLabel(c.effortUsed))}（<code>${esc(c.effortUsed)}</code>）でした`:''}。選ぶと、ターミナルで <code>/effort</code> を実行したのと同じになります。新しいセッションの既定にも保存されるかは、会話の欄に出る結果の 1 行に書かれます（<code>max</code> はこのセッションだけ）。深くするほど、返答に時間とトークンがかかります。</p>
+    <p class="sub">今：<b>${esc(effortLabel(cur))}</b>${cur?'':'（まだ分かりません。最初の返答で分かります）'}${c.effortUsed&&cur&&c.effortUsed!==cur?`。最後の返答は <b>${esc(c.effortUsed)}</b> でした`:''}。選ぶと、ターミナルで <code>/effort</code> を実行したのと同じになります。新しいセッションの既定にも保存されるかは、会話の欄に出る結果の 1 行に書かれます（<code>max</code> はこのセッションだけ）。深くするほど、返答に時間とトークンがかかります。</p>
     ${busyNote(c)}
-    <div class="eff" id="efList">${L.map((x,i)=>`<button type="button" class="${x===cur?'on':''}" data-i="${i}" aria-pressed="${x===cur}"><b>${esc(effortLabel(x))}</b><code>${esc(x)}</code><small>${esc(EFFORT_NOTE[x]||'')}</small></button>`).join('')}</div>`,'pick');
+    <div class="eff" id="efList">${L.map((x,i)=>`<button type="button" class="${x===cur?'on':''}" data-i="${i}" aria-pressed="${x===cur}"><b>${esc(x)}</b><small>${esc(EFFORT_NOTE[x]||'')}</small></button>`).join('')}</div>`,'pick');
   $('efList').querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{ const x=L[+b.dataset.i]; closeSheet(); if(x!==cur) doEffort(c,x); })); }
 function doEffort(c,x){ if(LIVE){ liveEffort(c,x); return; }
   c.effort=x; cmdOut(c,'effort',x,`Set effort level to ${x} (saved as your default for new sessions)`); toast('info',`ch.${c.num} ${esc(c.name)} の effort を変えました`,esc(effortLabel(x))); dirty=true; }

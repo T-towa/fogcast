@@ -81,7 +81,7 @@ function hub(on: Any, opts: { approvals?: boolean; decision?: string; wait?: () 
     const body = e.init?.body ? JSON.parse(e.init.body) : null
     const ok = (v: unknown) => ({ value: { status: 200, ok: true, headers: {}, text: JSON.stringify(v) } })
     if (path === '/api/health') {
-      const v = opts.version ? opts.version() : '0.5.7'
+      const v = opts.version ? opts.version() : '0.5.8'
       return v === null ? { value: { status: 502, ok: false, headers: {}, text: '' } } : ok({ ok: true, app: 'fogcast', version: v })
     }
     if (e.init?.headers?.['x-fogcast-token'] !== TOKEN) return { value: { status: 401, ok: false, headers: {}, text: '{}' } }
@@ -412,7 +412,7 @@ test('a hub left running from an older version is stopped once, and this version
   on('process.run', (_$: Any, e: Any) => {
     runs.push([...e.argv])
     if (e.argv.includes('--stop')) version = null
-    if (e.argv.includes('--daemon')) version = '0.5.7'
+    if (e.argv.includes('--daemon')) version = '0.5.8'
     return { value: { exitCode: 0, stdout: 'main\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   hub(on, { version: () => version })

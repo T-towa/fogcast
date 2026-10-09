@@ -70,8 +70,8 @@ async def main():
         if PART in ('all','effort'):
             await pg.click('#osd .osdPick[data-pick="effort"]'); await pg.wait_for_selector('#efList',timeout=4000); await pg.wait_for_timeout(200)
             print('effort now:', await pg.evaluate("document.querySelector('#efList .on')?.innerText.replace(/\\n/g,' ')"))
-            await pg.click("#efList button:has(code:text-is('max'))")
-            await until(pg,"[...document.querySelectorAll('#osd .osdPick')][1].innerText.includes('最大')")
+            await pg.click("#efList button:has(b:text-is('max'))")
+            await until(pg,"[...document.querySelectorAll('#osd .osdPick')][1].innerText==='effort max'")
             await pg.wait_for_timeout(1500)
             print('header after effort:', await pg.evaluate("[...document.querySelectorAll('#osd .osdPick')].map(b=>b.innerText)"))
             print('effort row:', await pg.evaluate(f"[...{LOG}.querySelectorAll('.cmdo')].pop()?.innerText.replace(/\\n/g,' ')"))

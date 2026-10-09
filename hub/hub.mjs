@@ -24,7 +24,7 @@ import { inflateRawSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
-export const VERSION = '0.5.7'
+export const VERSION = '0.5.8'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ARGS = process.argv.slice(2)
 const PORT = Number(process.env.FOGCAST_PORT) || 4317

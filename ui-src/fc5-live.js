@@ -301,7 +301,7 @@ function liveResume(c,sid,title){ api('/api/ui/resume',{chan:c.id,sid}).then(r=>
   .catch(err=>toast('info','再開できませんでした',esc(err.message==='sid'?'会話の ID が正しくありません。':err.message))); }
 function liveModel(c,o){ api('/api/ui/model',{chan:c.id,value:o}).then(r=>{ if(c.models&&!r.queued) c.models={...c.models,value:o}; toast(r.queued?'queue':'info',r.queued?'モデルの切り替えを予約しました':`ch.${c.num} ${esc(c.name)} のモデルを切り替えます`,`${esc(modelLabel(o))}${r.queued?'（今のターンが終わったら）':''}`); })
   .catch(err=>toast('info','モデルを切り替えられませんでした',esc(err.message==='model'?'このターミナルでは選べないモデルです。':err.message))); }
-function liveEffort(c,x){ api('/api/ui/effort',{chan:c.id,value:x}).then(r=>{ if(!r.queued){ c.effort=x; dirty=true; } toast(r.queued?'queue':'info',r.queued?'effort の変更を予約しました':`ch.${c.num} ${esc(c.name)} の effort を変えます`,`${esc(effortLabel(x))}（${esc(x)}）${r.queued?' · 今のターンが終わったら':''}`); })
+function liveEffort(c,x){ api('/api/ui/effort',{chan:c.id,value:x}).then(r=>{ if(!r.queued){ c.effort=x; dirty=true; } toast(r.queued?'queue':'info',r.queued?'effort の変更を予約しました':`ch.${c.num} ${esc(c.name)} の effort を変えます`,`${esc(x)}${r.queued?' · 今のターンが終わったら':''}`); })
   .catch(err=>toast('info','effort を変えられませんでした',esc(err.message==='effort'?'このターミナルでは選べない値です。':err.message))); }
 // shown at once as a bubble; the hub hands it to the terminal, which starts it when it is free
 function liveSend(c,text){ const lid=rnd(); LV.lids.add(lid); const x={lid,text,t:Date.now(),st:'sending'}; (c.pend||(c.pend=[])).push(x); c.pendKey=null; renderPend(c);

@@ -103,7 +103,7 @@ function renderOsd(c){
   const off=c.status==='off', old=LIVE&&!c.models&&!off;      // a terminal on an earlier Fogcast: its pickers come with a restart
   const lock=off||old? ` disabled${old?' title="このターミナルの Fogcast は前の版です。claude を起動し直すと使えます"':''}` : '';
   const html=`<span class="n">ch.${c.num}</span><span class="nm">${esc(c.name)}</span><span class="meta" title="${esc(`${c.role} · ${c.cwd} · ${c.branch}`)}">${esc(c.role)} · ${esc(c.cwd)} · ${esc(c.branch)}</span>
-    <span class="picks"><button class="osdPick" type="button" data-pick="model"${lock||' title="モデルを切り替える"'}>${esc(c.model||'モデル')}</button><button class="osdPick" type="button" data-pick="effort"${lock||` title="考える深さ（effort）を変える${c.effortUsed&&c.effort&&c.effortUsed!==c.effort?`。最後の返答は ${esc(effortLabel(c.effortUsed))}（${esc(c.effortUsed)}）`:''}"`}>effort <b>${esc(effortLabel(c.effort))}</b></button></span>
+    <span class="picks"><button class="osdPick" type="button" data-pick="model"${lock||' title="モデルを切り替える"'}>${esc(c.model||'モデル')}</button><button class="osdPick" type="button" data-pick="effort"${lock||` title="考える深さ（effort）を変える${c.effortUsed&&c.effort&&c.effortUsed!==c.effort?`。最後の返答は ${esc(c.effortUsed)}`:''}"`}>effort <b>${esc(effortLabel(c.effort))}</b></button></span>
     <span class="right"><span class="chip ${c.status}">${stl(c)}</span><span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span class="tk"><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span></span>`;
   if($('osd').dataset.k!==html){ $('osd').dataset.k=html; $('osd').innerHTML=html; }
   const el=c.status==='off'? '' : `${Math.floor((Date.now()-c.phaseAt)/1000)}s`;

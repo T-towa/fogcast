@@ -267,9 +267,9 @@ const cut1=(s,n)=>{ s=String(s||'').replace(/\s+/g,' ').trim(); return s.length>
 const MODEL_LABEL={default:'既定（おすすめ）',opus:'Opus',sonnet:'Sonnet',haiku:'Haiku',fable:'Fable',best:'いちばん賢いモデル',opusplan:'計画は Opus、実装は Sonnet'};
 const MODEL_NOTE={default:'Claude Code が選ぶ既定のモデル',opus:'ふだんの複雑な作業に',sonnet:'決まった作業を手早く',haiku:'短い質問にいちばん速く',fable:'いちばん難しい、長い作業に',best:'使える中でいちばん賢いモデル',opusplan:'計画モードのあいだは Opus、そのほかは Sonnet'};
 function modelLabel(o){ const m=/^(.*?)(\[1m\])?$/.exec(String(o||'')); const base=MODEL_LABEL[m[1]]||m[1]; return m[2]? `${base}（100 万トークン）` : base; }
-const EFFORT_LABEL={low:'低い',medium:'ふつう',high:'高い',xhigh:'とても高い',max:'最大',auto:'おまかせ'};
 const EFFORT_NOTE={low:'速く、トークンを抑える',medium:'ふだんの作業に',high:'丁寧に。確かめも厚く',xhigh:'high より深く考える',max:'いちばん深く考える',auto:'作業に合わせて Claude Code が決める'};
-function effortLabel(e){ return EFFORT_LABEL[e]||e||'—'; }
+// effort goes by Claude Code's own words for it (low … max, auto), as /effort shows them
+function effortLabel(e){ return e||'—'; }
 function sinceTxt(ms){ const m=Math.max(0,Math.round(ms/60000)); if(m<1) return 'たった今'; if(m<60) return `${m} 分前`; const h=Math.round(m/60); if(h<24) return `${h} 時間前`; const d=Math.round(h/24); return d<7? `${d} 日前` : md(Date.now()-ms); }
 const kb=n=> n>=1e6? `${(n/1e6).toFixed(1)} MB` : `${Math.max(1,Math.round(n/1e3))} KB`;
 const modelsOfCh=c=>(LIVE? c.models : (c.models||DEMO_MODELS))||{options:[],value:''};
@@ -356,9 +356,9 @@ function openEffort(c){
   const L=effortsOfCh(c), cur=c.effort||'';
   openSheet(`<div class="hd"><span class="tag teal">effort</span><button class="btn small" type="button" data-close>閉じる</button></div>
     <h2 id="sheetT">ch.${c.num} ${esc(c.name)} の考える深さ（effort）</h2>
-    <p class="sub">今：<b>${esc(effortLabel(cur))}</b>${cur?`（<code>${esc(cur)}</code>）`:'（まだ分かりません。最初の返答で分かります）'}${c.effortUsed&&cur&&c.effortUsed!==cur?`。最後の返答は ${esc(effortLabel(c.effortUsed))}（<code>${esc(c.effortUsed)}</code>）でした`:''}。選ぶと、ターミナルで <code>/effort</code> を実行したのと同じになります。新しいセッションの既定にも保存されるかは、会話の欄に出る結果の 1 行に書かれます（<code>max</code> はこのセッションだけ）。深くするほど、返答に時間とトークンがかかります。</p>
+    <p class="sub">今：<b>${esc(effortLabel(cur))}</b>${cur?'':'（まだ分かりません。最初の返答で分かります）'}${c.effortUsed&&cur&&c.effortUsed!==cur?`。最後の返答は <b>${esc(c.effortUsed)}</b> でした`:''}。選ぶと、ターミナルで <code>/effort</code> を実行したのと同じになります。新しいセッションの既定にも保存されるかは、会話の欄に出る結果の 1 行に書かれます（<code>max</code> はこのセッションだけ）。深くするほど、返答に時間とトークンがかかります。</p>
     ${busyNote(c)}
-    <div class="eff" id="efList">${L.map((x,i)=>`<button type="button" class="${x===cur?'on':''}" data-i="${i}" aria-pressed="${x===cur}"><b>${esc(effortLabel(x))}</b><code>${esc(x)}</code><small>${esc(EFFORT_NOTE[x]||'')}</small></button>`).join('')}</div>`,'pick');
+    <div class="eff" id="efList">${L.map((x,i)=>`<button type="button" class="${x===cur?'on':''}" data-i="${i}" aria-pressed="${x===cur}"><b>${esc(x)}</b><small>${esc(EFFORT_NOTE[x]||'')}</small></button>`).join('')}</div>`,'pick');
   $('efList').querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{ const x=L[+b.dataset.i]; closeSheet(); if(x!==cur) doEffort(c,x); })); }
 function doEffort(c,x){ if(LIVE){ liveEffort(c,x); return; }
   c.effort=x; cmdOut(c,'effort',x,`Set effort level to ${x} (saved as your default for new sessions)`); toast('info',`ch.${c.num} ${esc(c.name)} の effort を変えました`,esc(effortLabel(x))); dirty=true; }
