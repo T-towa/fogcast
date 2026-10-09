@@ -147,7 +147,7 @@ async function demoAsk(c,ev,ops,tid){
 async function turn(c,T,text,byUser,files){
   const tid=++c.turnId, t0=Date.now(), num=++c.turnNo;
   foldOld(c); c.suggest='';
-  const li=document.createElement('li'); li.className='turn';
+  const li=document.createElement('li'); li.className='turn'; li.dataset.t=t0;
   li.innerHTML=`${foldHTML(num,t0,esc(strip(text)),'進行中')}
     <div class="full">${youHTML(text,byUser?'この画面から':'ターミナルから',t0,filesHTML(files))}<div class="flow">${aiHead(c,t0)}<ul class="ops"></ul><div class="ans"></div></div><div class="turnFt"></div></div>`;
   foldBind(li);
@@ -379,21 +379,22 @@ function stopTurn(c){ if(c.status!=='work'&&c.status!=='wait') return; c.turnId+
   setStatus(c,'idle','入力待ち'); }
 
 /* ================= switching channels: a yellow band sweeps across ================= */
-function select(n){ if(n!==0&&!chN(n)) return; const changed=n!==sel; sel=n;
+// then: what to do once the channel is on screen, in place of going to its latest (a history card goes to its turn)
+function select(n,then){ if(n!==0&&!chN(n)) return; const changed=n!==sel; sel=n;
   const swap=()=>{ if(sel!==n) return;
     CH.forEach(c=>{ c.log.hidden= c.num!==n; });
-    $('wall').hidden= n!==0; $('chan').hidden= n===0; $('ctl').hidden= n===0; $('ctl0').hidden= n!==0; closePal();
+    $('wall').hidden= n!==0; $('chan').hidden= n===0; $('ctl').hidden= n===0; closePal();
     stick=true; endNew=0; endDraw(); askFit();          // a channel opens at its latest
-    if(n){ renderOsd(chN(n)); requestAnimationFrame(()=>{ if(sel===n) toEnd(false); }); }
+    if(n){ renderOsd(chN(n)); requestAnimationFrame(()=>{ if(sel!==n) return; if(then) then(); else toEnd(false); }); }
     else { $('sfog').style.setProperty('--fog','0'); $('screen').classList.remove('off'); renderWall(); renderGuide(); }
-    if(rtab==='D') renderDetail(true); if(rtab==='S') renderSkills(true); };
+    if(rtab==='D') renderDetail(true); if(rtab==='S') renderSkills(true); if(rtab==='H') renderHist(true); };
   if(changed&&!reduce){ const w=$('wipe'), c=chN(n); $('wipeN').textContent= n===0? 'ch.0' : `ch.${n}`; $('wipeS').textContent= n===0? '全チャンネル' : c.name;
     w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); clearTimeout(select.t); select.t=setTimeout(swap,750); }   // mid-hold of the 1.5 s band
   else swap();
   renderChs(); }
-function setTab(k){ rtab=k; [['F','tF','pF'],['L','tL','pL'],['S','tS','pS'],['D','tD','pD']].forEach(([kk,t,p])=>{ $(t).setAttribute('aria-selected',String(kk===k)); $(p).hidden= kk!==k; });
-  if(k==='F') renderForecast(); if(k==='L'){ deckOrderKey=''; listKey=''; updateDeck(); requestAnimationFrame(sizeDeck); } if(k==='D') renderDetail(true); if(k==='S') renderSkills(true); }
-[['tF','F'],['tL','L'],['tS','S'],['tD','D']].forEach(([id,k])=>$(id).addEventListener('click',()=>setTab(k)));
+function setTab(k){ rtab=k; [['F','tF','pF'],['L','tL','pL'],['S','tS','pS'],['H','tH','pH'],['D','tD','pD']].forEach(([kk,t,p])=>{ $(t).setAttribute('aria-selected',String(kk===k)); $(p).hidden= kk!==k; });
+  if(k==='F') renderForecast(); if(k==='L'){ deckOrderKey=''; listKey=''; updateDeck(); requestAnimationFrame(sizeDeck); } if(k==='D') renderDetail(true); if(k==='S') renderSkills(true); if(k==='H') renderHist(true); }
+[['tF','F'],['tL','L'],['tS','S'],['tH','H'],['tD','D']].forEach(([id,k])=>$(id).addEventListener('click',()=>setTab(k)));
 $('filters').querySelectorAll('.fbtn').forEach(b=>b.addEventListener('click',()=>{ deckFilter=b.dataset.k;
   $('filters').querySelectorAll('.fbtn').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); updateDeck(); }));
 $('knob').addEventListener('click',()=>{ const nums=[0,...CH.map(c=>c.num)]; select(nums[(nums.indexOf(sel)+1)%nums.length]); });
@@ -517,7 +518,7 @@ $('bStop').addEventListener('click',()=>{ const c=chN(sel); if(c) LIVE? liveStop
 $('bCompact').addEventListener('click',()=>{ const c=chN(sel); if(!c||c.status==='off') return; if(LIVE){ liveCompact(c); return; }
   if(c.status!=='idle'){ queueCmd(c,'compact',''); return; } compact(c,true); });
 $('bPause').addEventListener('click',e=>{ G.paused=!G.paused; e.currentTarget.setAttribute('aria-pressed',String(G.paused)); e.currentTarget.textContent=G.paused?'再開':'一時停止'; });
-['bSet','bSetCh'].forEach(id=>$(id).addEventListener('click',()=>LIVE? liveSettings() : openSettings()));
+$('bSet').addEventListener('click',()=>LIVE? liveSettings() : openSettings());
 
 /* ================= what you send shows at once: it waits at the bottom of the channel until its turn starts ================= */
 // c.pend: [{lid, id, text, t, st:'sending'|'queued'|'sent'|'err', err}]; the hub keeps the same list for every screen
@@ -544,7 +545,7 @@ function sendText(c,text){ c.suggest='';           // as in the terminal, a prom
 // q: {id, qs:[{q, h, multi, opts:[{l, d}]}]}; send(answers) resolves once the answer is on its way
 function qCard(q,send){ const d=document.createElement('div'); d.className='qcard'; d.dataset.id=q.id;
   const one=q.qs.length===1&&!q.qs[0].multi&&q.qs[0].opts.length>0;
-  d.innerHTML=`<div class="qhd"><b>Claude からの質問</b><span class="s">${one?'押すとすぐ答えます':'選んでから「答える」を押します'}。ターミナルでも答えられ、先に答えた方が使われます。</span></div>
+  d.innerHTML=`<div class="qhd"><b>Claude からの質問</b></div>
     ${q.qs.map((x,i)=>`<fieldset class="qq" data-i="${i}"><legend>${x.h?`<span class="qh">${esc(x.h)}</span>`:''}<span class="qt">${esc(x.q||'（質問）')}</span>${x.multi?'<small>いくつでも選べます</small>':''}</legend>
       ${x.opts.length?`<div class="qopts">${x.opts.map((o,k)=>`<button type="button" class="qo" data-k="${k}" aria-pressed="false"><b>${esc(o.l)}</b>${o.d?`<small>${esc(o.d)}</small>`:''}</button>`).join('')}</div>`:''}
       <textarea class="qin" rows="1" maxlength="2000" placeholder="${x.opts.length?'ほかの答えを書く（選択肢にないとき · Shift+Enter で改行）':'答えを書く（Shift+Enter で改行）'}" aria-label="${esc(x.q)}：${x.opts.length?'ほかの答え':'答え'}（Enter で答える、Shift+Enter で改行）"></textarea></fieldset>`).join('')}
@@ -580,20 +581,16 @@ function qDone(d,ev){ if(!d||d.classList.contains('done')) return; d.classList.r
     if(a!=null){ let r=f.querySelector('.qa'); if(!r){ r=document.createElement('p'); r.className='qa'; f.appendChild(r); } r.innerHTML=`<span>答え</span>${esc(a)}`; } });
   const st=d.querySelector('.qst'); st.className='qst'+(ev.err?' bad':' ok');
   st.textContent= ev.err? '答えずに閉じられました（ターミナルで取り消したか、止めました）' : ev.by==='screen'? 'この画面で答えました' : 'ターミナルで答えました';
-  const hd=d.querySelector('.qhd .s'); if(hd) hd.remove(); }
+}
 
 /* ================= Claude Code's guess at your next prompt (Tab takes it), and a command's arguments ================= */
-function ctlHint(){ const c=chN(sel); if(!c) return; const v=$('ask').value, h=$('ctlHint');
-  const m=/^\/(\S+)(\s*)$/.exec(v), cmd=m&&commandsFor(c).find(x=>x.n===m[1]);
-  let html='';
-  if(cmd&&cmd.h) html=`<span class="hk">引数</span><code>/${esc(cmd.n)}</code> <span class="ah">${esc(cmd.h)}</span>${cmd.d?` <span class="ad">${esc(cmd.d)}</span>`:''}`;
-  else if(!v&&c.suggest&&c.status==='idle') html=`<span class="hk">次の提案</span><span class="sgt">${esc(c.suggest)}</span><button class="linkbtn" type="button" id="bSugg">入れる（Tab）</button>`;
-  else if(pal.open&&pal.mode==='file') html=`<span class="hk">@</span><span>選んだファイルは <code>@パス</code> で入り、送るとその中身がこの依頼といっしょに Claude に渡ります（ターミナルの <code>@</code> と同じ）。このターミナルのフォルダの中のものだけです。</span>`;
-  else if(c.status==='off') html=`<span>終了したチャンネルです。「チャンネルを消す」でこの画面から片付けられます（セッションは残り、<code>claude --resume</code> で続きから始められます）。</span>`;
-  const key=html||'-'; if(h.dataset.key===key) return; h.dataset.key=key;
-  h.classList.toggle('alt',!!html);
-  h.innerHTML= html || '送った文は、そのターミナルで入力したのと同じ扱いになります。「/」で始めると組み込みのコマンドやスキルを実行でき、「@」でファイルを指定できます。作業中に送ると、終わってから始まります。';
-  const b=$('bSugg'); if(b) b.addEventListener('click',takeSugg); }
+function ctlHint(){ const c=chN(sel), h=$('ctlHint'), sb=$('bSugg');
+  if(!c){ h.hidden=true; sb.hidden=true; return; }
+  const v=$('ask').value, m=/^\/(\S+)(\s*)$/.exec(v), cmd=!pal.open&&m&&commandsFor(c).find(x=>x.n===m[1]);
+  const html= cmd&&cmd.h? `<span class="hk">引数</span><code>/${esc(cmd.n)}</code> <span class="ah">${esc(cmd.h)}</span>${cmd.d?` <span class="ad">${esc(cmd.d)}</span>`:''}` : '';
+  if(h.dataset.key!==html){ h.dataset.key=html; h.innerHTML=html; } h.hidden=!html;
+  const sg=!v&&!!c.suggest&&c.status==='idle'; if(sb.hidden===sg){ sb.hidden=!sg; $('ctl').classList.toggle('sg',sg); } }
+$('bSugg').addEventListener('click',()=>{ takeSugg(); });
 function takeSugg(){ const c=chN(sel); if(!c||!c.suggest||$('ask').value) return false; $('ask').value=c.suggest; $('ask').focus(); $('ask').setSelectionRange(c.suggest.length,c.suggest.length); askFit(); ctlHint(); return true; }
 
 /* ================= putting away channels whose terminal has gone ================= */
@@ -614,7 +611,7 @@ $('bForget').addEventListener('click',()=>{ const c=chN(sel); if(c&&c.status==='
 $('wSum').addEventListener('click',e=>{ if(e.target.closest('#bTidy')) confirmForget(CH.filter(c=>c.status==='off')); });
 
 /* ================= settings: approving from this screen ================= */
-// 設定 (under the wall's tips, and under a channel's composer) says, in a word, whether this screen can approve right now
+// 設定 (under the logo) says, in a word, whether this screen can approve right now
 let setKey='';
 function renderSetBtn(){ let cls='', pill, say;
   if(LIVE){ const a=LV.ap; if(a.on&&a.pairedHere){ cls='on'; pill='オン'; } else if(a.pairing){ cls='half'; pill='入力待ち'; say='合言葉の入力待ち'; } else if(a.on){ cls='half'; pill='未接続'; say='オン · この画面は未接続'; } else pill='オフ'; }
@@ -622,12 +619,11 @@ function renderSetBtn(){ let cls='', pill, say;
   say=say||`画面で承認 ${pill}`;
   if(cls+say===setKey) return; setKey=cls+say;
   const lab=`設定を開く（${say}）`;
-  document.querySelectorAll('.setBtn').forEach(b=>{ b.className='setBtn'+(cls?' '+cls:''); b.querySelector('.setSt').innerHTML=`画面で承認<em class="pill">${pill}</em>`; b.setAttribute('aria-label',lab); b.title=lab; });
-  const tip=document.querySelector('#ctl0 .apTip'); tip.classList.toggle('on',cls==='on');
-  tip.textContent= cls==='on'? '承認はこの画面でもできます' : '承認はターミナルの確認ダイアログで行います'; }
+  const b=$('bSet'); b.className='setBtn'+(cls?' '+cls:''); b.querySelector('.pill').textContent=`承認 ${pill}`; b.setAttribute('aria-label',lab); b.title=lab; }
 function openSettings(){
-  openSheet(`<div class="hd"><span class="tag">設定</span><button class="btn small" type="button" data-close>閉じる</button></div>
-    <h2 id="sheetT">ブラウザから承認</h2>
+  openSheet(`<div class="hd"><span class="tag" id="sheetT">設定</span><button class="btn small" type="button" data-close>閉じる</button></div>
+    <div class="swrow setGuide"><span><b>使い方</b><small>取扱説明書は、Fogcast を入れたあと受け皿の画面（<code>http://127.0.0.1:4317/guide</code>）で開けます。デモでは開けません。</small></span></div>
+    <h2>ブラウザから承認</h2>
     <p class="sub">オンにすると、ツールを実行する前の確認を、この画面で許可・拒否できます。初期設定はオフです。</p>
     <div class="swrow"><span><b>この画面から承認する</b><small id="apState"></small></span><button class="sw" type="button" role="switch" id="swAp" aria-checked="${G.ap.on}" aria-label="この画面から承認する"><i></i></button></div>
     <div class="pair" id="pair" hidden>
@@ -741,7 +737,7 @@ function secondTick(){
   renderHud(); if(rtab==='F') renderForecast(); if(sel&&chN(sel)) renderOsd(chN(sel));
   CH.forEach(c=>{ c.blocks=c.blocks.filter(b=>!b.e||b.e>Date.now()-70*60000); });
 }
-function renderCore(){ if(sel&&!chN(sel)) select(0); renderChs(); if(sel===0) renderWall(); else { renderOsd(chN(sel)); ctlHint(); } if(rtab==='L') updateDeck(); if(rtab==='D') renderDetail(); if(rtab==='S') renderSkills(); coSync(); renderLvChip(); renderStv(); renderSetBtn(); }
+function renderCore(){ if(sel&&!chN(sel)) select(0); renderChs(); if(sel===0) renderWall(); else { renderOsd(chN(sel)); ctlHint(); } if(rtab==='L') updateDeck(); if(rtab==='D') renderDetail(); if(rtab==='S') renderSkills(); if(rtab==='H') renderHist(); coSync(); renderLvChip(); renderStv(); renderSetBtn(); }
 setInterval(()=>{ if(dirty){ dirty=false; renderCore(); } },250);
 setInterval(secondTick,1000);
 setInterval(()=>{ if(sel===0) renderGuide(); },2000);
@@ -753,7 +749,7 @@ function seedBlocks(c,fresh){ if(fresh) return; let s=c.num*97+13; const rnd=()=
     if(rnd()<.35){ const w=Math.min(e,t+(.6+rnd())*60000); c.blocks.push({s:t,e:w,k:'work',label},{s:w,e:Math.min(e,w+45000),k:'wait',label},{s:Math.min(e,w+45000),e,k:'work',label}); }
     else c.blocks.push({s:t,e,k:'work',label});
     t=e; } }
-function earlier(c){ (EARLIER[c.sk]||[]).forEach(e=>{ const num=++c.turnNo; const li=document.createElement('li'); li.className='turn folded';
-    li.innerHTML=`${foldHTML(num,null,esc(e.p),`${e.ops}件の操作 · +${fmt(e.tok)} · ${e.sec}秒`)}
+function earlier(c){ const E=EARLIER[c.sk]||[]; E.forEach((e,i)=>{ const num=++c.turnNo, t=Date.now()-(E.length-i)*7*60000-c.num*90000; const li=document.createElement('li'); li.className='turn folded'; li.dataset.t=t;
+    li.innerHTML=`${foldHTML(num,t,esc(e.p),`${e.ops}件の操作 · +${fmt(e.tok)} · ${e.sec}秒`)}
       <div class="full">${youHTML(esc(e.p),'ターミナルから',null)}<div class="sys"><span>このターンの細かい記録は、受け皿に保存された履歴から読み込みます（デモでは省略しています）。</span></div><div class="turnFt"><span>${e.ops}件の操作</span><span>コンテキスト +${fmt(e.tok)}</span><span>${e.sec}秒</span></div></div>`;
     foldBind(li); c.log.appendChild(li); c.perTurn.push(e.tok); }); }

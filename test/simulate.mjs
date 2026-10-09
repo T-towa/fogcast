@@ -46,7 +46,7 @@ function terminal(chan, cwd, skills, agents, mcp) {
   const t = { chan, out: [], turn: 0, sid: `${chan}-sess`, model: 'claude-opus-5-5', effort: 'xhigh', convs: '' }
   t.push = ev => t.out.push({ t: Date.now(), ...ev })
   t.hello = () => post('/api/mod/hello', {
-    chan, mod: '0.5.4', sid: t.sid, cwd, branch: 'main', model: t.model, version: '2.1.291', startedAt: Date.now() - 600e3,
+    chan, mod: '0.5.5', sid: t.sid, cwd, branch: 'main', model: t.model, version: '2.1.291', startedAt: Date.now() - 600e3,
     tdir: t.convs || '', effort: t.effort, models: MODELS, efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'auto'],
     commands: [...BUILTIN.map(([name, description, hint]) => ({ name, description, source: 'builtin', hint })), ...skills.map(([s]) => ({ name: s, description: `${s} の手順`, source: 'user' })), { name: 'fog', description: 'Fogcast', source: 'plugin', plugin: 'fogcast' }],
     loaded: { md: true, memory: [{ path: `${cwd}/CLAUDE.md`, type: 'Project', dt: 2400 }], skills: skills.map(([n, src]) => ({ n, src, dt: 160 })), agents: agents.map(([n, src]) => ({ n, src, dt: 70 })), mcp, mods: ['fogcast'], totalSkills: skills.length, includedSkills: skills.length, window: 200000, autoCompactAt: 167000 },

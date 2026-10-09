@@ -214,7 +214,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
 <body>
 <div class="page" lang="ja">
   <header class="cover">
-    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.5.4</span></div>
+    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.5.5</span></div>
     <h1><span class="mark">FOGCAST</span><span class="ja">霧読み</span></h1>
     <p class="lead">Claude Code を何本ものターミナルで動かしているときに、すべての会話・道具の呼び出し・使用量を、ブラウザの 1 画面にまとめて映す Mod です。画面から依頼を送る、<code>/</code> のコマンドを実行する、ツールの実行を許可する、といった操作もできます。</p>
     <dl class="facts">
@@ -245,7 +245,8 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <div class="ch"><span class="no">1</span><h2 id="h-does">できること</h2></div>
         <div class="does">
           <div><b>全チャンネル</b><span>ターミナルごとの今の状態（作業中・承認待ち・入力待ち・終了）と、直近 60 分の番組表。</span></div>
-          <div><b>会話</b><span>メッセージアプリのように、あなたの依頼は右、Claude の返答は左に。道具の呼び出しはその間にまとまり、ターンごとに畳めます。</span></div>
+          <div><b>会話</b><span>メッセージアプリのように、あなたの依頼は右、Claude の返答は左に。道具の呼び出しはその間にまとまり、ターンごとに畳めます。上に戻って読んでいるあいだは画面が動かず、↓ で最新に戻れます。</span></div>
+          <div><b>履歴</b><span>そのチャンネルの会話を、ターンごとのカードで新しい順に。カードを押すと、その会話の位置に飛びます。</span></div>
           <div><b>操作</b><span>画面から送信（押した瞬間に会話に出ます）、<code>/</code> でコマンドやスキルを実行、停止、圧縮。Claude が選択肢で質問してきたら、ボタンで答えられます。</span></div>
           <div><b>天気予報</b><span>5 時間枠と週の枠が、今のペースでいつ上限に届くか。カレンダーの日付を押すと、その日の記録も。</span></div>
           <div><b>ステータス</b><span>使いはじめた日からの記録で、あなたの Lv と 5 つの能力が育ちます。FOGCAST の横の「Lv」から開きます。</span></div>
@@ -266,7 +267,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <div class="cmd"><code>node -v &amp;&amp; claude --version</code><button class="copy" type="button">コピー</button></div></li>
           <li><b class="t">zip を解凍して、ホームフォルダに置く</b>
             <p>ダウンロードフォルダにある場合は、次のコマンドで <code>~/fogcast</code> ができます。</p>
-            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.5.4.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.5.5.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>Finder でダブルクリックして、できた <code>fogcast</code> フォルダをホームフォルダに移してもかまいません。中にある <code>.claude-plugin</code> は見えないフォルダなので、中身だけを選ばずにフォルダごと移してください。</p></li>
           <li><b class="t">マーケットプレイスとして追加する</b>
             <div class="cmd"><code>claude plugin marketplace add ~/fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -293,7 +294,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td>画面</td><td>Windows のブラウザで見ます。<code>/fog</code> で Windows の既定のブラウザが開きます（0.1.2 から）。WSL2 は localhost を Windows に転送するので、<code>http://127.0.0.1:4317</code> で届きます。</td></tr>
           </tbody>
         </table></div>
-        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.5.4.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
+        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.5.5.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
         <p class="note"><span class="lb">お知らせ</span><span>Windows のブラウザでつながらないときは、PowerShell で <code>wsl --shutdown</code> を実行してから WSL を開き直すと直ることがあります。</span></p>
       </section>
 
@@ -302,7 +303,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <figure class="parts">
           <div class="scr" aria-hidden="true">
             <div class="sTop">
-              <span class="sBrand"><span class="sRow"><span class="sMark">FOGCAST</span><span class="r sLv"><b class="n">7</b>Lv 3</span></span><span class="sTools"><i>使い方</i></span></span>
+              <span class="sBrand"><span class="sRow"><span class="sMark">FOGCAST</span><span class="r sLv"><b class="n">7</b>Lv 3</span></span><span class="r sSet"><b class="n">6</b><b class="g">設定</b><small><i>承認 オフ</i></small></span></span>
               <div class="r sDial"><b class="n">1</b><i>0</i><i class="on">1</i><i>2</i><i>3</i><i>＋</i></div>
               <div class="r sHud"><b class="n">2</b>10/07 · 5h 44% · 7d 68%</div>
             </div>
@@ -311,10 +312,9 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
                 <div class="sTiles"><i></i><i class="w"></i><i></i><i></i></div>
                 <div class="sBars"><i style="width:70%"></i><i style="width:45%"></i><i style="width:82%"></i></div>
                 <div class="r sCtl"><b class="n">4</b><span class="f">ch.1 に送る…</span><span>/ コマンド</span><span class="p">送信</span><span>停止</span><span>圧縮</span></div>
-                <div class="sCtlFoot"><span class="h">送った文は、そのターミナルで入力したのと同じ扱い…</span><span class="r sSet"><b class="n">6</b><b class="g">設定</b><small>画面で承認<i>オフ</i></small></span></div>
               </div>
               <div class="r sRail"><b class="n">5</b>
-                <div class="tb"><span class="on">天気予報</span><span>コミュ</span><span>スキル</span><span>詳細</span></div>
+                <div class="tb"><span class="on">天気予報</span><span>コミュ</span><span>スキル</span><span>履歴</span><span>詳細</span></div>
                 <div class="sBars"><i style="width:60%"></i><i style="width:85%"></i></div>
                 <div class="sCards"><i></i><i></i><i></i><i></i></div>
               </div>
@@ -323,10 +323,10 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
           <ol class="legend">
             <li><span class="k">1</span><span><b>ダイヤル</b><span><kbd>0</kbd> は全チャンネル、<kbd>1</kbd>〜<kbd>9</kbd> は各ターミナルです。右端の「＋ 追加」で、新しいチャンネルの始め方と過去のセッションの再開コマンドが出ます。</span></span></li>
             <li><span class="k">2</span><span><b>天気予報の窓</b><span>日付と、5 時間枠・週の枠の今の割合。押すと右の「天気予報」を開きます。</span></span></li>
-            <li><span class="k">3</span><span><b>テレビ</b><span>全チャンネルのタイルと番組表（帯は 1 ターン、黄色の縞は承認待ち）。チャンネルを選ぶと、その会話を映します。ブラウザの窓が横 1181px・縦 620px 以上あれば、ページ全体はスクロールせずに 1 画面に収まり、会話やレールはそれぞれの中でスクロールします。</span></span></li>
-            <li><span class="k">4</span><span><b>送信欄</b><span>チャンネルを開いたときに出ます。送信、<code>/</code> コマンド、停止、圧縮。下の行には、次の入力の提案や、選んだコマンドの引数が出ます。終了したチャンネルでは「チャンネルを消す」になります。</span></span></li>
-            <li><span class="k">5</span><span><b>レール</b><span>「天気予報」「コミュ」「スキル」「詳細」の 4 つのタブです。高さはテレビとそろいます。</span></span></li>
-            <li><span class="k">6</span><span><b>設定</b><span>テレビのいちばん下の右端のボタンです（全チャンネルではヒントの行、チャンネルを開いているときは送信欄の下）。この画面から承認するかどうかを切り替えます。ボタンの右側に今の状態が出ます（オフ／入力待ち＝合言葉の入力待ち／未接続＝オンだがこの画面はまだつないでいない／オン）。この説明書は、FOGCAST の下の行の「使い方」から開けます。</span></span></li>
+            <li><span class="k">3</span><span><b>テレビ</b><span>全チャンネルのタイルと番組表（直近 60 分。帯は 1 ターン、黄色の縞は承認待ちで、帯を押すとそのチャンネルへ）。チャンネルを選ぶと、その会話を映します。上に戻って読んでいるときは、右下の「↓」でいちばん下に戻れます。ブラウザの窓が横 1181px・縦 620px 以上あれば、ページ全体はスクロールせずに 1 画面に収まり、会話やレールはそれぞれの中でスクロールします。</span></span></li>
+            <li><span class="k">4</span><span><b>送信欄</b><span>チャンネルを開いたときに出ます。送信、<code>/</code> コマンド、停止、圧縮。Claude Code の次の入力の提案があるときは、空の送信欄に薄く出て、右端に「提案を入れる」が出ます。コマンドを選ぶと、その引数が送信欄の上に出ます。終了したチャンネルでは「チャンネルを消す」になります。</span></span></li>
+            <li><span class="k">5</span><span><b>レール</b><span>「天気予報」「コミュ」「スキル」「履歴」「詳細」の 5 つのタブです。高さはテレビとそろいます。</span></span></li>
+            <li><span class="k">6</span><span><b>設定</b><span>FOGCAST の下の行のボタンです。この説明書（使い方）を開くボタンと、この画面から承認するかどうかの切り替えがあります。ボタンの右に、承認の今の状態が出ます（オフ／入力待ち＝合言葉の入力待ち／未接続＝オンだがこの画面はまだつないでいない／オン）。</span></span></li>
             <li><span class="k">7</span><span><b>Lv</b><span>あなたの Lv と、次の Lv までの EXP のバー。押すとステータス画面が開きます。</span></span></li>
           </ol>
         </figure>
@@ -334,6 +334,25 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
 
       <section id="use" aria-labelledby="h-use">
         <div class="ch"><span class="no">4</span><h2 id="h-use">使いかた</h2></div>
+        <p>画面には説明の文をほとんど出していません。何をするとどうなるかは、この章にまとめています。まず下の表で探して、詳しくは続く項目を見てください。</p>
+        <div class="tbl"><table>
+          <thead><tr><th>したいこと</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr><td class="w">チャンネルを切り替える</td><td><kbd>0</kbd>〜<kbd>9</kbd> のキー（<kbd>0</kbd> は全チャンネル）。ダイヤル、タイル、番組表の帯を押しても切り替わります。</td></tr>
+            <tr><td class="w">依頼を送る</td><td>送信欄に書いて <kbd>Enter</kbd>（改行は <kbd>Shift</kbd>+<kbd>Enter</kbd>）。そのターミナルで入力したのと同じ扱いです。Claude が作業中なら、今のターンが終わってから始まります。</td></tr>
+            <tr><td class="w">コマンドやスキルを実行する</td><td>送信欄で <kbd>/</kbd> を打って一覧から選びます。</td></tr>
+            <tr><td class="w">ファイルを指定する</td><td>送信欄で <kbd>@</kbd> を打って一覧から選びます。中身が依頼といっしょに Claude に渡ります。</td></tr>
+            <tr><td class="w">次の入力の提案を使う</td><td>空の送信欄で <kbd>Tab</kbd>（または <kbd>→</kbd>）。送信欄の右端の「提案を入れる」を押しても入ります。</td></tr>
+            <tr><td class="w">前のやりとりを読み返す</td><td>レールの「履歴」でカードを押すと、その会話の位置に飛びます。</td></tr>
+            <tr><td class="w">最新に戻る</td><td>右下の <b>↓</b> を押します。読み返しているあいだに届いたメッセージの数が出ます。</td></tr>
+            <tr><td class="w">止める・空ける</td><td>「停止」で今のターンを中断、「圧縮」で会話を要約してコンテキストを空けます。</td></tr>
+            <tr><td class="w">前の会話に戻る</td><td><code>/resume</code> を選んで一覧から「再開」。</td></tr>
+            <tr><td class="w">モデルや effort を変える</td><td>チャンネルの見出しのモデル名か「effort」を押します。</td></tr>
+            <tr><td class="w">Claude の質問に答える</td><td>会話に出る質問のカードで、選択肢を押すか「ほかの答え」に書きます。</td></tr>
+            <tr><td class="w">承認をこの画面でする</td><td>「設定」→「この画面から承認する」をオンにして、ターミナルに出る合言葉を入力します。</td></tr>
+            <tr><td class="w">この説明書を開く</td><td>「設定」→「使い方」の「開く」。</td></tr>
+          </tbody>
+        </table></div>
         <div class="split">
           <div>
             <h3>チャンネルを増やす</h3>
@@ -354,9 +373,9 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
               <li>Claude Code は、プラグインから送った依頼の <code>@</code> を自分では展開しません。そこで Fogcast が送る直前にファイルを読み、Claude だけが読む形で依頼の直前に入れています（ターミナルの画面には出ません）。作業中に送ったときは、今のターンが終わってから、ファイルと依頼をいっしょに入れます。</li>
             </ul>
             <h3>次の入力の提案</h3>
-            <p class="muted">Claude Code は返答のあと、入力欄に「次はこれを打つとよさそう」という文を薄く出します。同じ文が、空の送信欄にも薄く出て、下の行に「次の提案」として並びます。<kbd>Tab</kbd>（または <kbd>→</kbd>）か「入れる（Tab）」で送信欄に入ります（送るのは <kbd>Enter</kbd> を押したときです）。ターミナルで何か打つか、次のターンが始まると消えます。</p>
+            <p class="muted">Claude Code は返答のあと、入力欄に「次はこれを打つとよさそう」という文を薄く出します。同じ文が、この画面の空の送信欄にも薄く出て、送信欄の右端に「提案を入れる」が出ます。<kbd>Tab</kbd>（または <kbd>→</kbd>）か「提案を入れる」で送信欄に入ります（送るのは <kbd>Enter</kbd> を押したときです）。ターミナルで何か打つか、次のターンが始まると消えます。</p>
             <h3>コマンドを実行する</h3>
-            <p class="muted"><kbd>/</kbd> を押すと、そのターミナルで使えるコマンド（組み込み・スキル・プラグイン・MCP）の一覧が出ます。コマンドを選ぶと、送信欄の下にそのコマンドの引数（例 <code>/effort [low|medium|…]</code>）が、ターミナルと同じ書き方で出ます。一覧の右には、この画面から実行したときにどうなるかが出ます。</p>
+            <p class="muted"><kbd>/</kbd> を押すと、そのターミナルで使えるコマンド（組み込み・スキル・プラグイン・MCP）の一覧が出ます。コマンドを選ぶと、送信欄の上にそのコマンドの引数（例 <code>/effort [low|medium|…]</code>）が、ターミナルと同じ書き方で出ます。一覧の右には、この画面から実行したときにどうなるかが出ます。</p>
             <ul class="rules">
               <li><b>この画面で選ぶ</b>：<code>/resume</code>・<code>/model</code>・<code>/effort</code>。この画面に選ぶ画面が開きます（下の 2 つの項目）。</li>
               <li><b>結果を表示</b>：<code>/context</code>・<code>/rename</code>・<code>/plan</code> など。結果がこの画面の会話の欄に出ます。</li>
@@ -389,7 +408,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
           </div>
           <div>
             <h3>ステータス</h3>
-            <p class="muted">FOGCAST の横の「Lv」を押すと、ステータス画面が開きます（<kbd>Esc</kbd> で戻ります）。0.3.0 を入れた日から数え始め、あなた全体の Lv、5 つの能力、今日の EXP、日ごとの EXP、記録（作業した日・連続日数・ターン・トークン・料金・使った道具の種類）が並びます。Lv が上がると、画面に一度だけ知らせます（ターミナルには出しません）。</p>
+            <p class="muted">FOGCAST の横の「Lv」を押すと、ステータス画面が開きます（<kbd>Esc</kbd> で戻ります）。0.3.0 を入れた日から数え始め、あなた全体の Lv、5 つの能力、今日の EXP、日ごとの EXP（記録を始めた日から 1 日ずつ右に積み上がります）、記録（作業した日・連続日数・ターン・トークン・料金・使った道具の種類）が並びます。Lv が上がると、画面に一度だけ知らせます（ターミナルには出しません）。EXP と能力の数え方は、ステータス画面の上の「EXP と能力のしくみ」を押すと開きます。中身は次のとおりです。</p>
             <ul class="rules">
               <li><b>量</b>：やり終えたターン 1 回で +10 EXP、トークン 1 万ごとに +1。1 日の上限はありません。</li>
               <li><b>習慣</b>：その日はじめてターンをやり終えると +50。続けて作業した日は 1 日ごとに +10 ずつ上乗せ（+70 まで）。</li>
@@ -400,21 +419,26 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <h3>天気予報</h3>
             <p class="muted">5 時間枠と週の枠の今の割合、今のペース、リセット時の予報、上限に届く時刻を出します。値は Claude の応答が返るたびに届くので、最初の応答のあとに出ます（API キーで使っている場合は使用枠がないので出ません）。</p>
             <p class="muted">週のカレンダーは、これまでの日と今日に、その日に使った週の枠の割合が出ます。押すとその日の記録（週の枠・ターン数・トークン・料金、チャンネル別の内訳、よく使ったツールやスキル）が開きます。先の日は、今のペースでの天気だけです（1 日 9% 未満が晴れ、18% 以上が雨、上限に届く日が霧）。日ごとの記録は 0.2.0 から、受け皿が動いているあいだの分を 35 日ぶん残します。</p>
+            <p class="muted">画面の背景も天気を映しています。背景の雨の強さが今のペース、背景の霧が週の枠の近さです。チャンネルを開いているときにテレビの下から立つ霧は、そのチャンネルのコンテキストの埋まり具合で、圧縮すると晴れます。</p>
             <h3>コミュ</h3>
-            <p class="muted">使ったツール・スキル・エージェント・MCP がカードになり、全セッション通算の使用回数でランクが上がります。カードを押すと右端の輪の画面になり、<kbd>↑</kbd><kbd>↓</kbd>・ホイール・ドラッグで回して、<kbd>Esc</kbd> で戻ります。種類で絞り込めて、よく使う順・種類ごと・最近使った順・ランク順・毎回の負担が大きい順・名前順で並べ替えられます。</p>
+            <p class="muted">使ったツール・スキル・エージェント・MCP がカードになり、全セッション通算の使用回数でランクが上がります。いま使われているカードは光ります。カード（「一覧」なら行）を押すと右端の輪の画面になり、最近の使い方とどのチャンネルで使ったかが見られます。<kbd>↑</kbd><kbd>↓</kbd>・ホイール・ドラッグで回して、<kbd>Esc</kbd> で戻ります。種類で絞り込めて、よく使う順・種類ごと・最近使った順・ランク順・毎回の負担が大きい順・名前順で並べ替えられます。</p>
             <p class="muted">「このカードについて」には、スキルなら SKILL.md の <code>description</code>、エージェントなら定義ファイルの <code>description</code> が、改行も含めてそのまま出ます。Claude Code の一覧から読むもので、Claude のコンテキストは使いません（本文は読みません）。組み込みのエージェントとツールには、Fogcast の短い説明が出ます。</p>
             <p class="muted">コミュに加わるのは、次のときです。</p>
             <ul class="rules">
               <li><b>ツール</b>：初めて使ったとき。</li>
               <li><b>ローカルのスキルとエージェント</b>（そのプロジェクトの <code>.claude</code> にあるもの）と <b>MCP</b>：読み込んだときに未使用（カードなし）で「一覧」に並び、初めて使ったときにカードが付きます。</li>
               <li><b>グローバルのスキルとエージェント</b>（<code>~/.claude</code>・プラグイン・組み込み）：呼び出されたときに初めて加わります。呼ばれないものは「スキル」のタブにだけ並びます。</li>
+              <li><b>使っていないもの</b>：30 日以上使っていないスキル・エージェント・MCP は、コミュのいちばん下に、毎回のコンテキストに入る量といっしょに並びます。スキルの名前と説明は使わなくても毎回のコンテキストに入るので、手で呼ぶだけのスキルは <code>disable-model-invocation: true</code> にすると外れます（<code>/</code> からは今まで通り呼べます）。使っていない MCP サーバーは、外すとツールの定義ごと空きます。「/skill-doctor を実行」で、Claude Code に見直してもらえます。</li>
               <li><b>カード</b>：Claude 本体・Read・Edit・Bash・組み込みのエージェントなど決まった 22 個は大アルカナ。そのほかは初めて使った順に、種類ごとの組（スキルは金貨、エージェントは剣、MCP は聖杯、ツールは棒）から 14 枚ずつ配られ、それより後のものはカードなしで「一覧」に並びます。</li>
             </ul>
             <h3>スキル</h3>
             <p class="muted">選んでいるチャンネル（全チャンネルのときは全部）のスキルを、3 つのタブで出します。「使った」はこのセッションで呼び出された回数と時刻、「ローカル」はプロジェクトの <code>.claude/skills</code>、「グローバル」は <code>~/.claude/skills</code>・プラグイン・組み込みのスキルです。ローカルとグローバルには、毎回のコンテキストに入る名前と説明のおおよそのトークン数も出ます。<code>disable-model-invocation: true</code> のスキル（<code>/</code> から手で実行するだけのもの）は「手動のみ · 0」と出ます。実行するまで Claude には渡らないので、毎回のコンテキストを使いません。</p>
             <p class="muted">新しく入れたスキルは、動いているセッションでは <code>/reload-skills</code> を実行するか、<code>claude</code> を起動し直すと読み込まれ、Fogcast もそのとき（ほかに 5 ターンごと）に読み直します。初めて呼び出されると「〜を初めて使いました」と出て、カードが配られます（ランク 1）。</p>
+            <h3>履歴</h3>
+            <p class="muted">開いているチャンネルの会話を、ターンごとのカードで新しい順に並べます。カードには、ターン番号・時刻・どこから送ったか（ターミナル／この画面）・依頼の書き出し・Claude の最後の返答の書き出し・操作の数・増えたコンテキスト・かかった時間が出ます。今動いているターンには「進行中」、答えを待っている質問や承認があると「質問」「承認待ち」、止めたターンには「中断」が付きます。</p>
+            <p class="muted">カードを押すと、その会話の位置に飛びます。畳まれていたターンは開き、少しのあいだ黄色く光ります。いま画面に出ているターンのカードは黄色い枠になり、スクロールすると付いてきます。セッションの開始・再開・圧縮・<code>/clear</code>・モデルの切り替え・コマンドの結果は、カードのあいだの細い線で出て、押すとそこへ飛びます。全チャンネルのときは、すべてのチャンネルの最近のターン（40 件まで）がチャンネル名つきで並び、押すとそのチャンネルを開いて、そのターンに飛びます。読み返したあとは、右下の <b>↓</b> で最新に戻れます。</p>
             <h3>詳細</h3>
-            <p class="muted">コンテキストの内訳、起動時に読み込んだもの（CLAUDE.md・スキル（ローカル／グローバル）・エージェント・MCP）、ターンごとの増え方、変更したファイル、タスク、サブエージェント、続きから始めるコマンド。</p>
+            <p class="muted">コンテキストの内訳、起動時に読み込んだもの（CLAUDE.md・スキル（ローカル／グローバル）・エージェント・MCP）、ターンごとの増え方、変更したファイル、タスク、サブエージェント、続きから始めるコマンド。終わったチャンネルの「続きから始める」のコマンドは、VS Code のターミナルに貼り付けて実行すると、そのチャンネルに戻ってきます。全チャンネルのときは、チャンネルごとの状態とコンテキスト・トークン・コストの表になり、行を押すとそのチャンネルを開きます。</p>
             <h3>終わったチャンネル</h3>
             <p class="muted">ターミナルを閉じたチャンネルや、報告が途絶えたチャンネルは「終了」になり、12 時間は画面に残ります。いらないものは、そのチャンネルを開いて送信欄の右の「チャンネルを消す」か、全チャンネルの見出しの「終了したチャンネルを片付ける」で、すぐ消せます（動いているチャンネルは消せません）。消えるのは画面の表示だけで、Claude Code のセッションは残ります。「＋ 追加」の過去のセッションから <code>claude --resume …</code> をコピーして、続きから始められます。報告が途絶えただけのターミナルが戻ってきたときは、新しいチャンネルとしてまた並びます。</p>
           </div>
@@ -426,7 +450,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <p>初期設定はオフで、ツールを実行する前の確認はターミナルで行います。オンにすると、その確認を画面でも許可・拒否できます。オンにするときは、ターミナルに出る<b>合言葉</b>を画面に入力して、ブラウザをつなぎます。</p>
         <ol class="steps">
           <li><b class="t">「設定」で「この画面から承認する」をオンにする</b>
-            <p>テレビのいちばん下の右端にある「設定」から開きます（全チャンネルではヒントの行の右、チャンネルを開いているときは送信欄の下の右）。ボタンに、今オンかオフかが出ています。</p></li>
+            <p>FOGCAST の下の行にある「設定」から開きます。ボタンに、今オンかオフかが出ています。</p></li>
           <li><b class="t">ターミナルで合言葉を見る</b>
             <p>つながっているすべてのターミナルの<b>入力欄のすぐ上</b>に、黄色い枠で出ます。入力欄の下のステータスラインにも出ます。どのターミナルの合言葉も同じです。</p>
             <div class="tm" role="img" aria-label="ターミナルの表示例：入力欄の上の黄色い枠に合言葉、入力欄の下のステータスラインにも合言葉">
@@ -481,9 +505,11 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
           <tbody>
             <tr><td><kbd>0</kbd>〜<kbd>9</kbd></td><td>チャンネルを切り替えます（<kbd>0</kbd> は全チャンネル）。</td></tr>
             <tr><td><kbd>/</kbd></td><td>開いているチャンネルのコマンドの一覧を出します。<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> で入れ、<kbd>Esc</kbd> で閉じます。<code>/resume</code>・<code>/model</code>・<code>/effort</code> は、この画面に選ぶ画面が開きます。</td></tr>
-            <tr><td><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>送信 / 改行。</td></tr>
+            <tr><td><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>送信 / 改行。質問のカードの「ほかの答え」でも同じです（<kbd>Enter</kbd> で答えます）。</td></tr>
+            <tr><td><kbd>Tab</kbd> / <kbd>→</kbd></td><td>空の送信欄に、Claude Code の次の入力の提案を入れます。</td></tr>
+            <tr><td><kbd>@</kbd></td><td>送信欄で、そのチャンネルのフォルダのファイルの一覧を出します。</td></tr>
             <tr><td><kbd>↑</kbd><kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd></td><td>カードの画面で輪を回します。ホイールとドラッグでも回ります。</td></tr>
-            <tr><td><kbd>Esc</kbd></td><td>カードの画面や設定を閉じます。</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>カードの画面・ステータス画面・設定などを閉じます。</td></tr>
           </tbody>
         </table></div>
       </section>
@@ -493,7 +519,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>新しい版に更新する</h3>
         <ol class="steps">
           <li><b class="t">新しい zip で <code>~/fogcast</code> を上書きする</b>
-            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.5.4.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.5.5.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>ファイル名は受け取った版に合わせてください。</p></li>
           <li><b class="t">版を更新する</b>
             <div class="cmd"><code>claude plugin update fogcast@fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -554,7 +580,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>仕様</h3>
         <div class="tbl"><table>
           <tbody>
-            <tr><td>版</td><td>0.5.4</td></tr>
+            <tr><td>版</td><td>0.5.5</td></tr>
             <tr><td>必要なもの</td><td>Claude Code 2.1.290 以降（Mod が使える版）、Node.js 18 以上</td></tr>
             <tr><td>日付の区切り</td><td>画面（ブラウザ）の時計に合わせます。WSL の時計が Windows と違う地域になっていても、カレンダーと連続日数は画面の日付で数えます（0.3.0 から）。</td></tr>
             <tr><td>確かめた環境</td><td>Linux。WSL は、Windows のブラウザを開くところを Linux 上で見立てて確かめました。macOS とネイティブの Windows はまだ確かめていません。</td></tr>
@@ -580,7 +606,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
     </main>
   </div>
 
-  <footer><span>Fogcast（霧読み）0.5.4 取扱説明書</span><span>画面の左上の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
+  <footer><span>Fogcast（霧読み）0.5.5 取扱説明書</span><span>画面の「設定」の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
 </div>
 <script>
 (function(){

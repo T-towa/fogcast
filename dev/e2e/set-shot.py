@@ -1,4 +1,4 @@
-# 設定 on the wall's tip row and under a channel's composer, at a few sizes; the header's height too.
+# 設定 (under the logo) at a few sizes, and the sheet it opens; the header's height too.
 import asyncio, os, sys
 from playwright.async_api import async_playwright
 SP=os.path.dirname(os.path.abspath(__file__))
@@ -28,7 +28,7 @@ async def main():
             else:
                 await pg.evaluate("document.getElementById('ctl').scrollIntoView({block:'end'})"); await pg.wait_for_timeout(300); await pg.screenshot(path=os.path.join(SP,f'T-chan-{W}.png'))
             vis=await pg.evaluate("[...document.querySelectorAll('.setBtn')].map(b=>b.id+':'+(b.offsetParent!==null))")
-            await pg.click('#bSetCh'); await pg.wait_for_timeout(500)
+            await pg.click('#bSet'); await pg.wait_for_timeout(500)
             sheet=await pg.evaluate("!document.getElementById('scrim').hidden&&document.getElementById('sheetT').textContent")
             print(W,H,'header',head,'| shown',vis,'| sheet:',sheet,'|',errs or 'no errors'); await pg.close()
         await b.close()

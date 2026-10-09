@@ -67,25 +67,18 @@ h1,h2,h3{text-wrap:balance}
   .hud{grid-column:3;grid-row:1}
   .dial{grid-column:1/-1;grid-row:2}
 }
-/* 設定: where this screen's approving is switched on, so it says whether it is */
-/* 設定: where this screen's approving is switched on; it sits with the channels, since that is where approving happens */
-/* the slant is drawn behind the button, so its words stay upright and sharp */
-.setBtn{--c:#3d4250;--ci:#f3efe2;position:relative;isolation:isolate;flex:none;border:0;background:none;color:#fff;padding:9px 18px 9px 14px;cursor:pointer}
-.setBtn::before{content:"";position:absolute;inset:0;z-index:-1;background:#000;border:2px solid var(--yolk);transform:skewX(-10deg);box-shadow:4px 4px 0 rgba(0,0,0,.7);transition:background .15s}
-.setBtn .in{display:flex;align-items:center;gap:10px}
-.setBtn svg{width:20px;height:20px;flex:none;color:var(--yolk)}
-.setBtn .l{display:flex;align-items:center;gap:11px;text-align:left}
-.setBtn b{font:700 15px/1 var(--f-body);letter-spacing:.14em}
-.setBtn small{display:flex;align-items:center;gap:7px;padding-left:11px;border-left:1px solid rgba(243,239,226,.28);font:700 12.5px/1 var(--f-body);color:#d9d4c4;white-space:nowrap}
-.setBtn .pill{font-style:normal;font:800 12px/1 var(--f-body);letter-spacing:.06em;padding:5px 10px 4px;border-radius:999px;background:var(--c);color:var(--ci)}
+/* 設定: under the logo, with the rest of what is true for every channel; its pill says whether this screen can approve */
+.setBtn{--c:#3d4250;--ci:#f3efe2;display:inline-flex;align-items:center;gap:6px;margin-left:4px;padding:3px 5px 3px 7px;border:1px solid var(--yolk);background:rgba(255,217,49,.08);
+  color:var(--ink);font:700 12px/1 var(--f-body);letter-spacing:.06em;cursor:pointer;white-space:nowrap;transition:background .15s}
+.setBtn svg{width:14px;height:14px;flex:none;color:var(--yolk)}
+.setBtn b{font-weight:700}
+.setBtn .pill{font-style:normal;font:800 10.5px/1 var(--f-body);letter-spacing:.04em;padding:3px 7px 2px;border-radius:999px;background:var(--c);color:var(--ci)}
 .setBtn.on{--c:var(--teal);--ci:var(--teal-ink)}
 .setBtn.half{--c:var(--yolk);--ci:var(--yolk-ink)}
-.setBtn.half .pill::before{content:"";display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:currentColor;vertical-align:1px;animation:blink 1.2s steps(2) infinite}
-.setBtn:hover::before,.setBtn:focus-visible::before{background:var(--yolk);border-color:#000}
-.setBtn:focus-visible{outline:none}
-.setBtn:focus-visible::before{box-shadow:0 0 0 3px #fff,4px 4px 0 rgba(0,0,0,.7)}
-.setBtn:hover b,.setBtn:hover small,.setBtn:hover svg,.setBtn:focus-visible b,.setBtn:focus-visible small,.setBtn:focus-visible svg{color:#000}
-.setBtn:hover small,.setBtn:focus-visible small{border-left-color:rgba(0,0,0,.3)}
+.setBtn.half .pill::before{content:"";display:inline-block;width:5px;height:5px;margin-right:5px;border-radius:50%;background:currentColor;vertical-align:1px;animation:blink 1.2s steps(2) infinite}
+.setBtn:hover,.setBtn:focus-visible{background:var(--yolk);color:var(--yolk-ink);outline:none}
+.setBtn:hover svg,.setBtn:focus-visible svg{color:var(--yolk-ink)}
+.setBtn:focus-visible{box-shadow:0 0 0 3px #fff}
 .tool{font:700 11px/1 var(--f-body);padding:4px 9px 3px;border:1px solid rgba(243,239,226,.4);background:rgba(255,255,255,.05);color:var(--ink);letter-spacing:.06em;text-decoration:none;cursor:pointer;white-space:nowrap}
 .tool:hover,.tool:focus-visible{background:var(--ink);color:var(--night);border-color:var(--ink);outline:none}
 .rx .tool:first-of-type,.rx .pz{margin-left:2px}
@@ -320,6 +313,39 @@ h1,h2,h3{text-wrap:balance}
 .toEnd .nw:empty{display:none}
 @keyframes toEndIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes toEndPing{0%{box-shadow:3px 3px 0 #000,0 0 0 0 rgba(255,217,49,.55)}70%{box-shadow:3px 3px 0 #000,0 0 0 12px rgba(255,217,49,0)}100%{box-shadow:3px 3px 0 #000,0 0 0 0 rgba(255,217,49,0)}}
+/* the turn a history card went to, lit for a moment */
+.log>li.hit{border-radius:14px;animation:hit 1.7s ease-out}
+@keyframes hit{0%,35%{box-shadow:0 0 0 2px var(--yolk),0 0 26px rgba(255,217,49,.32)}100%{box-shadow:0 0 0 2px rgba(255,217,49,0),0 0 26px rgba(255,217,49,0)}}
+
+/* ---------- rail: history — a card a turn, newest first ---------- */
+.hcards{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.hc{position:relative;width:100%;display:grid;gap:5px;text-align:left;padding:10px 12px 10px 15px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.24);
+  color:var(--ink);cursor:pointer;transition:background .15s,border-color .15s}
+.hc::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:0 2px 2px 0;background:rgba(243,239,226,.2)}
+.hc:hover{background:rgba(255,255,255,.07);border-color:rgba(255,217,49,.55)}
+.hc:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.hc.here{border-color:var(--yolk);background:rgba(255,217,49,.07)}
+.hc.here::before{background:var(--yolk)}
+.hc.run::before{background:var(--teal)}
+.hc.ask::before,.hc.wait::before{background:var(--yolk)}
+.hc.stop::before{background:var(--alarm)}
+.hh{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 8px;font-size:11.5px;color:var(--faint)}
+.hh b{font:700 12.5px/1.2 var(--f-body);color:var(--teal);letter-spacing:.04em}
+.hh time{font:11.5px/1 var(--f-mono);color:var(--mute)}
+.hch{font:700 11px/1 var(--f-body);color:var(--yolk-ink);background:var(--yolk);padding:3px 6px 2px}
+.hst{margin-left:auto;font:700 10.5px/1 var(--f-body);padding:3px 7px 2px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.hst.run{color:var(--teal)}
+.hst.ask,.hst.wait{color:var(--yolk)}
+.hst.stop{color:var(--alarm)}
+.hp{font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.ha{font-size:12px;line-height:1.55;color:var(--mute);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.ha i{font-style:normal;font:700 10.5px/1 var(--f-body);color:var(--ink);margin-right:6px;padding:2px 5px 1px;border:1px solid rgba(243,239,226,.3)}
+.hf{font-size:11px;line-height:1.3;color:var(--faint)}
+.hm{display:flex}
+.hmk{flex:1;display:flex;align-items:center;gap:8px;border:0;background:none;color:var(--faint);font-size:11.5px;padding:3px 2px;cursor:pointer;min-width:0}
+.hmk span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hmk::before,.hmk::after{content:"";flex:1 1 12px;height:1px;background:rgba(243,239,226,.16)}
+.hmk:hover,.hmk:focus-visible{color:var(--ink);outline:none}
 
 /* arcana cut-in */
 .cutin{position:absolute;right:22px;bottom:70px;z-index:6;width:118px;pointer-events:none;opacity:0;transform:translateX(170%) rotate(8deg)}
@@ -340,13 +366,16 @@ h1,h2,h3{text-wrap:balance}
 .btn.primary:hover{filter:brightness(1.07)}
 .btn:disabled{opacity:.38;cursor:not-allowed}
 .btn.small{padding:5px 10px;font-size:12px;border-radius:10px}
-.ctl .hint,.ctl0{font-size:12px;color:var(--faint)}
-.ctlFoot{grid-column:1/-1;display:flex;align-items:center;gap:8px 16px}
-.ctlFoot .hint{flex:1;min-width:0}
-.ctl0{padding:2px 6px 4px;display:flex;align-items:center;gap:8px 16px}
-.ctl0 .tips{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:4px 16px}
-.ctl0 .apTip.on{color:var(--teal)}
-.ctl0 kbd{font:600 11px/1 var(--f-mono);padding:2px 5px 1px;border:1px solid var(--faint);border-radius:4px;color:var(--mute)}
+/* the box and its buttons share a row; the suggestion's button sits inside the box's right end */
+.ctl textarea{grid-column:1;grid-row:1}
+.btns{grid-column:2;grid-row:1}
+.sgtIn{grid-column:1;grid-row:1;justify-self:end;align-self:center;z-index:1;margin-right:8px;display:inline-flex;align-items:center;gap:7px;padding:5px 7px 4px 11px;border-radius:999px;
+  border:1px solid rgba(63,230,214,.45);background:rgba(7,20,22,.9);color:var(--teal);font:700 11.5px/1 var(--f-body);letter-spacing:.04em;cursor:pointer;white-space:nowrap}
+.sgtIn kbd{font:600 10px/1 var(--f-mono);padding:2px 5px 1px;border:1px solid currentColor;border-radius:4px;opacity:.85}
+.sgtIn:hover,.sgtIn:focus-visible{background:var(--teal);color:var(--teal-ink);outline:none}
+.sgtIn[hidden]{display:none}
+.ctl.sg textarea{padding-right:132px}
+.ctl.sg textarea::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- rail ---------- */
 .rail{--r:26px;padding:12px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;min-width:0}
@@ -472,7 +501,7 @@ h1,h2,h3{text-wrap:balance}
 .toast p{margin:0;font-size:12px;color:var(--mute);line-height:1.5}
 .toast.out{opacity:0;transform:translateX(20px);transition:.35s}
 @keyframes tin{from{opacity:0;transform:translateX(30px)}}
-.scrim{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(3,4,8,.62);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.scrim{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(3,4,8,.62);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .sheet{--r:26px;border-radius:var(--r);border:1px solid var(--rim);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 30px 80px rgba(0,0,0,.6);width:min(780px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:20px;display:grid;gap:14px;align-content:start;background:linear-gradient(160deg,rgba(32,36,50,.98),rgba(11,13,21,.99))}
 .sheet h2{margin:0;font-family:var(--f-disp);font-weight:400;font-size:20px;line-height:1.3;letter-spacing:.04em;word-break:auto-phrase;text-wrap:pretty}
 .sheet .sub{margin:0;font-size:12.5px;color:var(--mute);line-height:1.7}
@@ -709,6 +738,8 @@ h1,h2,h3{text-wrap:balance}
 .swrow{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;background:var(--well);border:1px solid rgba(255,255,255,.07)}
 .swrow span{display:grid;gap:2px}
 .swrow small{font-size:11.5px;color:var(--mute)}
+.setGuide .btn{flex:none;text-decoration:none;color:var(--ink)}
+.setGuide small code{font-size:11px}
 .sw{position:relative;flex:none;width:54px;height:30px;border-radius:999px;border:1px solid var(--rim);background:rgba(255,255,255,.1);padding:0;transition:background .2s}
 .sw i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--ink);transition:transform .2s;box-shadow:0 2px 6px rgba(0,0,0,.5)}
 .sw[aria-checked="true"]{background:var(--yolk);border-color:var(--yolk)}
@@ -867,8 +898,8 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 }
 
 /* skills tab */
-.rtabs{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.rt span{font-size:13px;padding:8px 2px 7px}
+.rtabs{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.rt span{font-size:12.5px;padding:8px 1px 7px;letter-spacing:.02em}
 .sktabs{justify-self:stretch}
 .sktabs button{flex:1;display:flex;gap:6px;justify-content:center;align-items:baseline;font-weight:700}
 .sktabs button small{font-size:11px;font-weight:500;color:inherit;opacity:.75}
@@ -935,14 +966,14 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion: reduce){ .spin{animation:none;border-right-color:var(--yolk)} }
 
-/* ---------- the composer's hint line: the next-prompt suggestion, a command's arguments ---------- */
-#ctlHint.alt{display:flex;flex-wrap:wrap;gap:3px 9px;align-items:baseline;color:var(--mute)}
-#ctlHint .hk{font:700 11px/1 var(--f-body);color:var(--yolk-ink);background:var(--yolk);padding:3px 7px 2px}
-#ctlHint code{font:600 12px/1.4 var(--f-mono);color:var(--ink);background:none;padding:0}
-#ctlHint .ah{font:12px/1.4 var(--f-mono);color:var(--teal)}
-#ctlHint .ad{font-size:11.5px;color:var(--faint);min-width:0}
-#ctlHint .sgt{color:var(--ink);font-size:13px;min-width:0;overflow-wrap:anywhere}
-#ctlHint .linkbtn{font-size:12px}
+/* ---------- a command's arguments, over the message box while it is typed (where the palette sits) ---------- */
+.argHint{position:absolute;left:0;right:0;bottom:calc(100% + 8px);z-index:19;display:flex;flex-wrap:wrap;gap:3px 9px;align-items:baseline;padding:10px 14px;border-radius:14px;
+  background:linear-gradient(160deg,rgba(34,38,54,.98),rgba(12,14,22,.99));border:1px solid var(--rim);box-shadow:0 14px 40px rgba(0,0,0,.5);font-size:12px;color:var(--mute);pointer-events:none}
+.argHint[hidden]{display:none}
+.argHint .hk{font:700 11px/1 var(--f-body);color:var(--yolk-ink);background:var(--yolk);padding:3px 7px 2px}
+.argHint code{font:600 12px/1.4 var(--f-mono);color:var(--ink);background:none;padding:0}
+.argHint .ah{font:12px/1.4 var(--f-mono);color:var(--teal)}
+.argHint .ad{font-size:11.5px;color:var(--faint);min-width:0}
 
 /* ---------- putting away ended channels ---------- */
 .wallHead .sum .tidy{margin-left:10px;border:1px solid rgba(243,239,226,.35);background:rgba(255,255,255,.05);border-radius:999px;padding:3px 11px;font-size:11.5px;color:var(--ink)}
@@ -997,6 +1028,15 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
 .stvBg::before{content:"";position:absolute;inset:-30%;background:repeating-linear-gradient(-64deg,rgba(255,255,255,.035) 0 2px,transparent 2px 28px);animation:coDrift 16s linear infinite}
 .stvBg::after{content:"";position:absolute;right:-6%;top:58%;width:70%;height:36%;background:#000;opacity:.45;transform:skewY(8deg);clip-path:polygon(0 0,100% 28%,100% 100%,0 72%)}
 .stvTop{position:absolute;z-index:4;left:22px;top:16px;right:22px;display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;animation:coFade .3s ease both}
+.stHowBtn{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,217,49,.7);background:rgba(0,0,0,.55);color:var(--ink);font:700 12.5px/1 var(--f-body);letter-spacing:.04em;padding:6px 12px 5px 6px;cursor:pointer}
+.stHowBtn b{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--yolk);color:var(--yolk-ink);font:800 13px/1 var(--f-body)}
+.stHowBtn:hover,.stHowBtn:focus-visible{background:var(--yolk);color:var(--yolk-ink);outline:none}
+.stHowBtn:hover b,.stHowBtn:focus-visible b{background:var(--yolk-ink);color:var(--yolk)}
+.stHowBtn[hidden]{display:none}
+.howList{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.howList li{display:grid;grid-template-columns:5.2em minmax(0,1fr);gap:4px 12px;align-items:baseline;padding:10px 12px;border-radius:12px;background:var(--well);border:1px solid rgba(255,255,255,.07);font-size:13px;line-height:1.7}
+.howList b{font:700 12.5px/1.5 var(--f-body);color:var(--yolk)}
+.sheet.how{width:min(680px,100%)}
 .stvBody{position:absolute;z-index:2;inset:0;padding:78px 40px 28px;overflow:auto;scrollbar-width:thin;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1.05fr);gap:20px 30px;align-content:start;align-items:start}
 .stCol{display:grid;gap:16px;min-width:0;align-content:start}
 .stvBody .blk{background:rgba(0,0,0,.42);border-color:rgba(255,255,255,.12);animation:coIn .45s cubic-bezier(.2,.9,.25,1) both}
@@ -1091,9 +1131,6 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
 }
 @media (max-width:620px){
   .mark{font-size:25px}
-  .ctlFoot,.ctl0{flex-wrap:wrap}
-  .ctlFoot .hint,.ctl0 .tips{flex-basis:100%}
-  .ctlFoot .setBtn,.ctl0 .setBtn{margin-left:auto}
   .hud .d{padding:6px 22px 4px 12px}
   .hud .d b{font-size:22px}
   .hud .w{width:46px;height:46px}
@@ -1111,6 +1148,7 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
   .gGrid{grid-template-columns:64px minmax(0,1fr)}
   .gLab .nm{display:none}
   .ctl{grid-template-columns:minmax(0,1fr)}
+  .btns{grid-column:1;grid-row:2}
   .fold .k{display:none}
   .blk h3{flex-direction:column;align-items:flex-start;gap:2px}
   .blk h3 small{text-align:left}
@@ -1139,7 +1177,7 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
   <header class="top">
     <div class="brand">
       <div class="bRow"><h1 class="mark">FOGCAST</h1><button class="lvChip" id="lvChip" type="button" hidden><b>Lv</b><span id="lvN">1</span><i class="xp" aria-hidden="true"><i id="lvXp"></i></i></button></div>
-      <div class="rx" id="rx"><i></i><span id="rxTxt">受信中</span><span class="demo">DEMO</span><button class="pz" type="button" id="bPause" aria-pressed="false">一時停止</button><a class="tool" id="bGuide" href="/guide" target="_blank" rel="noopener" hidden>使い方</a></div>
+      <div class="rx" id="rx"><i></i><span id="rxTxt">受信中</span><span class="demo">DEMO</span><button class="pz" type="button" id="bPause" aria-pressed="false">一時停止</button><button class="setBtn" type="button" id="bSet"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg><b>設定</b><em class="pill">承認 オフ</em></button></div>
     </div>
     <nav class="dial" aria-label="チャンネル">
       <button class="knob" id="knob" type="button" aria-label="次のチャンネルへ回す" title="次のチャンネル"><span class="kn"><i></i></span></button>
@@ -1160,7 +1198,7 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
           <div class="wallHead"><span class="tag">全チャンネル</span><span class="sum" id="wSum"></span></div>
           <div class="tiles" id="tiles"></div>
           <div class="guide">
-            <div class="gHead"><span class="tag teal">番組表</span><span class="s">直近 60 分。帯は 1 ターン、黄色の縞は承認待ち。帯を押すとそのチャンネルへ。</span></div>
+            <div class="gHead"><span class="tag teal">番組表</span><span class="s">直近 60 分</span></div>
             <div class="gGrid" id="guide"></div>
           </div>
         </div>
@@ -1181,7 +1219,9 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
           <ul id="palList" role="listbox" aria-label="コマンド"></ul>
           <div class="palft">↑↓ で選ぶ · Enter で入れる · Esc で閉じる</div>
         </div>
+        <div class="argHint" id="ctlHint" role="status" hidden></div>
         <textarea id="ask" rows="1" aria-label="このチャンネルに送る文（「/」でコマンド、「@」でファイル）" aria-autocomplete="list" aria-controls="palList" aria-expanded="false" placeholder="このチャンネルに送る（Enter で送信、Shift+Enter で改行）"></textarea>
+        <button class="sgtIn" type="button" id="bSugg" hidden title="Claude Code の次の入力の提案を、送信欄に入れる">提案を入れる<kbd>Tab</kbd></button>
         <div class="btns">
           <button class="btn" type="button" id="bCmd" aria-label="コマンドの一覧を開く"><b>/</b> コマンド</button>
           <button class="btn primary" type="submit" id="bSend">送信</button>
@@ -1189,22 +1229,21 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
           <button class="btn" type="button" id="bCompact">圧縮</button>
           <button class="btn danger" type="button" id="bForget" hidden>チャンネルを消す</button>
         </div>
-        <div class="ctlFoot"><div class="hint" id="ctlHint">送った文は、そのターミナルで入力したのと同じ扱いになります。「/」で始めると組み込みのコマンドやスキルを実行でき、「@」でファイルを指定できます。作業中に送ると、終わってから始まります。</div><button class="setBtn" type="button" id="bSetCh"><span class="in"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg><span class="l"><b>設定</b><small class="setSt">画面で承認<em class="pill">オフ</em></small></span></span></button></div>
       </form>
-      <div class="ctl0" id="ctl0"><span class="tips" id="ctl0Tips"><span><kbd>0</kbd>〜<kbd>9</kbd> でチャンネル切り替え</span><span class="apTip">承認はターミナルの確認ダイアログで行います</span><span>タイルを押すとそのチャンネルを開きます</span></span><button class="setBtn" type="button" id="bSet"><span class="in"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5.6 5.6 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)"/></svg><span class="l"><b>設定</b><small class="setSt">画面で承認<em class="pill">オフ</em></small></span></span></button></div>
     </section>
 
-    <aside class="rail glass" aria-label="予報・コミュ・スキル・詳細">
+    <aside class="rail glass" aria-label="予報・コミュ・スキル・履歴・詳細">
       <div class="rtabs" role="tablist" aria-label="パネル">
         <button class="rt" type="button" role="tab" id="tF" aria-controls="pF" aria-selected="true"><span>天気予報</span></button>
         <button class="rt" type="button" role="tab" id="tL" aria-controls="pL" aria-selected="false"><span>コミュ</span></button>
         <button class="rt" type="button" role="tab" id="tS" aria-controls="pS" aria-selected="false"><span>スキル</span></button>
+        <button class="rt" type="button" role="tab" id="tH" aria-controls="pH" aria-selected="false"><span>履歴</span></button>
         <button class="rt" type="button" role="tab" id="tD" aria-controls="pD" aria-selected="false"><span>詳細</span></button>
       </div>
       <section class="pane" id="pF" role="tabpanel" aria-labelledby="tF"></section>
       <section class="pane" id="pL" role="tabpanel" aria-labelledby="tL" hidden>
         <div class="blk">
-          <h3>コミュ<small>全セッション通算の使用回数でランクが上がります</small></h3>
+          <h3>コミュ</h3>
           <div class="dctl">
             <input id="dq" type="search" placeholder="名前で絞り込み" aria-label="名前で絞り込み" autocomplete="off">
             <select id="ds" aria-label="並べ替え"><option value="uses">よく使う順</option><option value="kind">種類ごと</option><option value="recent">最近使った順</option><option value="rank">ランク順</option><option value="cost">毎回の負担が大きい順</option><option value="name">名前順</option></select>
@@ -1225,9 +1264,9 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
         <p class="note" id="deckNote"></p>
         <div class="dlist" id="dlist" hidden></div>
         <div class="blk" id="unused"></div>
-        <p class="note">いま動いているカードは光ります。カードや行を押すと、最近の使用とどのチャンネルで使ったかが見られます。</p>
       </section>
       <section class="pane" id="pS" role="tabpanel" aria-labelledby="tS" hidden></section>
+      <section class="pane" id="pH" role="tabpanel" aria-labelledby="tH" hidden></section>
       <section class="pane" id="pD" role="tabpanel" aria-labelledby="tD" hidden></section>
     </aside>
   </main>
@@ -1265,6 +1304,7 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
     <button class="coBack" type="button" id="stvBack"><span>◀ 戻る</span></button>
     <h2 class="coTitle" id="stvT"><span>ステータス</span></h2>
     <span class="coSub" id="stvSub"></span>
+    <button class="stHowBtn" type="button" id="stvHow"><b aria-hidden="true">?</b>EXP と能力のしくみ</button>
     <span class="coKeys">Esc で戻る</span>
   </div>
   <div class="stvBody" id="stvBody"></div>
@@ -1852,7 +1892,7 @@ function renderOsd(c){
   const busy=c.status==='work'||c.status==='wait';
   $('ask').disabled=off; $('bSend').disabled=off; $('bStop').disabled=!busy; $('bCompact').disabled=off; $('bForget').hidden=!off; $('bSend').hidden=off;
   // the dim suggestion sits in the empty box, as in the terminal
-  $('ask').placeholder= off? 'このセッションは終了しています。「詳細」から再開コマンドをコピーできます' : c.suggest&&c.status==='idle'? `${c.suggest}　（Tab で入力）` : `ch.${c.num} ${c.name} に送る（Enter で送信、Shift+Enter で改行）`;
+  $('ask').placeholder= off? 'このセッションは終了しています。「詳細」から再開コマンドをコピーできます' : c.suggest&&c.status==='idle'? c.suggest : `ch.${c.num} ${c.name} に送る（Enter で送信、Shift+Enter で改行）`;
   $('sfog').style.setProperty('--fog',(fogOf(c)*.8).toFixed(2)); $('screen').classList.toggle('off',off);
 }
 
@@ -1914,12 +1954,10 @@ function renderForecast(){
   <div class="blk"><h3>週の枠<small>リセット ${md(seven.resetAt)}（${wkd(seven.resetAt)}）${hm(seven.resetAt)}</small></h3>
     <div class="fc"><span class="ico">${WX[f7.wx]}</span><span class="big">${seven.pc.toFixed(0)}%<small>予報 ${WXN[f7.wx]}</small></span><span class="says${f7.hit?' bad':''}">${says7}</span></div>
     ${meter(seven.pc,f7.proj)}
-    <div class="cal" role="group" aria-label="週のカレンダー">${calCells()}</div>
-    <p class="note">これまでの日と今日は使った割合で、押すとその日の記録が出ます。先の日は今のペースでの天気だけです（1 日 9% 未満は晴れ、18% 以上は雨、上限に届く日は霧）。</p></div>
+    <div class="cal" role="group" aria-label="週のカレンダー">${calCells()}</div></div>
   <div class="blk"><h3>今日の使用量<small>チャンネル別のトークンとコスト</small></h3><div class="uses" style="display:grid;gap:7px">
     ${CH.map(c=>`<div class="urow"><span class="nm"><span class="n">${c.num}</span>${esc(c.name)}</span><span class="bar"><i style="width:${(c.tok/maxT*100).toFixed(1)}%"></i></span><span class="v">${fmt(c.tok)} · $${c.cost.toFixed(2)}</span></div>`).join('')}
-    <div class="urow tot"><span class="nm">合計</span><span></span><span class="v">${fmt(tt)} · $${tc.toFixed(2)}</span></div></div></div>
-  <p class="note">背景の雨は今のペース、霧は週の枠の近さを表しています。</p>`;
+    <div class="urow tot"><span class="nm">合計</span><span></span><span class="v">${fmt(tt)} · $${tc.toFixed(2)}</span></div></div></div>`;
   $('pF').querySelectorAll('.day[data-d]').forEach(b=>b.addEventListener('click',()=>openDay(+b.dataset.d)));
 }
 
@@ -1968,7 +2006,6 @@ function renderUnused(){
   $('unused').innerHTML=`<h3>使っていないもの<small>30 日以上 · 合計 約 ${fmt(tot)} トークン分</small></h3>
     <ul class="list">${u.slice(0,7).map(l=>`<li><span class="st">${l.kind==='mcp'?'MCP':l.kind==='agent'?'AG':'SK'}</span><span class="x">${esc(l.label)}</span><span class="r">${ago(l.last)} · ${fmt(l.dt)}</span></li>`).join('')}</ul>
     ${u.length>7?`<p class="note">ほか ${u.length-7} 件は「使っていない」で絞り込むと見られます。</p>`:''}
-    <p class="note">スキルの本文は使うときだけ読み込まれますが、名前と説明は毎回のコンテキストに入ります。手動で呼ぶだけのスキルは <code>disable-model-invocation: true</code> にすると説明が外れ、<code>/</code> からは今まで通り呼べます。使っていない MCP サーバーは、外すとツールの定義ごと空きます。</p>
     <div class="btns"><button class="btn small" type="button" id="bDoctor">/skill-doctor を実行</button></div>`;
   $('bDoctor').addEventListener('click',()=>{ const c=chN(sel)&&chN(sel).status!=='off'? chN(sel) : CH.find(x=>x.status!=='off'); if(c){ queueCmd(c,'skill-doctor',''); if(sel!==c.num) select(c.num); } });
 }
@@ -2017,20 +2054,76 @@ function renderSkills(force){
   const row=(name,mid,right)=>`<li><b>${esc(name)}</b>${mid}<span class="r">${right}</span></li>`;
   // a skill only the person runs (disable-model-invocation) is never handed to Claude until it is run
   const cost=s=> s.manual? '<span class="man">手動のみ · 0</span>' : s.dt? `約 ${fmt(s.dt)}` : '';
-  const manualNote=a=> a.some(s=>s.manual)? '「手動のみ」は <code>disable-model-invocation: true</code> のスキルで、<code>/</code> から実行するまで Claude には渡らないため、毎回のコンテキストを使いません。' : '';
   let body;
   if(skTab==='used') body= U.length? `<ul class="sklist">${U.map(x=>row(x.n,scope(x.src||srcOf(x.n)),`${x.uses} 回 · ${hm(x.last)}${c?'':' · '+[...x.chs].map(n=>'ch.'+n).join(' ')}`)).join('')}</ul>`
     : `<p class="note">${c?'このチャンネルでは':'どのチャンネルでも'}、まだスキルは使われていません。</p>`;
   else if(skTab==='local') body= local.length? `<ul class="sklist">${local.map(s=>row(s.n,`<span class="src">${esc(s.src)}${c?'':` · ch.${s.ch.num} ${esc(s.ch.name)}`}</span>`,cost(s))).join('')}</ul>`
     : '<p class="note">このプロジェクトの <code>.claude/skills</code> にスキルはありません。</p>';
   else body= G2.length? `<ul class="sklist">${G2.map(s=>row(s.n,`<span class="src">${esc(s.src||'—')}</span>`,cost(s))).join('')}</ul>` : '<p class="note">どこでも読み込まれるスキルはありません。</p>';
-  const say= skTab==='used'? 'このセッションで呼び出されたスキルです。グローバルのスキルも、呼び出されるとコミュに加わります。'
-    : skTab==='local'? `このプロジェクトの <code>.claude/skills</code> にあるスキルです。名前と説明が毎回のコンテキストに入ります（合計 約 ${fmt(tok(local))} トークン）。${manualNote(local)}`
-    : `ユーザーの <code>~/.claude/skills</code>、プラグイン、組み込みのスキルで、どのプロジェクトでも読み込まれます（合計 約 ${fmt(tok(G2))} トークン）。${manualNote(G2)}`;
+  const say= skTab==='used'? '' : `毎回のコンテキストに 約 ${fmt(tok(skTab==='local'?local:G2))} トークン`;
   $('pS').innerHTML=`<div class="blk"><h3>スキル<small>${c?`ch.${c.num} ${esc(c.name)}`:'全チャンネル'}</small></h3>
     <div class="seg sktabs" role="tablist" aria-label="スキルの種類">${[['used','使った',U.length],['local','ローカル',local.length],['global','グローバル',G2.length]].map(([k,t,n])=>`<button type="button" role="tab" data-k="${k}" aria-selected="${skTab===k}">${t}<small>${n}</small></button>`).join('')}</div>
-    <p class="note">${say}</p>${body}</div>`;
+    ${say?`<p class="note">${say}</p>`:''}${body}</div>`;
   $('pS').querySelectorAll('.sktabs [data-k]').forEach(b=>b.addEventListener('click',()=>{ skTab=b.dataset.k; renderSkills(true); })); }
+/* ================= rail: history — the channel's conversation as cards, newest first; a card takes the screen to that turn ================= */
+// read off the page as it stands: each turn (its header, where the prompt came from, Claude's last words in it) and the notices between
+let histKey=null, histList=[];
+const histDone=new WeakMap();      // a finished turn's card, kept until its header changes
+function histTurn(li,c){ const q=qs=>{ const e=li.querySelector(qs); return e? e.textContent.trim() : ''; };
+  const k=q('.fold .k'), was=histDone.get(li); if(was&&was.k0===k&&!li.querySelector('.qcard:not(.done),.perm')) return was;
+  const al=li.querySelectorAll('.flow .ans'); let a='';
+  for(let i=al.length-1;i>=0&&!a;i--) a=al[i].textContent.replace(/\s+/g,' ').trim().slice(0,160);
+  const st= li.querySelector('.qcard:not(.done)')? 'ask' : li.querySelector('.perm')? 'wait' : k==='進行中'? 'run' : (li.dataset.ab==='1'||/中断/.test(k))? 'stop' : '';
+  const x={el:li,c,turn:true,n:q('.fold .tn'),tm:q('.fold .tm'),t:+li.dataset.t||0,p:q('.fold .p'),src:q('.you .meta span').replace(/から$/,''),
+    att:li.querySelectorAll('.you .att .af:not(.bad)').length,a,k:st==='run'?'':k,st,k0:k};
+  if(st!=='run'&&st!=='ask'&&st!=='wait') histDone.set(li,x); else histDone.delete(li);
+  return x; }
+function histOf(c){ const out=[];
+  for(const li of c.log.children){
+    if(li.classList.contains('turn')){ out.push(histTurn(li,c)); continue; }
+    const b=li.querySelector(':scope > .sys > b, :scope > .cmdo .tag, :scope > .histBox summary b'); if(!b) continue;
+    out.push({el:li,c,turn:false,label:b.textContent.trim()}); }
+  return out; }
+const H_ST={run:['進行中','run'],ask:['質問','ask'],wait:['承認待ち','wait'],stop:['中断','stop']};
+function histCard(x,i,wall){ if(!x.turn) return `<li class="hm"><button type="button" class="hmk" data-i="${i}"><span>${esc(cut1(x.label,46))}</span></button></li>`;
+  const s=H_ST[x.st];
+  return `<li><button type="button" class="hc${x.st?' '+x.st:''}" data-i="${i}" aria-label="${esc(`${wall?`ch.${x.c.num} ${x.c.name} の`:''}${x.n}${x.tm?` ${x.tm}`:''}：${x.p}`)}へ移る">
+    <span class="hh">${wall?`<span class="hch">ch.${x.c.num} ${esc(x.c.name)}</span>`:''}<b>${esc(x.n)}</b>${x.tm?`<time>${esc(x.tm)}</time>`:''}${x.src?`<span>${esc(x.src)}</span>`:''}${s?`<span class="hst ${s[1]}">${s[0]}</span>`:''}</span>
+    <span class="hp">${esc(x.p||'（続き）')}</span>
+    ${x.a?`<span class="ha"><i>Claude</i>${esc(x.a)}</span>`:''}
+    ${x.k||x.att?`<span class="hf">${esc(x.k)}${x.att?`${x.k?' · ':''}添付 ${x.att}`:''}</span>`:''}</button></li>`; }
+function renderHist(force){
+  const c=chN(sel), list= c? histOf(c).reverse() : CH.flatMap(ch=>histOf(ch).filter(x=>x.turn)).sort((a,b)=>b.t-a.t).slice(0,40);
+  const key=(c?c.num:0)+'|'+list.map(x=>x.turn? [x.c.num,x.n,x.tm,x.st,x.k,x.a.length,x.att].join(',') : x.label).join('§');
+  if(!force&&key===histKey){ histSpy(); return; }
+  histKey=key; histList=list; const turns=list.filter(x=>x.turn).length;
+  $('pH').innerHTML=`<div class="blk"><h3>履歴<small>${c?`ch.${c.num} ${esc(c.name)} · ${turns} ターン`:'全チャンネル · 新しい順'}</small></h3>
+    ${list.length? `<ol class="hcards">${list.map((x,i)=>histCard(x,i,!c)).join('')}</ol>` : `<p class="note">${c?'まだ会話はありません。':'まだどのチャンネルにも会話はありません。'}</p>`}</div>`;
+  histSpy(); }
+$('pH').addEventListener('click',e=>{ const b=e.target.closest('[data-i]'); const x=b&&histList[+b.dataset.i]; if(x) histGo(x); });
+// to that turn: open it if it was folded, put its top just under the channel's header, and light it for a moment
+function histGo(x){
+  const go=()=>{ const v=$('chan'), li=x.el; if(!li.isConnected||v.hidden) return;
+    if(x.turn&&li.classList.contains('folded')){ li.classList.remove('folded'); li.dataset.hand='1'; const f=li.querySelector('.fold'); if(f) f.setAttribute('aria-expanded','true'); }
+    const d=li.querySelector('details.histBox'); if(d) d.open=true;
+    const top=v.getBoundingClientRect().top, under=$('osd').getBoundingClientRect().bottom-top;      // the header stays over the top of the view
+    const y=v.scrollTop+li.getBoundingClientRect().top-top-under-12;
+    endGoing=0; v.scrollTo({top:Math.max(0,y),behavior:reduce?'auto':'smooth'});
+    li.classList.remove('hit'); void li.offsetWidth; li.classList.add('hit'); setTimeout(()=>li.classList.remove('hit'),1700);
+    if(innerWidth<=1180) document.querySelector('.tv').scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'}); };
+  histPin=x.el; if(sel!==x.c.num) select(x.c.num,go); else go(); }
+// the turn the screen is showing: its card is marked, and follows as you scroll
+// (the card just pressed, until the screen is scrolled by hand; otherwise the turn that fills most of the screen)
+let histPin=null;
+['wheel','touchstart','pointerdown','keydown'].forEach(k=>$('chan').addEventListener(k,()=>{ histPin=null; },{passive:true}));
+function histSpy(){ if(rtab!=='H'||!sel||$('chan').hidden) return;
+  let here= histPin&&histList.find(x=>x.el===histPin)||null;
+  if(!here){ const top=$('osd').getBoundingClientRect().bottom, bot=$('chan').getBoundingClientRect().bottom; let best=0;
+    for(const x of histList){ if(!x.turn||!x.el.isConnected) continue; const r=x.el.getBoundingClientRect(), seen=Math.min(bot,r.bottom)-Math.max(top,r.top);
+      if(seen>best+1){ best=seen; here=x; } } }                                         // newest first: a tie goes to the newer
+  $('pH').querySelectorAll('.hc').forEach(b=>{ const on=histList[+b.dataset.i]===here; if(b.classList.contains('here')!==on) b.classList.toggle('here',on); }); }
+$('chan').addEventListener('scroll',()=>{ if(rtab==='H'&&!histSpy.q) histSpy.q=requestAnimationFrame(()=>{ histSpy.q=0; histSpy(); }); },{passive:true});
+
 /* ================= your status: Lv, EXP, five abilities and records (the hub keeps them; the demo makes them up) ================= */
 let stvOpen=false, stvKey='', stvBack=null;
 const stPct=s=> s.to? Math.max(0,Math.min(100,(s.exp-s.from)/(s.to-s.from)*100)) : 100;
@@ -2066,7 +2159,7 @@ function stvHTML(s){
   const hist=`<div class="blk"><h3>日ごとの EXP<small>直近 14 日</small></h3><div class="stHist">
     <div class="xpBars">${days.map((h,i)=>`<i class="${i===13?'on':''}${h.xp?'':h.pre?' pre':' z'}" style="${h.xp?`height:${Math.max(3,h.xp/mx*100).toFixed(1)}%;`:''}--i:${i}" title="${md(h.t)}（${DOW[new Date(h.t).getDay()]}）${h.pre?' 記録の前':` +${fmtN(h.xp)} EXP`}"></i>`).join('')}</div>
     <div class="lab"><span>${md(days[0].t)}</span><span>今日</span></div></div>
-    ${days.filter(h=>!h.pre).length<3?'<p class="note">記録を始めた日から、1 日ずつ右に積み上がります。</p>':''}</div>`;
+</div>`;
   const abs=`<div class="blk"><h3>能力<small>使った道具で上がります</small></h3><ul class="stAbs">${s.stats.map((x,i)=>`<li class="stAb st-${x.k}" style="--i:${i}">
     <span class="nm"><b>${x.n}</b><small>${x.say}</small></span>
     <span class="pips" role="img" aria-label="ランク ${x.r} / 5">${[1,2,3,4,5].map(k=>`<i class="${k<=x.r?'on':''}"></i>`).join('')}</span>
@@ -2075,22 +2168,27 @@ function stvHTML(s){
     <div><b>${fmtN(r.days)}</b><span>作業した日</span></div><div><b>${fmtN(r.streak)}</b><span>連続（最長 ${fmtN(r.best)}）</span></div><div><b>${fmtN(r.turns)}</b><span>やり終えたターン</span></div>
     <div><b>${fmt(r.tok)}</b><span>トークン</span></div><div><b>$${(r.usd||0).toFixed(2)}</b><span>料金（目安）</span></div><div><b>${fmtN(r.kinds)}</b><span>使った道具の種類</span></div></div>
     ${s.top.length? `<ul class="stTop">${s.top.map(x=>`<li><span class="k k-${x.kind}">${KIND[x.kind]||x.kind}</span><b>${esc(x.label)}</b><span class="n">${fmtN(x.n)} 回</span></li>`).join('')}</ul>` : '<p class="note">まだ道具は使われていません。</p>'}</div>`;
-  const how=`<details class="blk stHow"><summary>EXP と能力のしくみ</summary><ul>
-    <li><b>量</b>：やり終えたターン 1 回で +${R.turn}、トークン ${fmtN(R.tok)} ごとに +1（入力・出力・キャッシュ作成。キャッシュの読み込みは数えません）。1 日の上限はありません。</li>
-    <li><b>習慣</b>：その日はじめてターンをやり終えると +${R.day}。続けて作業した日は 1 日ごとに +${R.streak} ずつ上乗せ（+${R.streak*R.streakMax} まで）。</li>
-    <li><b>初めて</b>：ツール・スキル・エージェント・MCP を初めて使うと +${R.first}。</li>
-    <li><b>Lv</b>：Lv n から n+1 までに 100 × n EXP（最高 Lv ${s.max}）。</li>
-    <li><b>能力</b>：使った道具 1 回ごとに 1 pt（サブエージェントは 3 pt、スキルは 2 pt）。調査＝Read・Grep・Glob・Web 検索・Explore、構築＝Edit・Write、実行＝Bash など、段取り＝サブエージェント・タスク・計画、拡張＝スキル・MCP。${s.ranks.join('・')} pt でランク 1〜5。</li>
-    <li>記録は ${md(s.since)} から、Fogcast が動いているあいだの分です。料金は Claude Code が数えた目安で、実際の請求とは違うことがあります。</li></ul></details>`;
-  return `<div class="stCol c1">${lv}${today}${hist}</div><div class="stCol c2"><div class="stRadar">${stRadar(s.stats)}</div>${abs}</div><div class="stCol c3">${rec}</div>${how}`; }
+  return `<div class="stCol c1">${lv}${today}${hist}</div><div class="stCol c2"><div class="stRadar">${stRadar(s.stats)}</div>${abs}</div><div class="stCol c3">${rec}</div>`; }
+/* how EXP and the abilities are counted: opened from its own button on the status page */
+function openHow(){ const s=G.status; if(!s) return; const R=s.rules;
+  openSheet(`<div class="hd"><span class="tag">ステータス</span><button class="btn small" type="button" data-close>閉じる</button></div>
+    <h2 id="sheetT">EXP と能力のしくみ</h2>
+    <ul class="howList">
+    <li><b>量</b><span>やり終えたターン 1 回で +${R.turn}、トークン ${fmtN(R.tok)} ごとに +1（入力・出力・キャッシュ作成。キャッシュの読み込みは数えません）。1 日の上限はありません。</span></li>
+    <li><b>習慣</b><span>その日はじめてターンをやり終えると +${R.day}。続けて作業した日は 1 日ごとに +${R.streak} ずつ上乗せします（+${R.streak*R.streakMax} まで）。</span></li>
+    <li><b>初めて</b><span>ツール・スキル・エージェント・MCP を初めて使うと +${R.first}。</span></li>
+    <li><b>Lv</b><span>Lv n から n+1 までに 100 × n EXP（最高 Lv ${s.max}）。</span></li>
+    <li><b>能力</b><span>使った道具 1 回ごとに 1 pt（サブエージェントは 3 pt、スキルは 2 pt）。調査＝Read・Grep・Glob・Web 検索・Explore、構築＝Edit・Write、実行＝Bash など、段取り＝サブエージェント・タスク・計画、拡張＝スキル・MCP。${s.ranks.join('・')} pt でランク 1〜5 に上がります。</span></li>
+    <li><b>記録</b><span>${md(s.since)} から、Fogcast が動いているあいだの分です。日ごとの EXP は、記録を始めた日から 1 日ずつ右に積み上がります。料金は Claude Code が数えた目安で、実際の請求とは違うことがあります。</span></li>
+    </ul>`,'how'); }
+$('stvHow').addEventListener('click',openHow);
 function renderStv(force){ if(!stvOpen) return; const s=G.status;
   const key=s? JSON.stringify([s.exp,s.today,s.rec,s.stats.map(x=>x.p),s.top.map(x=>x.n),s.hist.map(h=>h.xp)]) : 'none';
   if(!force&&key===stvKey) return; stvKey=key;
-  const body=$('stvBody'), how=body.querySelector('.stHow'), open=!!(how&&how.open), y=body.scrollTop;
+  const body=$('stvBody'), y=body.scrollTop;
   body.classList.toggle('still',!force);
-  $('stvSub').textContent= s? `${md(s.since)}（${wkd(s.since)}）から記録${LIVE?'':'・デモの数字です'}` : '';
+  $('stvSub').textContent= s? `${md(s.since)}（${wkd(s.since)}）から記録${LIVE?'':'・デモの数字です'}` : ''; $('stvHow').hidden=!s;
   body.innerHTML= s? stvHTML(s) : `<div class="blk"><h3>まだ記録がありません</h3><p class="note">ターミナルの Fogcast がこの画面の受け皿につながると、やり終えたターンや使った道具から記録が始まります。</p></div>`;
-  if(open) body.querySelector('.stHow').open=true;
   if(!force) body.scrollTop=y;
   const bar=body.querySelector('.stXp .bar i'); if(bar){ if(force&&!reduce) requestAnimationFrame(()=>requestAnimationFrame(()=>{ bar.style.width=bar.dataset.w; })); else { bar.style.transition='none'; bar.style.width=bar.dataset.w; } } }
 function openStatus(){ if(stvOpen) return; if(co) coClose(); stvOpen=true; stvBack=document.activeElement;
@@ -2109,9 +2207,8 @@ function renderDetail(force){
   const key=c? [c.num,c.status,pct(c),c.perTurn.length,c.tasks.map(t=>t.st).join(''),Object.values(c.files).map(f=>f.add+'-'+f.del).join(','),c.agents.map(a=>a.st).join('')].join('|') : 'all|'+CH.map(c=>c.status+pct(c)+Math.round(c.tok/1000)).join(',');
   if(!force&&key===detailKey) return; detailKey=key;
   if(!c){
-    $('pD').innerHTML=`<div class="blk"><h3>全チャンネル<small>行を押すとそのチャンネルへ</small></h3><div class="tw"><table class="tbl"><thead><tr><th>ch.</th><th>状態</th><th class="num">コンテキスト</th><th class="num">トークン</th><th class="num">コスト</th></tr></thead><tbody>
-      ${CH.map(c=>`<tr data-n="${c.num}" style="cursor:pointer"><td>${c.num} ${esc(c.name)}</td><td>${stl(c)}</td><td class="num">${pct(c)}%</td><td class="num">${fmt(c.tok)}</td><td class="num">$${c.cost.toFixed(2)}</td></tr>`).join('')}</tbody></table></div></div>
-      <div class="blk"><h3>この画面のしくみ</h3><p class="note">各ターミナルの Fogcast（Mod）が、会話・道具の呼び出し・使用量を localhost の受け皿に送り、この画面がそれを映しています。この画面を見ていても、Claude のコンテキストは増えません。</p></div>`;
+    $('pD').innerHTML=`<div class="blk"><h3>全チャンネル</h3><div class="tw"><table class="tbl"><thead><tr><th>ch.</th><th>状態</th><th class="num">コンテキスト</th><th class="num">トークン</th><th class="num">コスト</th></tr></thead><tbody>
+      ${CH.map(c=>`<tr data-n="${c.num}" style="cursor:pointer"><td>${c.num} ${esc(c.name)}</td><td>${stl(c)}</td><td class="num">${pct(c)}%</td><td class="num">${fmt(c.tok)}</td><td class="num">$${c.cost.toFixed(2)}</td></tr>`).join('')}</tbody></table></div></div>`;
     $('pD').querySelectorAll('tr[data-n]').forEach(tr=>tr.addEventListener('click',()=>select(+tr.dataset.n)));
     return; }
   const p=pct(c), B=breakdown(c), tl=turnsLeft(c), done=c.tasks.filter(t=>t.st==='done').length;
@@ -2119,7 +2216,7 @@ function renderDetail(force){
   const fl=Object.entries(c.files);
   const files= fl.length? `<ul class="list">${fl.map(([f,v])=>`<li><code class="x">${esc(f)}</code><span class="r"><span class="add">+${v.add}</span> <span class="del">−${v.del}</span></span></li>`).join('')}</ul>` : '<p class="note">まだファイルは変わっていません。</p>';
   const ags= c.agents.length? `<ul class="list">${c.agents.slice(-6).reverse().map(a=>`<li><span class="st">${a.st==='run'?'▶':a.st==='stop'?'■':'✓'}</span><span class="x">${esc(a.type)} · ${esc(a.desc)}</span><span class="r">${a.st==='run'?'作業中':a.st==='stop'?'中断':'完了'}</span></li>`).join('')}</ul>` : '<p class="note">サブエージェントはまだ使われていません。</p>';
-  const resume= c.status==='off'&&c.resume? `<div class="blk"><h3>続きから始める</h3><div class="cmd"><code id="rsCmd">cd ${esc(c.cwd)} && claude --resume ${esc(c.resume)}</code><button class="btn small" type="button" id="bRs">コピー</button></div><p class="note">VS Code のターミナルに貼り付けて実行すると、このチャンネルに戻ってきます。</p></div>` : '';
+  const resume= c.status==='off'&&c.resume? `<div class="blk"><h3>続きから始める</h3><div class="cmd"><code id="rsCmd">cd ${esc(c.cwd)} && claude --resume ${esc(c.resume)}</code><button class="btn small" type="button" id="bRs">コピー</button></div></div>` : '';
   $('pD').innerHTML=`${resume}
   <div class="blk"><h3>コンテキスト<small>${fmt(c.ctx)} / ${fmt(c.win||WIN)} トークン</small></h3>
     <div class="ctxBig"><b>${p}%</b>${sig(c)}<span>${tl!=null? (tl<=3? `<b style="color:var(--yolk)">自動圧縮まで あと約 ${tl} ターン</b>` : `自動圧縮まで あと約 ${tl} ターン`) : 'まだ十分に空いています'}</span></div>
@@ -2516,7 +2613,7 @@ async function demoAsk(c,ev,ops,tid){
 async function turn(c,T,text,byUser,files){
   const tid=++c.turnId, t0=Date.now(), num=++c.turnNo;
   foldOld(c); c.suggest='';
-  const li=document.createElement('li'); li.className='turn';
+  const li=document.createElement('li'); li.className='turn'; li.dataset.t=t0;
   li.innerHTML=`${foldHTML(num,t0,esc(strip(text)),'進行中')}
     <div class="full">${youHTML(text,byUser?'この画面から':'ターミナルから',t0,filesHTML(files))}<div class="flow">${aiHead(c,t0)}<ul class="ops"></ul><div class="ans"></div></div><div class="turnFt"></div></div>`;
   foldBind(li);
@@ -2748,21 +2845,22 @@ function stopTurn(c){ if(c.status!=='work'&&c.status!=='wait') return; c.turnId+
   setStatus(c,'idle','入力待ち'); }
 
 /* ================= switching channels: a yellow band sweeps across ================= */
-function select(n){ if(n!==0&&!chN(n)) return; const changed=n!==sel; sel=n;
+// then: what to do once the channel is on screen, in place of going to its latest (a history card goes to its turn)
+function select(n,then){ if(n!==0&&!chN(n)) return; const changed=n!==sel; sel=n;
   const swap=()=>{ if(sel!==n) return;
     CH.forEach(c=>{ c.log.hidden= c.num!==n; });
-    $('wall').hidden= n!==0; $('chan').hidden= n===0; $('ctl').hidden= n===0; $('ctl0').hidden= n!==0; closePal();
+    $('wall').hidden= n!==0; $('chan').hidden= n===0; $('ctl').hidden= n===0; closePal();
     stick=true; endNew=0; endDraw(); askFit();          // a channel opens at its latest
-    if(n){ renderOsd(chN(n)); requestAnimationFrame(()=>{ if(sel===n) toEnd(false); }); }
+    if(n){ renderOsd(chN(n)); requestAnimationFrame(()=>{ if(sel!==n) return; if(then) then(); else toEnd(false); }); }
     else { $('sfog').style.setProperty('--fog','0'); $('screen').classList.remove('off'); renderWall(); renderGuide(); }
-    if(rtab==='D') renderDetail(true); if(rtab==='S') renderSkills(true); };
+    if(rtab==='D') renderDetail(true); if(rtab==='S') renderSkills(true); if(rtab==='H') renderHist(true); };
   if(changed&&!reduce){ const w=$('wipe'), c=chN(n); $('wipeN').textContent= n===0? 'ch.0' : `ch.${n}`; $('wipeS').textContent= n===0? '全チャンネル' : c.name;
     w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); clearTimeout(select.t); select.t=setTimeout(swap,750); }   // mid-hold of the 1.5 s band
   else swap();
   renderChs(); }
-function setTab(k){ rtab=k; [['F','tF','pF'],['L','tL','pL'],['S','tS','pS'],['D','tD','pD']].forEach(([kk,t,p])=>{ $(t).setAttribute('aria-selected',String(kk===k)); $(p).hidden= kk!==k; });
-  if(k==='F') renderForecast(); if(k==='L'){ deckOrderKey=''; listKey=''; updateDeck(); requestAnimationFrame(sizeDeck); } if(k==='D') renderDetail(true); if(k==='S') renderSkills(true); }
-[['tF','F'],['tL','L'],['tS','S'],['tD','D']].forEach(([id,k])=>$(id).addEventListener('click',()=>setTab(k)));
+function setTab(k){ rtab=k; [['F','tF','pF'],['L','tL','pL'],['S','tS','pS'],['H','tH','pH'],['D','tD','pD']].forEach(([kk,t,p])=>{ $(t).setAttribute('aria-selected',String(kk===k)); $(p).hidden= kk!==k; });
+  if(k==='F') renderForecast(); if(k==='L'){ deckOrderKey=''; listKey=''; updateDeck(); requestAnimationFrame(sizeDeck); } if(k==='D') renderDetail(true); if(k==='S') renderSkills(true); if(k==='H') renderHist(true); }
+[['tF','F'],['tL','L'],['tS','S'],['tH','H'],['tD','D']].forEach(([id,k])=>$(id).addEventListener('click',()=>setTab(k)));
 $('filters').querySelectorAll('.fbtn').forEach(b=>b.addEventListener('click',()=>{ deckFilter=b.dataset.k;
   $('filters').querySelectorAll('.fbtn').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); updateDeck(); }));
 $('knob').addEventListener('click',()=>{ const nums=[0,...CH.map(c=>c.num)]; select(nums[(nums.indexOf(sel)+1)%nums.length]); });
@@ -2886,7 +2984,7 @@ $('bStop').addEventListener('click',()=>{ const c=chN(sel); if(c) LIVE? liveStop
 $('bCompact').addEventListener('click',()=>{ const c=chN(sel); if(!c||c.status==='off') return; if(LIVE){ liveCompact(c); return; }
   if(c.status!=='idle'){ queueCmd(c,'compact',''); return; } compact(c,true); });
 $('bPause').addEventListener('click',e=>{ G.paused=!G.paused; e.currentTarget.setAttribute('aria-pressed',String(G.paused)); e.currentTarget.textContent=G.paused?'再開':'一時停止'; });
-['bSet','bSetCh'].forEach(id=>$(id).addEventListener('click',()=>LIVE? liveSettings() : openSettings()));
+$('bSet').addEventListener('click',()=>LIVE? liveSettings() : openSettings());
 
 /* ================= what you send shows at once: it waits at the bottom of the channel until its turn starts ================= */
 // c.pend: [{lid, id, text, t, st:'sending'|'queued'|'sent'|'err', err}]; the hub keeps the same list for every screen
@@ -2913,7 +3011,7 @@ function sendText(c,text){ c.suggest='';           // as in the terminal, a prom
 // q: {id, qs:[{q, h, multi, opts:[{l, d}]}]}; send(answers) resolves once the answer is on its way
 function qCard(q,send){ const d=document.createElement('div'); d.className='qcard'; d.dataset.id=q.id;
   const one=q.qs.length===1&&!q.qs[0].multi&&q.qs[0].opts.length>0;
-  d.innerHTML=`<div class="qhd"><b>Claude からの質問</b><span class="s">${one?'押すとすぐ答えます':'選んでから「答える」を押します'}。ターミナルでも答えられ、先に答えた方が使われます。</span></div>
+  d.innerHTML=`<div class="qhd"><b>Claude からの質問</b></div>
     ${q.qs.map((x,i)=>`<fieldset class="qq" data-i="${i}"><legend>${x.h?`<span class="qh">${esc(x.h)}</span>`:''}<span class="qt">${esc(x.q||'（質問）')}</span>${x.multi?'<small>いくつでも選べます</small>':''}</legend>
       ${x.opts.length?`<div class="qopts">${x.opts.map((o,k)=>`<button type="button" class="qo" data-k="${k}" aria-pressed="false"><b>${esc(o.l)}</b>${o.d?`<small>${esc(o.d)}</small>`:''}</button>`).join('')}</div>`:''}
       <textarea class="qin" rows="1" maxlength="2000" placeholder="${x.opts.length?'ほかの答えを書く（選択肢にないとき · Shift+Enter で改行）':'答えを書く（Shift+Enter で改行）'}" aria-label="${esc(x.q)}：${x.opts.length?'ほかの答え':'答え'}（Enter で答える、Shift+Enter で改行）"></textarea></fieldset>`).join('')}
@@ -2949,20 +3047,16 @@ function qDone(d,ev){ if(!d||d.classList.contains('done')) return; d.classList.r
     if(a!=null){ let r=f.querySelector('.qa'); if(!r){ r=document.createElement('p'); r.className='qa'; f.appendChild(r); } r.innerHTML=`<span>答え</span>${esc(a)}`; } });
   const st=d.querySelector('.qst'); st.className='qst'+(ev.err?' bad':' ok');
   st.textContent= ev.err? '答えずに閉じられました（ターミナルで取り消したか、止めました）' : ev.by==='screen'? 'この画面で答えました' : 'ターミナルで答えました';
-  const hd=d.querySelector('.qhd .s'); if(hd) hd.remove(); }
+}
 
 /* ================= Claude Code's guess at your next prompt (Tab takes it), and a command's arguments ================= */
-function ctlHint(){ const c=chN(sel); if(!c) return; const v=$('ask').value, h=$('ctlHint');
-  const m=/^\/(\S+)(\s*)$/.exec(v), cmd=m&&commandsFor(c).find(x=>x.n===m[1]);
-  let html='';
-  if(cmd&&cmd.h) html=`<span class="hk">引数</span><code>/${esc(cmd.n)}</code> <span class="ah">${esc(cmd.h)}</span>${cmd.d?` <span class="ad">${esc(cmd.d)}</span>`:''}`;
-  else if(!v&&c.suggest&&c.status==='idle') html=`<span class="hk">次の提案</span><span class="sgt">${esc(c.suggest)}</span><button class="linkbtn" type="button" id="bSugg">入れる（Tab）</button>`;
-  else if(pal.open&&pal.mode==='file') html=`<span class="hk">@</span><span>選んだファイルは <code>@パス</code> で入り、送るとその中身がこの依頼といっしょに Claude に渡ります（ターミナルの <code>@</code> と同じ）。このターミナルのフォルダの中のものだけです。</span>`;
-  else if(c.status==='off') html=`<span>終了したチャンネルです。「チャンネルを消す」でこの画面から片付けられます（セッションは残り、<code>claude --resume</code> で続きから始められます）。</span>`;
-  const key=html||'-'; if(h.dataset.key===key) return; h.dataset.key=key;
-  h.classList.toggle('alt',!!html);
-  h.innerHTML= html || '送った文は、そのターミナルで入力したのと同じ扱いになります。「/」で始めると組み込みのコマンドやスキルを実行でき、「@」でファイルを指定できます。作業中に送ると、終わってから始まります。';
-  const b=$('bSugg'); if(b) b.addEventListener('click',takeSugg); }
+function ctlHint(){ const c=chN(sel), h=$('ctlHint'), sb=$('bSugg');
+  if(!c){ h.hidden=true; sb.hidden=true; return; }
+  const v=$('ask').value, m=/^\/(\S+)(\s*)$/.exec(v), cmd=!pal.open&&m&&commandsFor(c).find(x=>x.n===m[1]);
+  const html= cmd&&cmd.h? `<span class="hk">引数</span><code>/${esc(cmd.n)}</code> <span class="ah">${esc(cmd.h)}</span>${cmd.d?` <span class="ad">${esc(cmd.d)}</span>`:''}` : '';
+  if(h.dataset.key!==html){ h.dataset.key=html; h.innerHTML=html; } h.hidden=!html;
+  const sg=!v&&!!c.suggest&&c.status==='idle'; if(sb.hidden===sg){ sb.hidden=!sg; $('ctl').classList.toggle('sg',sg); } }
+$('bSugg').addEventListener('click',()=>{ takeSugg(); });
 function takeSugg(){ const c=chN(sel); if(!c||!c.suggest||$('ask').value) return false; $('ask').value=c.suggest; $('ask').focus(); $('ask').setSelectionRange(c.suggest.length,c.suggest.length); askFit(); ctlHint(); return true; }
 
 /* ================= putting away channels whose terminal has gone ================= */
@@ -2983,7 +3077,7 @@ $('bForget').addEventListener('click',()=>{ const c=chN(sel); if(c&&c.status==='
 $('wSum').addEventListener('click',e=>{ if(e.target.closest('#bTidy')) confirmForget(CH.filter(c=>c.status==='off')); });
 
 /* ================= settings: approving from this screen ================= */
-// 設定 (under the wall's tips, and under a channel's composer) says, in a word, whether this screen can approve right now
+// 設定 (under the logo) says, in a word, whether this screen can approve right now
 let setKey='';
 function renderSetBtn(){ let cls='', pill, say;
   if(LIVE){ const a=LV.ap; if(a.on&&a.pairedHere){ cls='on'; pill='オン'; } else if(a.pairing){ cls='half'; pill='入力待ち'; say='合言葉の入力待ち'; } else if(a.on){ cls='half'; pill='未接続'; say='オン · この画面は未接続'; } else pill='オフ'; }
@@ -2991,12 +3085,11 @@ function renderSetBtn(){ let cls='', pill, say;
   say=say||`画面で承認 ${pill}`;
   if(cls+say===setKey) return; setKey=cls+say;
   const lab=`設定を開く（${say}）`;
-  document.querySelectorAll('.setBtn').forEach(b=>{ b.className='setBtn'+(cls?' '+cls:''); b.querySelector('.setSt').innerHTML=`画面で承認<em class="pill">${pill}</em>`; b.setAttribute('aria-label',lab); b.title=lab; });
-  const tip=document.querySelector('#ctl0 .apTip'); tip.classList.toggle('on',cls==='on');
-  tip.textContent= cls==='on'? '承認はこの画面でもできます' : '承認はターミナルの確認ダイアログで行います'; }
+  const b=$('bSet'); b.className='setBtn'+(cls?' '+cls:''); b.querySelector('.pill').textContent=`承認 ${pill}`; b.setAttribute('aria-label',lab); b.title=lab; }
 function openSettings(){
-  openSheet(`<div class="hd"><span class="tag">設定</span><button class="btn small" type="button" data-close>閉じる</button></div>
-    <h2 id="sheetT">ブラウザから承認</h2>
+  openSheet(`<div class="hd"><span class="tag" id="sheetT">設定</span><button class="btn small" type="button" data-close>閉じる</button></div>
+    <div class="swrow setGuide"><span><b>使い方</b><small>取扱説明書は、Fogcast を入れたあと受け皿の画面（<code>http://127.0.0.1:4317/guide</code>）で開けます。デモでは開けません。</small></span></div>
+    <h2>ブラウザから承認</h2>
     <p class="sub">オンにすると、ツールを実行する前の確認を、この画面で許可・拒否できます。初期設定はオフです。</p>
     <div class="swrow"><span><b>この画面から承認する</b><small id="apState"></small></span><button class="sw" type="button" role="switch" id="swAp" aria-checked="${G.ap.on}" aria-label="この画面から承認する"><i></i></button></div>
     <div class="pair" id="pair" hidden>
@@ -3110,7 +3203,7 @@ function secondTick(){
   renderHud(); if(rtab==='F') renderForecast(); if(sel&&chN(sel)) renderOsd(chN(sel));
   CH.forEach(c=>{ c.blocks=c.blocks.filter(b=>!b.e||b.e>Date.now()-70*60000); });
 }
-function renderCore(){ if(sel&&!chN(sel)) select(0); renderChs(); if(sel===0) renderWall(); else { renderOsd(chN(sel)); ctlHint(); } if(rtab==='L') updateDeck(); if(rtab==='D') renderDetail(); if(rtab==='S') renderSkills(); coSync(); renderLvChip(); renderStv(); renderSetBtn(); }
+function renderCore(){ if(sel&&!chN(sel)) select(0); renderChs(); if(sel===0) renderWall(); else { renderOsd(chN(sel)); ctlHint(); } if(rtab==='L') updateDeck(); if(rtab==='D') renderDetail(); if(rtab==='S') renderSkills(); if(rtab==='H') renderHist(); coSync(); renderLvChip(); renderStv(); renderSetBtn(); }
 setInterval(()=>{ if(dirty){ dirty=false; renderCore(); } },250);
 setInterval(secondTick,1000);
 setInterval(()=>{ if(sel===0) renderGuide(); },2000);
@@ -3122,8 +3215,8 @@ function seedBlocks(c,fresh){ if(fresh) return; let s=c.num*97+13; const rnd=()=
     if(rnd()<.35){ const w=Math.min(e,t+(.6+rnd())*60000); c.blocks.push({s:t,e:w,k:'work',label},{s:w,e:Math.min(e,w+45000),k:'wait',label},{s:Math.min(e,w+45000),e,k:'work',label}); }
     else c.blocks.push({s:t,e,k:'work',label});
     t=e; } }
-function earlier(c){ (EARLIER[c.sk]||[]).forEach(e=>{ const num=++c.turnNo; const li=document.createElement('li'); li.className='turn folded';
-    li.innerHTML=`${foldHTML(num,null,esc(e.p),`${e.ops}件の操作 · +${fmt(e.tok)} · ${e.sec}秒`)}
+function earlier(c){ const E=EARLIER[c.sk]||[]; E.forEach((e,i)=>{ const num=++c.turnNo, t=Date.now()-(E.length-i)*7*60000-c.num*90000; const li=document.createElement('li'); li.className='turn folded'; li.dataset.t=t;
+    li.innerHTML=`${foldHTML(num,t,esc(e.p),`${e.ops}件の操作 · +${fmt(e.tok)} · ${e.sec}秒`)}
       <div class="full">${youHTML(esc(e.p),'ターミナルから',null)}<div class="sys"><span>このターンの細かい記録は、受け皿に保存された履歴から読み込みます（デモでは省略しています）。</span></div><div class="turnFt"><span>${e.ops}件の操作</span><span>コンテキスト +${fmt(e.tok)}</span><span>${e.sec}秒</span></div></div>`;
     foldBind(li); c.log.appendChild(li); c.perTurn.push(e.tok); }); }
 /* ================= boot ================= */

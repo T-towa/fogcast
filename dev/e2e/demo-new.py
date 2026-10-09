@@ -25,8 +25,8 @@ async def main():
         await pg.wait_for_function("!document.querySelector('.log:not([hidden]) .pend')",timeout=20000)
         print('bubble gone once the turn started:', await pg.evaluate("document.querySelector('.log:not([hidden]) .turn:last-of-type .you .body').textContent"))
         # the turn ends: Claude Code's suggestion for the next prompt
-        await pg.wait_for_function("document.querySelector('#ctlHint.alt')",timeout=60000)
-        print('hint line:', await pg.evaluate("document.getElementById('ctlHint').innerText.replace(/\\n/g,' ')"), '| placeholder:', await pg.evaluate("document.getElementById('ask').placeholder"))
+        await pg.wait_for_function("!document.getElementById('bSugg').hidden",timeout=60000)
+        print('suggestion button:', await pg.evaluate("document.getElementById('bSugg').innerText.replace(/\\n/g,' ')"), '| placeholder:', await pg.evaluate("document.getElementById('ask').placeholder"))
         await pg.screenshot(path=os.path.join(SP,f'N-sugg-{W}.png'))
         await pg.focus('#ask'); await pg.keyboard.press('Tab')
         print('Tab took it:', await pg.evaluate("document.getElementById('ask').value"))

@@ -204,7 +204,7 @@ function livePending(c,list){ const mine=c.pend||(c.pend=[]), ids=new Set(list.m
   c.pend=keep; if(key!==c.pendKey){ c.pendKey=key; renderPend(c); } }
 const EVH={
   turn(c,ev){ foldOld(c); if(ev.cid) pendDone(c,x=>x.id===ev.cid);
-    const li=document.createElement('li'); li.className='turn'; const n=ev.n||++c.turnNo; c.turnNo=Math.max(c.turnNo,n);
+    const li=document.createElement('li'); li.className='turn'; li.dataset.t=ev.t||Date.now(); const n=ev.n||++c.turnNo; c.turnNo=Math.max(c.turnNo,n);
     li.innerHTML=`${foldHTML(n,ev.t,esc(clip1(ev.text,120)||'（続き）'),'進行中')}
       <div class="full">${youHTML(userText(ev.text||'（続き）'),ev.via==='screen'?'この画面から':'ターミナルから',ev.t,filesHTML(ev.files))}<div class="flow">${aiHead(c,ev.t)}</div><div class="turnFt"></div></div>`;
     foldBind(li); li.dataset.turn=ev.id||'';
@@ -318,8 +318,9 @@ function liveCompact(c){ api('/api/ui/compact',{chan:c.id}).then(r=>{ if(r.queue
   .catch(err=>toast('info','圧縮を送れませんでした',esc(err.message))); }
 function liveSettings(){
   const live=()=>CH.filter(c=>c.status!=='off').map(c=>`ch.${c.num} ${esc(c.name)}`).join('、');
-  openSheet(`<div class="hd"><span class="tag">設定</span><span class="hdR"><a class="btn small" href="/guide" target="_blank" rel="noopener">使い方</a><button class="btn small" type="button" data-close>閉じる</button></span></div>
-    <h2 id="sheetT">ブラウザから承認</h2>
+  openSheet(`<div class="hd"><span class="tag" id="sheetT">設定</span><button class="btn small" type="button" data-close>閉じる</button></div>
+    <div class="swrow setGuide"><span><b>使い方</b><small>取扱説明書：画面の見かた、送り方、承認、コマンド、困ったとき</small></span><a class="btn small" href="/guide" target="_blank" rel="noopener">開く</a></div>
+    <h2>ブラウザから承認</h2>
     <p class="sub">オンにすると、ツールを実行する前の確認を、この画面で許可・拒否できます。初期設定はオフです。オンにするときは、ターミナルに出る合言葉をここに入力して、このブラウザをつなぎます。</p>
     <div class="swrow"><span><b>この画面から承認する</b><small id="apState"></small></span><button class="sw" type="button" role="switch" id="swAp" aria-label="この画面から承認する"><i></i></button></div>
     <div class="pair" id="pair" hidden>
@@ -385,7 +386,7 @@ function liveAdd(){
 function liveBoot(){
   liveKeys();
   const d=document.querySelector('.demo'); if(d) d.textContent='LIVE';
-  $('bPause').hidden=true; $('bGuide').hidden=false;
+  $('bPause').hidden=true;
   liveStream();
   // a key that arrives in the address of an open page (/fog in the same tab) takes effect at once
   addEventListener('hashchange',()=>{ const before=LV.token; liveKeys(); if(LV.token&&LV.token!==before){ LV.wait=600; if(LV.ctrl&&LV.connected) LV.ctrl.abort(); else liveStream(); } });

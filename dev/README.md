@@ -15,6 +15,7 @@ Fogcast を作るときに使った確認用のスクリプトです。Mod 本�
 | `e2e/real-pick.py` | 本物の Claude Code のターミナルを相手に同じことを通す。`run-term.py` の `browser:` 手順から動かす | `... "browser:dev/e2e/real-pick.py 1440x900 all"`（`all`・`resume`・`model`・`effort`・`context`） |
 | `e2e/real-at.py` | 本物の Claude Code のターミナルを相手に、送信欄の `@`（ファイルの一覧・フォルダの中・添付して送る）と、長い文で送信欄が広がってからスクロールになるところを通す。`run-term.py` の `browser:` 手順から動かす | `... "browser:dev/e2e/real-at.py 1440x900"`（作業フォルダに git とファイルを用意しておく。`STUB_FIND` にファイルの中の文字を入れると、API に届いたかが stub.log に出る） |
 | `e2e/real-end.py` | 本物の Claude Code のターミナルを相手に、上に戻って読んでいるあいだに別の画面から送り、「新着」の数と画面が動かないことを確かめてから ↓ で戻る。続けて質問の「ほかの答え」に複数行を書いて答え、改行ごと Claude に届くかを見る。`run-term.py` の `browser:` 手順から動かす | `STUB=stub-api-ask.mjs python3 dev/term/run-term.py "browser:dev/e2e/real-end.py 1440x900"` |
+| `e2e/real-hist.py` | 本物の Claude Code のターミナルを相手に、「履歴」のカード（新しい順・いま見ているターンの印・押すとそのターンへ飛んで開く・全チャンネルからそのチャンネルを開いて飛ぶ）と、「設定」の中の「使い方」、送信欄の上に出る引数、送信欄の中の「提案を入れる」を通す。`run-term.py` の `browser:` 手順から動かす | `STUB=stub-api-ask.mjs python3 dev/term/run-term.py "browser:dev/e2e/real-hist.py 1440x900"` |
 | `e2e/demo-end.py` | デモ版で同じこと（↓ のボタン、新着の数、チャンネル切り替え、質問の答えの欄が 5 行まで広がる） | `python3 dev/e2e/demo-end.py 1440x900`（`390x844` でスマホ幅） |
 | `e2e/live-*.py` | 本物の受け皿と模擬ターミナル（`test/simulate.mjs`）を相手に、ブラウザ（Playwright）で画面の操作を通す | `python3 dev/e2e/live-new.py` など（要 Playwright と Chromium） |
 | `e2e/demo-*.py` | デモ版の画面（`ui-src/demo.html`）の動きを撮影して確かめる | 同上 |

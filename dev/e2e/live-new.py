@@ -40,7 +40,7 @@ async def main():
             if any(x.get('sim')=='turn-1 done' for x in simlog()): break
             await pg.wait_for_timeout(200)
         await pg.wait_for_timeout(1500)
-        print('suggestion:', await pg.evaluate("document.getElementById('ctlHint').innerText.replace(/\\n/g,' ')"), '| placeholder:', await pg.evaluate("document.getElementById('ask').placeholder"))
+        print('suggestion button shown:', await pg.evaluate("!document.getElementById('bSugg').hidden"), '| placeholder:', await pg.evaluate("document.getElementById('ask').placeholder"))
         await pg.focus('#ask'); await pg.keyboard.press('Tab')
         print('Tab took it:', await pg.evaluate("document.getElementById('ask').value"))
         await pg.fill('#ask','/model '); await pg.dispatch_event('#ask','input'); await pg.keyboard.press('Escape'); await pg.wait_for_timeout(200)
@@ -51,7 +51,7 @@ async def main():
         print(f'bubble after {int((time.time()-t0)*1000)} ms:', await pg.evaluate("[...document.querySelectorAll('.log:not([hidden]) .pend')].map(x=>x.className+' | '+x.querySelector('.pst').textContent)"))
         await pg.wait_for_timeout(500)
         print('then:', await pg.evaluate("[...document.querySelectorAll('.log:not([hidden]) .pend')].map(x=>x.className+' | '+x.querySelector('.pst').textContent)"))
-        print('suggestion after sending:', repr(await pg.evaluate("document.getElementById('ctlHint').innerText.slice(0,30)")), '| placeholder:', await pg.evaluate("document.getElementById('ask').placeholder"))
+        print('suggestion button after sending:', await pg.evaluate("!document.getElementById('bSugg').hidden"), '| placeholder:', await pg.evaluate("document.getElementById('ask').placeholder"))
         await pg.screenshot(path=os.path.join(SP,f'L-pend-{W}.png'))
         await until(pg,"!document.querySelector('.log:not([hidden]) .pend')")
         print('turn started from it:', await pg.evaluate("[...document.querySelectorAll('.log:not([hidden]) .turn .you')].pop().innerText.replace(/\\n/g,' | ')"))

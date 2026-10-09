@@ -1,4 +1,4 @@
-# The 設定 button in each state (off / waiting / on) and when hovered, cloned side by side on the wall's tip row.
+# The 設定 button in each state (off / waiting / not connected / on) and when hovered, cloned side by side under the header.
 import asyncio, os
 from playwright.async_api import async_playwright
 SP=os.path.dirname(os.path.abspath(__file__))
@@ -13,10 +13,10 @@ async def main():
         b=await p.chromium.launch(); pg=await b.new_page(viewport={'width':1600,'height':900})
         await pg.route('**/fonts.googleapis.com/**',fonts); await pg.route('**/fonts.gstatic.com/**',fonts)
         await pg.goto('file:///home/claude/fogcast/ui-src/demo.html',wait_until='load'); await pg.wait_for_timeout(1200)
-        await pg.evaluate("""(()=>{const src=document.getElementById('bSet'), row=document.getElementById('ctl0');
+        await pg.evaluate("""(()=>{const src=document.getElementById('bSet'), top=document.querySelector('.top');
           const box=document.createElement('div'); box.id='probe'; box.style.cssText='display:flex;gap:28px;padding:18px 24px;background:#07080b';
-          [['','オフ'],['half','入力待ち'],['half','未接続'],['on','オン']].forEach(([c,t])=>{const k=src.cloneNode(true); k.id=''; k.className='setBtn '+c; k.querySelector('.setSt').innerHTML='画面で承認<em class="pill">'+t+'</em>'; box.appendChild(k);});
-          row.parentNode.insertBefore(box,row);})()""")
+          [['','オフ'],['half','入力待ち'],['half','未接続'],['on','オン']].forEach(([c,t])=>{const k=src.cloneNode(true); k.id=''; k.className='setBtn '+c; k.querySelector('.pill').textContent='承認 '+t; box.appendChild(k);});
+          top.after(box);})()""")
         await pg.wait_for_timeout(300)
         el=await pg.query_selector('#probe'); await el.screenshot(path=os.path.join(SP,'S-states.png'))
         await pg.hover('#probe .setBtn:nth-child(4)'); await pg.wait_for_timeout(300)

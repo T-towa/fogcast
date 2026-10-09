@@ -111,7 +111,7 @@ function renderOsd(c){
   const busy=c.status==='work'||c.status==='wait';
   $('ask').disabled=off; $('bSend').disabled=off; $('bStop').disabled=!busy; $('bCompact').disabled=off; $('bForget').hidden=!off; $('bSend').hidden=off;
   // the dim suggestion sits in the empty box, as in the terminal
-  $('ask').placeholder= off? 'このセッションは終了しています。「詳細」から再開コマンドをコピーできます' : c.suggest&&c.status==='idle'? `${c.suggest}　（Tab で入力）` : `ch.${c.num} ${c.name} に送る（Enter で送信、Shift+Enter で改行）`;
+  $('ask').placeholder= off? 'このセッションは終了しています。「詳細」から再開コマンドをコピーできます' : c.suggest&&c.status==='idle'? c.suggest : `ch.${c.num} ${c.name} に送る（Enter で送信、Shift+Enter で改行）`;
   $('sfog').style.setProperty('--fog',(fogOf(c)*.8).toFixed(2)); $('screen').classList.toggle('off',off);
 }
 
@@ -173,12 +173,10 @@ function renderForecast(){
   <div class="blk"><h3>週の枠<small>リセット ${md(seven.resetAt)}（${wkd(seven.resetAt)}）${hm(seven.resetAt)}</small></h3>
     <div class="fc"><span class="ico">${WX[f7.wx]}</span><span class="big">${seven.pc.toFixed(0)}%<small>予報 ${WXN[f7.wx]}</small></span><span class="says${f7.hit?' bad':''}">${says7}</span></div>
     ${meter(seven.pc,f7.proj)}
-    <div class="cal" role="group" aria-label="週のカレンダー">${calCells()}</div>
-    <p class="note">これまでの日と今日は使った割合で、押すとその日の記録が出ます。先の日は今のペースでの天気だけです（1 日 9% 未満は晴れ、18% 以上は雨、上限に届く日は霧）。</p></div>
+    <div class="cal" role="group" aria-label="週のカレンダー">${calCells()}</div></div>
   <div class="blk"><h3>今日の使用量<small>チャンネル別のトークンとコスト</small></h3><div class="uses" style="display:grid;gap:7px">
     ${CH.map(c=>`<div class="urow"><span class="nm"><span class="n">${c.num}</span>${esc(c.name)}</span><span class="bar"><i style="width:${(c.tok/maxT*100).toFixed(1)}%"></i></span><span class="v">${fmt(c.tok)} · $${c.cost.toFixed(2)}</span></div>`).join('')}
-    <div class="urow tot"><span class="nm">合計</span><span></span><span class="v">${fmt(tt)} · $${tc.toFixed(2)}</span></div></div></div>
-  <p class="note">背景の雨は今のペース、霧は週の枠の近さを表しています。</p>`;
+    <div class="urow tot"><span class="nm">合計</span><span></span><span class="v">${fmt(tt)} · $${tc.toFixed(2)}</span></div></div></div>`;
   $('pF').querySelectorAll('.day[data-d]').forEach(b=>b.addEventListener('click',()=>openDay(+b.dataset.d)));
 }
 
@@ -227,7 +225,6 @@ function renderUnused(){
   $('unused').innerHTML=`<h3>使っていないもの<small>30 日以上 · 合計 約 ${fmt(tot)} トークン分</small></h3>
     <ul class="list">${u.slice(0,7).map(l=>`<li><span class="st">${l.kind==='mcp'?'MCP':l.kind==='agent'?'AG':'SK'}</span><span class="x">${esc(l.label)}</span><span class="r">${ago(l.last)} · ${fmt(l.dt)}</span></li>`).join('')}</ul>
     ${u.length>7?`<p class="note">ほか ${u.length-7} 件は「使っていない」で絞り込むと見られます。</p>`:''}
-    <p class="note">スキルの本文は使うときだけ読み込まれますが、名前と説明は毎回のコンテキストに入ります。手動で呼ぶだけのスキルは <code>disable-model-invocation: true</code> にすると説明が外れ、<code>/</code> からは今まで通り呼べます。使っていない MCP サーバーは、外すとツールの定義ごと空きます。</p>
     <div class="btns"><button class="btn small" type="button" id="bDoctor">/skill-doctor を実行</button></div>`;
   $('bDoctor').addEventListener('click',()=>{ const c=chN(sel)&&chN(sel).status!=='off'? chN(sel) : CH.find(x=>x.status!=='off'); if(c){ queueCmd(c,'skill-doctor',''); if(sel!==c.num) select(c.num); } });
 }
@@ -276,20 +273,76 @@ function renderSkills(force){
   const row=(name,mid,right)=>`<li><b>${esc(name)}</b>${mid}<span class="r">${right}</span></li>`;
   // a skill only the person runs (disable-model-invocation) is never handed to Claude until it is run
   const cost=s=> s.manual? '<span class="man">手動のみ · 0</span>' : s.dt? `約 ${fmt(s.dt)}` : '';
-  const manualNote=a=> a.some(s=>s.manual)? '「手動のみ」は <code>disable-model-invocation: true</code> のスキルで、<code>/</code> から実行するまで Claude には渡らないため、毎回のコンテキストを使いません。' : '';
   let body;
   if(skTab==='used') body= U.length? `<ul class="sklist">${U.map(x=>row(x.n,scope(x.src||srcOf(x.n)),`${x.uses} 回 · ${hm(x.last)}${c?'':' · '+[...x.chs].map(n=>'ch.'+n).join(' ')}`)).join('')}</ul>`
     : `<p class="note">${c?'このチャンネルでは':'どのチャンネルでも'}、まだスキルは使われていません。</p>`;
   else if(skTab==='local') body= local.length? `<ul class="sklist">${local.map(s=>row(s.n,`<span class="src">${esc(s.src)}${c?'':` · ch.${s.ch.num} ${esc(s.ch.name)}`}</span>`,cost(s))).join('')}</ul>`
     : '<p class="note">このプロジェクトの <code>.claude/skills</code> にスキルはありません。</p>';
   else body= G2.length? `<ul class="sklist">${G2.map(s=>row(s.n,`<span class="src">${esc(s.src||'—')}</span>`,cost(s))).join('')}</ul>` : '<p class="note">どこでも読み込まれるスキルはありません。</p>';
-  const say= skTab==='used'? 'このセッションで呼び出されたスキルです。グローバルのスキルも、呼び出されるとコミュに加わります。'
-    : skTab==='local'? `このプロジェクトの <code>.claude/skills</code> にあるスキルです。名前と説明が毎回のコンテキストに入ります（合計 約 ${fmt(tok(local))} トークン）。${manualNote(local)}`
-    : `ユーザーの <code>~/.claude/skills</code>、プラグイン、組み込みのスキルで、どのプロジェクトでも読み込まれます（合計 約 ${fmt(tok(G2))} トークン）。${manualNote(G2)}`;
+  const say= skTab==='used'? '' : `毎回のコンテキストに 約 ${fmt(tok(skTab==='local'?local:G2))} トークン`;
   $('pS').innerHTML=`<div class="blk"><h3>スキル<small>${c?`ch.${c.num} ${esc(c.name)}`:'全チャンネル'}</small></h3>
     <div class="seg sktabs" role="tablist" aria-label="スキルの種類">${[['used','使った',U.length],['local','ローカル',local.length],['global','グローバル',G2.length]].map(([k,t,n])=>`<button type="button" role="tab" data-k="${k}" aria-selected="${skTab===k}">${t}<small>${n}</small></button>`).join('')}</div>
-    <p class="note">${say}</p>${body}</div>`;
+    ${say?`<p class="note">${say}</p>`:''}${body}</div>`;
   $('pS').querySelectorAll('.sktabs [data-k]').forEach(b=>b.addEventListener('click',()=>{ skTab=b.dataset.k; renderSkills(true); })); }
+/* ================= rail: history — the channel's conversation as cards, newest first; a card takes the screen to that turn ================= */
+// read off the page as it stands: each turn (its header, where the prompt came from, Claude's last words in it) and the notices between
+let histKey=null, histList=[];
+const histDone=new WeakMap();      // a finished turn's card, kept until its header changes
+function histTurn(li,c){ const q=qs=>{ const e=li.querySelector(qs); return e? e.textContent.trim() : ''; };
+  const k=q('.fold .k'), was=histDone.get(li); if(was&&was.k0===k&&!li.querySelector('.qcard:not(.done),.perm')) return was;
+  const al=li.querySelectorAll('.flow .ans'); let a='';
+  for(let i=al.length-1;i>=0&&!a;i--) a=al[i].textContent.replace(/\s+/g,' ').trim().slice(0,160);
+  const st= li.querySelector('.qcard:not(.done)')? 'ask' : li.querySelector('.perm')? 'wait' : k==='進行中'? 'run' : (li.dataset.ab==='1'||/中断/.test(k))? 'stop' : '';
+  const x={el:li,c,turn:true,n:q('.fold .tn'),tm:q('.fold .tm'),t:+li.dataset.t||0,p:q('.fold .p'),src:q('.you .meta span').replace(/から$/,''),
+    att:li.querySelectorAll('.you .att .af:not(.bad)').length,a,k:st==='run'?'':k,st,k0:k};
+  if(st!=='run'&&st!=='ask'&&st!=='wait') histDone.set(li,x); else histDone.delete(li);
+  return x; }
+function histOf(c){ const out=[];
+  for(const li of c.log.children){
+    if(li.classList.contains('turn')){ out.push(histTurn(li,c)); continue; }
+    const b=li.querySelector(':scope > .sys > b, :scope > .cmdo .tag, :scope > .histBox summary b'); if(!b) continue;
+    out.push({el:li,c,turn:false,label:b.textContent.trim()}); }
+  return out; }
+const H_ST={run:['進行中','run'],ask:['質問','ask'],wait:['承認待ち','wait'],stop:['中断','stop']};
+function histCard(x,i,wall){ if(!x.turn) return `<li class="hm"><button type="button" class="hmk" data-i="${i}"><span>${esc(cut1(x.label,46))}</span></button></li>`;
+  const s=H_ST[x.st];
+  return `<li><button type="button" class="hc${x.st?' '+x.st:''}" data-i="${i}" aria-label="${esc(`${wall?`ch.${x.c.num} ${x.c.name} の`:''}${x.n}${x.tm?` ${x.tm}`:''}：${x.p}`)}へ移る">
+    <span class="hh">${wall?`<span class="hch">ch.${x.c.num} ${esc(x.c.name)}</span>`:''}<b>${esc(x.n)}</b>${x.tm?`<time>${esc(x.tm)}</time>`:''}${x.src?`<span>${esc(x.src)}</span>`:''}${s?`<span class="hst ${s[1]}">${s[0]}</span>`:''}</span>
+    <span class="hp">${esc(x.p||'（続き）')}</span>
+    ${x.a?`<span class="ha"><i>Claude</i>${esc(x.a)}</span>`:''}
+    ${x.k||x.att?`<span class="hf">${esc(x.k)}${x.att?`${x.k?' · ':''}添付 ${x.att}`:''}</span>`:''}</button></li>`; }
+function renderHist(force){
+  const c=chN(sel), list= c? histOf(c).reverse() : CH.flatMap(ch=>histOf(ch).filter(x=>x.turn)).sort((a,b)=>b.t-a.t).slice(0,40);
+  const key=(c?c.num:0)+'|'+list.map(x=>x.turn? [x.c.num,x.n,x.tm,x.st,x.k,x.a.length,x.att].join(',') : x.label).join('§');
+  if(!force&&key===histKey){ histSpy(); return; }
+  histKey=key; histList=list; const turns=list.filter(x=>x.turn).length;
+  $('pH').innerHTML=`<div class="blk"><h3>履歴<small>${c?`ch.${c.num} ${esc(c.name)} · ${turns} ターン`:'全チャンネル · 新しい順'}</small></h3>
+    ${list.length? `<ol class="hcards">${list.map((x,i)=>histCard(x,i,!c)).join('')}</ol>` : `<p class="note">${c?'まだ会話はありません。':'まだどのチャンネルにも会話はありません。'}</p>`}</div>`;
+  histSpy(); }
+$('pH').addEventListener('click',e=>{ const b=e.target.closest('[data-i]'); const x=b&&histList[+b.dataset.i]; if(x) histGo(x); });
+// to that turn: open it if it was folded, put its top just under the channel's header, and light it for a moment
+function histGo(x){
+  const go=()=>{ const v=$('chan'), li=x.el; if(!li.isConnected||v.hidden) return;
+    if(x.turn&&li.classList.contains('folded')){ li.classList.remove('folded'); li.dataset.hand='1'; const f=li.querySelector('.fold'); if(f) f.setAttribute('aria-expanded','true'); }
+    const d=li.querySelector('details.histBox'); if(d) d.open=true;
+    const top=v.getBoundingClientRect().top, under=$('osd').getBoundingClientRect().bottom-top;      // the header stays over the top of the view
+    const y=v.scrollTop+li.getBoundingClientRect().top-top-under-12;
+    endGoing=0; v.scrollTo({top:Math.max(0,y),behavior:reduce?'auto':'smooth'});
+    li.classList.remove('hit'); void li.offsetWidth; li.classList.add('hit'); setTimeout(()=>li.classList.remove('hit'),1700);
+    if(innerWidth<=1180) document.querySelector('.tv').scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'}); };
+  histPin=x.el; if(sel!==x.c.num) select(x.c.num,go); else go(); }
+// the turn the screen is showing: its card is marked, and follows as you scroll
+// (the card just pressed, until the screen is scrolled by hand; otherwise the turn that fills most of the screen)
+let histPin=null;
+['wheel','touchstart','pointerdown','keydown'].forEach(k=>$('chan').addEventListener(k,()=>{ histPin=null; },{passive:true}));
+function histSpy(){ if(rtab!=='H'||!sel||$('chan').hidden) return;
+  let here= histPin&&histList.find(x=>x.el===histPin)||null;
+  if(!here){ const top=$('osd').getBoundingClientRect().bottom, bot=$('chan').getBoundingClientRect().bottom; let best=0;
+    for(const x of histList){ if(!x.turn||!x.el.isConnected) continue; const r=x.el.getBoundingClientRect(), seen=Math.min(bot,r.bottom)-Math.max(top,r.top);
+      if(seen>best+1){ best=seen; here=x; } } }                                         // newest first: a tie goes to the newer
+  $('pH').querySelectorAll('.hc').forEach(b=>{ const on=histList[+b.dataset.i]===here; if(b.classList.contains('here')!==on) b.classList.toggle('here',on); }); }
+$('chan').addEventListener('scroll',()=>{ if(rtab==='H'&&!histSpy.q) histSpy.q=requestAnimationFrame(()=>{ histSpy.q=0; histSpy(); }); },{passive:true});
+
 /* ================= your status: Lv, EXP, five abilities and records (the hub keeps them; the demo makes them up) ================= */
 let stvOpen=false, stvKey='', stvBack=null;
 const stPct=s=> s.to? Math.max(0,Math.min(100,(s.exp-s.from)/(s.to-s.from)*100)) : 100;
@@ -325,7 +378,7 @@ function stvHTML(s){
   const hist=`<div class="blk"><h3>日ごとの EXP<small>直近 14 日</small></h3><div class="stHist">
     <div class="xpBars">${days.map((h,i)=>`<i class="${i===13?'on':''}${h.xp?'':h.pre?' pre':' z'}" style="${h.xp?`height:${Math.max(3,h.xp/mx*100).toFixed(1)}%;`:''}--i:${i}" title="${md(h.t)}（${DOW[new Date(h.t).getDay()]}）${h.pre?' 記録の前':` +${fmtN(h.xp)} EXP`}"></i>`).join('')}</div>
     <div class="lab"><span>${md(days[0].t)}</span><span>今日</span></div></div>
-    ${days.filter(h=>!h.pre).length<3?'<p class="note">記録を始めた日から、1 日ずつ右に積み上がります。</p>':''}</div>`;
+</div>`;
   const abs=`<div class="blk"><h3>能力<small>使った道具で上がります</small></h3><ul class="stAbs">${s.stats.map((x,i)=>`<li class="stAb st-${x.k}" style="--i:${i}">
     <span class="nm"><b>${x.n}</b><small>${x.say}</small></span>
     <span class="pips" role="img" aria-label="ランク ${x.r} / 5">${[1,2,3,4,5].map(k=>`<i class="${k<=x.r?'on':''}"></i>`).join('')}</span>
@@ -334,22 +387,27 @@ function stvHTML(s){
     <div><b>${fmtN(r.days)}</b><span>作業した日</span></div><div><b>${fmtN(r.streak)}</b><span>連続（最長 ${fmtN(r.best)}）</span></div><div><b>${fmtN(r.turns)}</b><span>やり終えたターン</span></div>
     <div><b>${fmt(r.tok)}</b><span>トークン</span></div><div><b>$${(r.usd||0).toFixed(2)}</b><span>料金（目安）</span></div><div><b>${fmtN(r.kinds)}</b><span>使った道具の種類</span></div></div>
     ${s.top.length? `<ul class="stTop">${s.top.map(x=>`<li><span class="k k-${x.kind}">${KIND[x.kind]||x.kind}</span><b>${esc(x.label)}</b><span class="n">${fmtN(x.n)} 回</span></li>`).join('')}</ul>` : '<p class="note">まだ道具は使われていません。</p>'}</div>`;
-  const how=`<details class="blk stHow"><summary>EXP と能力のしくみ</summary><ul>
-    <li><b>量</b>：やり終えたターン 1 回で +${R.turn}、トークン ${fmtN(R.tok)} ごとに +1（入力・出力・キャッシュ作成。キャッシュの読み込みは数えません）。1 日の上限はありません。</li>
-    <li><b>習慣</b>：その日はじめてターンをやり終えると +${R.day}。続けて作業した日は 1 日ごとに +${R.streak} ずつ上乗せ（+${R.streak*R.streakMax} まで）。</li>
-    <li><b>初めて</b>：ツール・スキル・エージェント・MCP を初めて使うと +${R.first}。</li>
-    <li><b>Lv</b>：Lv n から n+1 までに 100 × n EXP（最高 Lv ${s.max}）。</li>
-    <li><b>能力</b>：使った道具 1 回ごとに 1 pt（サブエージェントは 3 pt、スキルは 2 pt）。調査＝Read・Grep・Glob・Web 検索・Explore、構築＝Edit・Write、実行＝Bash など、段取り＝サブエージェント・タスク・計画、拡張＝スキル・MCP。${s.ranks.join('・')} pt でランク 1〜5。</li>
-    <li>記録は ${md(s.since)} から、Fogcast が動いているあいだの分です。料金は Claude Code が数えた目安で、実際の請求とは違うことがあります。</li></ul></details>`;
-  return `<div class="stCol c1">${lv}${today}${hist}</div><div class="stCol c2"><div class="stRadar">${stRadar(s.stats)}</div>${abs}</div><div class="stCol c3">${rec}</div>${how}`; }
+  return `<div class="stCol c1">${lv}${today}${hist}</div><div class="stCol c2"><div class="stRadar">${stRadar(s.stats)}</div>${abs}</div><div class="stCol c3">${rec}</div>`; }
+/* how EXP and the abilities are counted: opened from its own button on the status page */
+function openHow(){ const s=G.status; if(!s) return; const R=s.rules;
+  openSheet(`<div class="hd"><span class="tag">ステータス</span><button class="btn small" type="button" data-close>閉じる</button></div>
+    <h2 id="sheetT">EXP と能力のしくみ</h2>
+    <ul class="howList">
+    <li><b>量</b><span>やり終えたターン 1 回で +${R.turn}、トークン ${fmtN(R.tok)} ごとに +1（入力・出力・キャッシュ作成。キャッシュの読み込みは数えません）。1 日の上限はありません。</span></li>
+    <li><b>習慣</b><span>その日はじめてターンをやり終えると +${R.day}。続けて作業した日は 1 日ごとに +${R.streak} ずつ上乗せします（+${R.streak*R.streakMax} まで）。</span></li>
+    <li><b>初めて</b><span>ツール・スキル・エージェント・MCP を初めて使うと +${R.first}。</span></li>
+    <li><b>Lv</b><span>Lv n から n+1 までに 100 × n EXP（最高 Lv ${s.max}）。</span></li>
+    <li><b>能力</b><span>使った道具 1 回ごとに 1 pt（サブエージェントは 3 pt、スキルは 2 pt）。調査＝Read・Grep・Glob・Web 検索・Explore、構築＝Edit・Write、実行＝Bash など、段取り＝サブエージェント・タスク・計画、拡張＝スキル・MCP。${s.ranks.join('・')} pt でランク 1〜5 に上がります。</span></li>
+    <li><b>記録</b><span>${md(s.since)} から、Fogcast が動いているあいだの分です。日ごとの EXP は、記録を始めた日から 1 日ずつ右に積み上がります。料金は Claude Code が数えた目安で、実際の請求とは違うことがあります。</span></li>
+    </ul>`,'how'); }
+$('stvHow').addEventListener('click',openHow);
 function renderStv(force){ if(!stvOpen) return; const s=G.status;
   const key=s? JSON.stringify([s.exp,s.today,s.rec,s.stats.map(x=>x.p),s.top.map(x=>x.n),s.hist.map(h=>h.xp)]) : 'none';
   if(!force&&key===stvKey) return; stvKey=key;
-  const body=$('stvBody'), how=body.querySelector('.stHow'), open=!!(how&&how.open), y=body.scrollTop;
+  const body=$('stvBody'), y=body.scrollTop;
   body.classList.toggle('still',!force);
-  $('stvSub').textContent= s? `${md(s.since)}（${wkd(s.since)}）から記録${LIVE?'':'・デモの数字です'}` : '';
+  $('stvSub').textContent= s? `${md(s.since)}（${wkd(s.since)}）から記録${LIVE?'':'・デモの数字です'}` : ''; $('stvHow').hidden=!s;
   body.innerHTML= s? stvHTML(s) : `<div class="blk"><h3>まだ記録がありません</h3><p class="note">ターミナルの Fogcast がこの画面の受け皿につながると、やり終えたターンや使った道具から記録が始まります。</p></div>`;
-  if(open) body.querySelector('.stHow').open=true;
   if(!force) body.scrollTop=y;
   const bar=body.querySelector('.stXp .bar i'); if(bar){ if(force&&!reduce) requestAnimationFrame(()=>requestAnimationFrame(()=>{ bar.style.width=bar.dataset.w; })); else { bar.style.transition='none'; bar.style.width=bar.dataset.w; } } }
 function openStatus(){ if(stvOpen) return; if(co) coClose(); stvOpen=true; stvBack=document.activeElement;
@@ -368,9 +426,8 @@ function renderDetail(force){
   const key=c? [c.num,c.status,pct(c),c.perTurn.length,c.tasks.map(t=>t.st).join(''),Object.values(c.files).map(f=>f.add+'-'+f.del).join(','),c.agents.map(a=>a.st).join('')].join('|') : 'all|'+CH.map(c=>c.status+pct(c)+Math.round(c.tok/1000)).join(',');
   if(!force&&key===detailKey) return; detailKey=key;
   if(!c){
-    $('pD').innerHTML=`<div class="blk"><h3>全チャンネル<small>行を押すとそのチャンネルへ</small></h3><div class="tw"><table class="tbl"><thead><tr><th>ch.</th><th>状態</th><th class="num">コンテキスト</th><th class="num">トークン</th><th class="num">コスト</th></tr></thead><tbody>
-      ${CH.map(c=>`<tr data-n="${c.num}" style="cursor:pointer"><td>${c.num} ${esc(c.name)}</td><td>${stl(c)}</td><td class="num">${pct(c)}%</td><td class="num">${fmt(c.tok)}</td><td class="num">$${c.cost.toFixed(2)}</td></tr>`).join('')}</tbody></table></div></div>
-      <div class="blk"><h3>この画面のしくみ</h3><p class="note">各ターミナルの Fogcast（Mod）が、会話・道具の呼び出し・使用量を localhost の受け皿に送り、この画面がそれを映しています。この画面を見ていても、Claude のコンテキストは増えません。</p></div>`;
+    $('pD').innerHTML=`<div class="blk"><h3>全チャンネル</h3><div class="tw"><table class="tbl"><thead><tr><th>ch.</th><th>状態</th><th class="num">コンテキスト</th><th class="num">トークン</th><th class="num">コスト</th></tr></thead><tbody>
+      ${CH.map(c=>`<tr data-n="${c.num}" style="cursor:pointer"><td>${c.num} ${esc(c.name)}</td><td>${stl(c)}</td><td class="num">${pct(c)}%</td><td class="num">${fmt(c.tok)}</td><td class="num">$${c.cost.toFixed(2)}</td></tr>`).join('')}</tbody></table></div></div>`;
     $('pD').querySelectorAll('tr[data-n]').forEach(tr=>tr.addEventListener('click',()=>select(+tr.dataset.n)));
     return; }
   const p=pct(c), B=breakdown(c), tl=turnsLeft(c), done=c.tasks.filter(t=>t.st==='done').length;
@@ -378,7 +435,7 @@ function renderDetail(force){
   const fl=Object.entries(c.files);
   const files= fl.length? `<ul class="list">${fl.map(([f,v])=>`<li><code class="x">${esc(f)}</code><span class="r"><span class="add">+${v.add}</span> <span class="del">−${v.del}</span></span></li>`).join('')}</ul>` : '<p class="note">まだファイルは変わっていません。</p>';
   const ags= c.agents.length? `<ul class="list">${c.agents.slice(-6).reverse().map(a=>`<li><span class="st">${a.st==='run'?'▶':a.st==='stop'?'■':'✓'}</span><span class="x">${esc(a.type)} · ${esc(a.desc)}</span><span class="r">${a.st==='run'?'作業中':a.st==='stop'?'中断':'完了'}</span></li>`).join('')}</ul>` : '<p class="note">サブエージェントはまだ使われていません。</p>';
-  const resume= c.status==='off'&&c.resume? `<div class="blk"><h3>続きから始める</h3><div class="cmd"><code id="rsCmd">cd ${esc(c.cwd)} && claude --resume ${esc(c.resume)}</code><button class="btn small" type="button" id="bRs">コピー</button></div><p class="note">VS Code のターミナルに貼り付けて実行すると、このチャンネルに戻ってきます。</p></div>` : '';
+  const resume= c.status==='off'&&c.resume? `<div class="blk"><h3>続きから始める</h3><div class="cmd"><code id="rsCmd">cd ${esc(c.cwd)} && claude --resume ${esc(c.resume)}</code><button class="btn small" type="button" id="bRs">コピー</button></div></div>` : '';
   $('pD').innerHTML=`${resume}
   <div class="blk"><h3>コンテキスト<small>${fmt(c.ctx)} / ${fmt(c.win||WIN)} トークン</small></h3>
     <div class="ctxBig"><b>${p}%</b>${sig(c)}<span>${tl!=null? (tl<=3? `<b style="color:var(--yolk)">自動圧縮まで あと約 ${tl} ターン</b>` : `自動圧縮まで あと約 ${tl} ターン`) : 'まだ十分に空いています'}</span></div>
