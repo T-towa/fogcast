@@ -3,7 +3,8 @@
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, utimesSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, utimesSync, symlinkSync } from 'node:fs'
+import { deflateRawSync } from 'node:zlib'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -624,7 +625,7 @@ test('@ in the message box lists the terminal\'s files: what git does not ignore
   put('README.md', '# r', 50); put('src/app.ts', 'a', 5); put('src/lib/apply.ts', 'b', 30); put('src/lib/util.ts', 'c', 40); put('docs/api.md', 'd', 20)
   put('secret.env', 's', 1); put('node_modules/pkg/index.js', 'n', 2); put('.gitignore', 'secret.env\nnode_modules/\n', 90)
   const git = spawnSync('git', ['-C', proj, 'init', '-q']).status === 0
-  await req('POST', '/api/mod/hello', { chan: 'chan-files', mod: '0.5.6', sid: U(30), cwd: proj })
+  await req('POST', '/api/mod/hello', { chan: 'chan-files', mod: '0.5.7', sid: U(30), cwd: proj })
   const files = async q => (await req('POST', '/api/ui/files', { chan: 'chan-files', q })).json
   const app = await files('app')
   assert.equal(app.ok, true)
@@ -642,26 +643,110 @@ test('@ in the message box lists the terminal\'s files: what git does not ignore
   // outside a repository: walked, the folders that are never meant left out
   const plain = mkdtempSync(join(tmpdir(), 'fogcast-plain-'))
   mkdirSync(join(plain, 'node_modules', 'x'), { recursive: true }); writeFileSync(join(plain, 'node_modules', 'x', 'i.js'), 'n'); writeFileSync(join(plain, 'notes.txt'), 'n')
-  await req('POST', '/api/mod/hello', { chan: 'chan-plain', mod: '0.5.6', sid: U(31), cwd: plain })
+  await req('POST', '/api/mod/hello', { chan: 'chan-plain', mod: '0.5.7', sid: U(31), cwd: plain })
   const listed = async q => (await req('POST', '/api/ui/files', { chan: 'chan-plain', q })).json.files.map(f => f.p)
   assert.deepEqual(await listed('notes'), ['notes.txt'])
   assert.deepEqual(await listed('i.js'), [])
   // a terminal whose folder is gone: said so
-  await req('POST', '/api/mod/hello', { chan: 'chan-gone', mod: '0.5.6', sid: U(32), cwd: join(plain, 'gone') })
+  await req('POST', '/api/mod/hello', { chan: 'chan-gone', mod: '0.5.7', sid: U(32), cwd: join(plain, 'gone') })
   const gone = (await req('POST', '/api/ui/files', { chan: 'chan-gone', q: 'a' })).json
   assert.equal(gone.ok, false)
   rmSync(proj, { recursive: true, force: true }); rmSync(plain, { recursive: true, force: true })
 })
 
 test('a turn carries the files its prompt named with @, as the terminal attached them', async () => {
-  await req('POST', '/api/mod/hello', { chan: 'chan-att', mod: '0.5.6', sid: U(33), cwd: '/home/me/dev/att' })
+  await req('POST', '/api/mod/hello', { chan: 'chan-att', mod: '0.5.7', sid: U(33), cwd: '/home/me/dev/att' })
   const s = stream('screen-att'); await s.wait(m => m.type === 'hello')
   await req('POST', '/api/mod/sync', { chan: 'chan-att', events: [{ k: 'turn', t: Date.now(), id: 'ta', text: '@src/a.ts を見て', via: 'screen', files: [
     { p: 'src/a.ts', kind: 'file', lines: 120, shown: 120 }, { p: 'src/', kind: 'dir', lines: 4 }, { p: 'x.ts', err: 'missing' }, { p: 'y', err: '<script>' }, { nope: 1 },
+    { p: 'plan.xlsx', kind: 'file', lines: 40, shown: 40, as: 'xlsx' }, { p: 'a.csv', kind: 'file', lines: 3, shown: 3, as: 'shift_jis' }, { p: 'b.png', kind: 'file', err: 'read' }, { p: 'c', as: '<b>' },
   ] }] })
   const t = await s.wait(m => m.type === 'ev' && m.ev.k === 'turn' && m.ev.id === 'ta')
   assert.deepEqual(t.ev.files, [
     { p: 'src/a.ts', kind: 'file', lines: 120, shown: 120 }, { p: 'src/', kind: 'dir', lines: 4 }, { p: 'x.ts', kind: 'file', err: 'missing' }, { p: 'y', kind: 'file' },
+    { p: 'plan.xlsx', kind: 'file', lines: 40, shown: 40, as: 'xlsx' }, { p: 'a.csv', kind: 'file', lines: 3, shown: 3, as: 'shift_jis' }, { p: 'b.png', kind: 'file', err: 'read' }, { p: 'c', kind: 'file' },
   ])
   s.stop()
+})
+
+// a zip as Office writes one: each part deflated, listed again at the end
+function crc32(buf) { let crc = 0xFFFFFFFF; for (const b of buf) { let c = (crc ^ b) & 0xFF; for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xEDB88320 : c >>> 1; crc = (crc >>> 8) ^ c } return (crc ^ 0xFFFFFFFF) >>> 0 }
+function zip(parts) {
+  const out = [], dir = []; let off = 0
+  for (const [name, text] of Object.entries(parts)) {
+    const raw = Buffer.from(text), data = deflateRawSync(raw), nm = Buffer.from(name), crc = crc32(raw)
+    const lh = Buffer.alloc(30); lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(8, 8); lh.writeUInt32LE(crc, 14); lh.writeUInt32LE(data.length, 18); lh.writeUInt32LE(raw.length, 22); lh.writeUInt16LE(nm.length, 26)
+    const ch = Buffer.alloc(46); ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt16LE(8, 10); ch.writeUInt32LE(crc, 16); ch.writeUInt32LE(data.length, 20); ch.writeUInt32LE(raw.length, 24); ch.writeUInt16LE(nm.length, 28); ch.writeUInt32LE(off, 42)
+    out.push(lh, nm, data); dir.push(ch, nm); off += 30 + nm.length + data.length
+  }
+  const cd = Buffer.concat(dir), end = Buffer.alloc(22)
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(dir.length / 2, 8); end.writeUInt16LE(dir.length / 2, 10); end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(off, 16)
+  return Buffer.concat([...out, cd, end])
+}
+const serial = (y, mo, d, h = 0, mi = 0) => (Date.UTC(y, mo - 1, d, h, mi) / 864e5) + 25569      // Excel's day number
+
+test('@ hands Claude what an Excel, Word or PowerPoint file says, and a text saved in Shift_JIS or UTF-16; only inside the terminal\'s folder', async () => {
+  const dir = join(HOME, 'office'); mkdirSync(dir, { recursive: true })
+  writeFileSync(join(dir, 'book.xlsx'), zip({
+    'xl/workbook.xml': '<workbook xmlns:r="r"><workbookPr/><sheets><sheet name="売上" sheetId="1" r:id="rId1"/><sheet name="控え" sheetId="2" state="hidden" r:id="rId2"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels': '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Target="/xl/worksheets/sheet2.xml"/><Relationship Id="rId3" Target="sharedStrings.xml"/></Relationships>',
+    // a reading over the kanji (rPh) is not the cell's text
+    'xl/sharedStrings.xml': '<sst><si><t>日付</t></si><si><r><t>店</t></r><r><rPr/><t>舗</t></r><rPh sb="0" eb="2"><t>テンポ</t></rPh></si><si><t xml:space="preserve">A &amp; B</t></si></sst>',
+    'xl/styles.xml': '<styleSheet><numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy/m/d\\ h:mm"/></numFmts><cellXfs count="3"><xf numFmtId="0"/><xf numFmtId="14"/><xf numFmtId="164"/></cellXfs></styleSheet>',
+    'xl/worksheets/sheet1.xml': `<worksheet><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="inlineStr"><is><t>数量</t></is></c></row>
+      <row r="2"><c r="A2" s="1"><v>${serial(2026, 4, 1)}</v></c><c r="B2" t="s"><v>2</v></c><c r="C2"><v>12</v></c><c r="D2"><f>C2*2</f></c><c r="E2"><f>C2*3</f><v>36</v></c><c r="F2" t="b"><v>1</v></c></row>
+      <row r="4"><c r="A4" s="2"><v>${serial(2026, 4, 1, 13, 45)}</v></c></row></sheetData></worksheet>`,
+    'xl/worksheets/sheet2.xml': '<worksheet><sheetData/></worksheet>',
+  }))
+  writeFileSync(join(dir, 'minutes.docx'), zip({ 'word/document.xml': '<w:document><w:body><w:p><w:r><w:t>議事録</w:t></w:r></w:p>'
+    + '<w:p><w:r><w:t xml:space="preserve">決定 </w:t></w:r><w:r><w:tab/><w:t>済み</w:t></w:r><w:del><w:r><w:delText>消した文</w:delText></w:r></w:del></w:p>'
+    + '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>項目</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>担当</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'
+    + '<w:p><w:r><w:instrText> PAGE </w:instrText><w:t>以上</w:t></w:r></w:p></w:body></w:document>' }))
+  writeFileSync(join(dir, 'deck.pptx'), zip({
+    'ppt/presentation.xml': '<p:presentation><p:sldIdLst><p:sldId id="257" r:id="rId3"/><p:sldId id="256" r:id="rId2"/></p:sldIdLst></p:presentation>',
+    'ppt/_rels/presentation.xml.rels': '<Relationships><Relationship Id="rId2" Target="slides/slide1.xml"/><Relationship Id="rId3" Target="slides/slide2.xml"/></Relationships>',
+    'ppt/slides/slide2.xml': '<p:sld><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>はじめに</a:t></a:r></a:p></p:txBody></p:sp><p:sp><p:nvSpPr><p:nvPr><p:ph type="sldNum"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:fld type="slidenum"><a:t>1</a:t></a:fld></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>',
+    'ppt/slides/slide1.xml': '<p:sld show="0"><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>付録</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>',
+    'ppt/slides/_rels/slide1.xml.rels': '<Relationships><Relationship Id="rId1" Target="../notesSlides/notesSlide1.xml"/></Relationships>',
+    'ppt/notesSlides/notesSlide1.xml': '<p:notes><p:cSld><p:spTree><p:sp><p:nvSpPr><p:nvPr><p:ph type="sldImg"/></p:nvPr></p:nvSpPr></p:sp><p:sp><p:nvSpPr><p:nvPr><p:ph type="body"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:r><a:t>補足です</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:notes>',
+  }))
+  // as some tools write them: every tag under a namespace prefix, the relationship's too
+  writeFileSync(join(dir, 'tool.xlsx'), zip({
+    'xl/workbook.xml': '<x:workbook xmlns:x="m" xmlns:rel="r"><x:sheets><x:sheet name="Report" sheetId="1" rel:id="R1"/></x:sheets></x:workbook>',
+    'xl/_rels/workbook.xml.rels': '<Relationships><Relationship Id="R1" Target="/xl/worksheets/s1.xml"/></Relationships>',
+    'xl/worksheets/s1.xml': '<x:worksheet><x:sheetData><x:row r="2"><x:c r="B2" t="inlineStr"><x:is><x:t>total</x:t></x:is></x:c><x:c r="C2"><x:v>42</x:v></x:c></x:row></x:sheetData></x:worksheet>',
+  }))
+  // a stray cell far to the right, and a number in a date's style that is no date
+  writeFileSync(join(dir, 'wide.xlsx'), zip({
+    'xl/workbook.xml': '<workbook><sheets><sheet name="S" sheetId="1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels': '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/styles.xml': '<styleSheet><cellXfs count="2"><xf numFmtId="0"/><xf numFmtId="14"/></cellXfs></styleSheet>',
+    'xl/worksheets/sheet1.xml': '<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>a</t></is></c><c r="B1" s="1"><v>10000000000</v></c><c r="XFD1" t="inlineStr"><is><t>far</t></is></c></row></sheetData></worksheet>',
+  }))
+  writeFileSync(join(dir, 'sjis.csv'), Buffer.from('96bc914f2c935f90940a8e5293632c39300a', 'hex'))      // 名前,点数 / 山田,90 as Japanese Excel saves it
+  writeFileSync(join(dir, 'wide.txt'), Buffer.from('\ufeffユニコード\n', 'utf16le'))
+  writeFileSync(join(dir, 'blob.dat'), Buffer.from([1, 2, 0, 3, 200, 0]))
+  writeFileSync(join(dir, 'broken.xlsx'), 'not a zip')
+  writeFileSync(join(HOME, 'outside.csv'), 'a,b\n')
+  symlinkSync(join(HOME, 'outside.csv'), join(dir, 'link.csv'))
+  await req('POST', '/api/mod/hello', { chan: 'chan-doc', mod: '0.5.7', sid: U(34), cwd: dir })
+  const doc = async p => (await req('POST', '/api/mod/doc', { chan: 'chan-doc', path: p.startsWith('/') ? p : join(dir, p) })).json
+  assert.deepEqual(await doc('book.xlsx'), { ok: true, kind: 'xlsx', text: [
+    '## 売上', 'row\tA\tB\tC\tD\tE\tF', '1\t日付\t店舗\t数量', '2\t2026-04-01\tA & B\t12\t=C2*2\t36\tTRUE', '4\t2026-04-01 13:45', '## 控え (hidden sheet)', '(empty)'].join('\n') })
+  assert.deepEqual(await doc('tool.xlsx'), { ok: true, kind: 'xlsx', text: '## Report\nrow\tA\tB\tC\n2\t\ttotal\t42' })
+  assert.deepEqual(await doc('wide.xlsx'), { ok: true, kind: 'xlsx', text: '## S (wide: each cell as column=value)\n1\tA=a\tB=10000000000\tXFD=far' })
+  assert.deepEqual(await doc('minutes.docx'), { ok: true, kind: 'docx', text: '議事録\n決定 \t済み\n項目\t担当\n以上' })
+  assert.deepEqual(await doc('deck.pptx'), { ok: true, kind: 'pptx', text: '## Slide 1\nはじめに\n## Slide 2 (hidden)\n付録\nNotes: 補足です' })
+  assert.deepEqual(await doc('sjis.csv'), { ok: true, kind: 'text', text: '名前,点数\n山田,90\n', enc: 'shift_jis' })
+  assert.deepEqual(await doc('wide.txt'), { ok: true, kind: 'text', text: 'ユニコード\n', enc: 'utf-16le' })
+  assert.deepEqual(await doc('blob.dat'), { ok: false, error: 'binary' })
+  assert.deepEqual(await doc('broken.xlsx'), { ok: false, error: 'format' })
+  assert.deepEqual(await doc('link.csv'), { ok: false, error: 'outside' })            // a link inside that leads out
+  assert.deepEqual(await doc(join(HOME, 'outside.csv')), { ok: false, error: 'outside' })
+  assert.deepEqual(await doc('../office/../outside.csv'), { ok: false, error: 'outside' })
+  assert.deepEqual(await doc('nothere.xlsx'), { ok: false, error: 'missing' })
+  assert.equal((await req('POST', '/api/mod/doc', { chan: 'no-such-chan', path: join(dir, 'book.xlsx') })).status, 404)
+  assert.equal((await req('POST', '/api/mod/doc', { chan: 'chan-doc', path: 'book.xlsx' })).json.error, 'missing')      // only an absolute path
+  // a page in a browser, even the hub's own screen, is never handed a file's contents
+  assert.equal((await req('POST', '/api/mod/doc', { chan: 'chan-doc', path: join(dir, 'book.xlsx') }, { origin: `http://127.0.0.1:${PORT}` })).status, 403)
 })

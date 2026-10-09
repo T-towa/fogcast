@@ -847,6 +847,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 .you .att .af{display:inline-flex;gap:6px;align-items:baseline;max-width:100%;padding:2px 9px 3px;border-radius:999px;background:rgba(21,17,10,.12);font:600 11.5px/1.5 var(--f-mono);overflow-wrap:anywhere}
 .you .att .af small{font:600 10.5px/1 var(--f-body);color:rgba(21,17,10,.62)}
 .you .att .af.bad{background:none;outline:1px dashed rgba(21,17,10,.4);color:rgba(21,17,10,.6)}
+.you .att .af.ref{background:none;outline:1px solid rgba(21,17,10,.38)}
 
 .flow{position:relative;padding-left:54px;gap:9px}
 .solo .flow{padding-left:0}
@@ -959,13 +960,16 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 @media (prefers-reduced-motion: reduce){ .spin{animation:none;border-right-color:var(--yolk)} }
 
 /* ---------- a command's arguments, over the message box while it is typed (where the palette sits) ---------- */
-.argHint{position:absolute;left:0;right:0;bottom:calc(100% + 8px);z-index:19;display:flex;flex-wrap:wrap;gap:3px 9px;align-items:baseline;padding:10px 14px;border-radius:14px;
+.argHint{position:absolute;left:0;right:0;bottom:calc(100% + 8px);z-index:19;display:grid;gap:7px;padding:10px 14px;border-radius:14px;
   background:linear-gradient(160deg,rgba(34,38,54,.98),rgba(12,14,22,.99));border:1px solid var(--rim);box-shadow:0 14px 40px rgba(0,0,0,.5);font-size:12px;color:var(--mute);pointer-events:none}
 .argHint[hidden]{display:none}
 .argHint .hk{font:700 11px/1 var(--f-body);color:var(--yolk-ink);background:var(--yolk);padding:3px 7px 2px}
 .argHint code{font:600 12px/1.4 var(--f-mono);color:var(--ink);background:none;padding:0}
 .argHint .ah{font:12px/1.4 var(--f-mono);color:var(--teal)}
 .argHint .ad{font-size:11.5px;color:var(--faint);min-width:0}
+.argHint .ar{display:flex;flex-wrap:wrap;gap:3px 9px;align-items:baseline;min-width:0}
+.argHint .hk.t{background:var(--teal);color:var(--teal-ink)}
+.argHint .aw{color:var(--ink);min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ---------- putting away ended channels ---------- */
 .wallHead .sum .tidy{margin-left:10px;border:1px solid rgba(243,239,226,.35);background:rgba(255,255,255,.05);border-radius:999px;padding:3px 11px;font-size:11.5px;color:var(--ink)}

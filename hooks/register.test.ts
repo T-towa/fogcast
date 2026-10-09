@@ -1,5 +1,5 @@
 import { test, expect, mock } from 'claude-code/testing'
-import { linkFor, summarize, outline, fileChange, todosOf, statusLine, textOf, rel, older, midTurnText, questionsOf, answersFor, keepText, commandRow, effortLevels, modelKey, settingOf, effortSet } from './shape'
+import { linkFor, summarize, outline, fileChange, todosOf, statusLine, textOf, rel, older, midTurnText, questionsOf, answersFor, keepText, commandRow, effortLevels, modelKey, settingOf, effortSet, mentionsOf, mentionCandidates, cutText } from './shape'
 
 // ---------------------------------------------------------------- shape
 
@@ -38,6 +38,22 @@ test('file changes and task lists are read off the calls', () => {
   expect(textOf([{ type: 'thinking', thinking: 'x' }, { type: 'text', text: 'hello' }])).toBe('hello')
 })
 
+test('@ in a message: each name, also when Japanese punctuation or a sentence runs right after it', () => {
+  expect(mentionsOf('@src/a.ts と @"my notes.md" を見て')).toEqual(['src/a.ts', 'my notes.md'])
+  expect(mentionsOf('@売上.xlsx、@経費.xlsx を比べて（@docs/）')).toEqual(['売上.xlsx', '経費.xlsx', 'docs/）'])
+  expect(mentionsOf('mail@example.com と a@b')).toEqual([])
+  expect(mentionCandidates('売上.xlsxを見て')).toEqual(['売上.xlsxを見て', '売上.xlsx'])
+  expect(mentionCandidates('docs/表.v2.xlsxの2行目')).toEqual(['docs/表.v2.xlsxの2行目', 'docs/表.v2.xlsx', 'docs/表.v2', 'docs/'])
+  expect(mentionCandidates('src/a.tsと')).toEqual(['src/a.tsと', 'src/a.ts'])
+  expect(mentionCandidates('src/。')).toEqual(['src/。', 'src/'])
+})
+
+test('a converted file goes in whole lines, as many as fit', () => {
+  expect(cutText('a\nbb\nccc\n', 100)).toEqual({ body: 'a\nbb\nccc', lines: 3, shown: 3, cut: false })
+  expect(cutText('a\nbb\nccc', 6)).toEqual({ body: 'a\nbb', lines: 3, shown: 2, cut: true })
+  expect(cutText('abcdefghij\nk', 5)).toEqual({ body: 'abcd…', lines: 2, shown: 1, cut: true })
+})
+
 test('the status line', () => {
   expect(statusLine({ num: 2, ready: true, ctx: 41, limits: [{ kind: 'five_hour', percentUsed: 44 }, { kind: 'seven_day', percentUsed: 68 }], usd: 1.234, forecast: { pc: 44, proj: 71 } }))
     .toBe('Fogcast ch.2 · ctx 41% · 5h 44% → 予報 71% · 7d 68% · $1.23 · /fog で画面')
@@ -65,7 +81,7 @@ function hub(on: Any, opts: { approvals?: boolean; decision?: string; wait?: () 
     const body = e.init?.body ? JSON.parse(e.init.body) : null
     const ok = (v: unknown) => ({ value: { status: 200, ok: true, headers: {}, text: JSON.stringify(v) } })
     if (path === '/api/health') {
-      const v = opts.version ? opts.version() : '0.5.6'
+      const v = opts.version ? opts.version() : '0.5.7'
       return v === null ? { value: { status: 502, ok: false, headers: {}, text: '' } } : ok({ ok: true, app: 'fogcast', version: v })
     }
     if (e.init?.headers?.['x-fogcast-token'] !== TOKEN) return { value: { status: 401, ok: false, headers: {}, text: '{}' } }
@@ -76,6 +92,7 @@ function hub(on: Any, opts: { approvals?: boolean; decision?: string; wait?: () 
     if (path === '/api/mod/ask') { h.asked.push(body); return ok({ mode: 'screen', exp: Date.now() + 120000 }) }
     if (path === '/api/mod/open') return ok({ opened: !!opts.opened })
     if (path === '/api/mod/ask/wait') return opts.wait ? opts.wait().then(decision => ok({ decision })) : ok({ decision: opts.decision ?? 'allow' })
+    if (path === '/api/mod/doc') return ok(DOCS[String(body.path).slice(ROOT.length + 1)] ?? { ok: false, error: 'missing' })
     return ok({ ok: true })
   })
   return h
@@ -156,7 +173,15 @@ test('what the screen sends is run in the terminal', async ($: Any, on: Any) => 
 
 // a project for @: the terminal's folder is /home/t/dev/shop; a link inside it leads out, a file beside it is outside
 const ROOT = '/home/t/dev/shop'
-const FILES: Record<string, string> = { 'src/a.ts': 'const a = 1\nexport default a\n', 'notes/my file.md': '# メモ\n', 'logo.png': 'PNG' }
+const FILES: Record<string, string> = { 'src/a.ts': 'const a = 1\nexport default a\n', 'notes/my file.md': '# メモ\n', 'logo.png': 'PNG',
+  // what the engine's text read makes of files that are not UTF-8 text
+  'docs/plan.xlsx': 'PK\u0003\u0004\uFFFD\u0000', 'docs/spec.pdf': '%PDF-1.7', 'data/sjis.csv': '\uFFFD\uFFFD,\uFFFD\uFFFD\n', 'data/blob.dat': 'ab\u0000cd', 'data/old.xls': '\uFFFD\u0000' }
+// what the hub reads out of them (POST /api/mod/doc)
+const DOCS: Record<string, Any> = {
+  'docs/plan.xlsx': { ok: true, kind: 'xlsx', text: '## 売上\nrow\tA\tB\n1\t日付\t店舗\n2\t2026-04-01\t渋谷' },
+  'data/sjis.csv': { ok: true, kind: 'text', text: '名前,点数\n山田,90\n', enc: 'shift_jis' },
+  'data/blob.dat': { ok: false, error: 'binary' },
+}
 const norm = (p: string) => { const out: string[] = []; for (const s of p.split('/')) { if (s === '..') out.pop(); else if (s && s !== '.') out.push(s) } return '/' + out.join('/') }
 function project(on: Any) {
   const rel = (p: string) => { const a = norm(String(p)); return a === ROOT ? '.' : a.startsWith(ROOT + '/') ? a.slice(ROOT.length + 1) : a }
@@ -168,7 +193,7 @@ function project(on: Any) {
   })
   on('fs.stat', (_$: Any, e: Any) => {
     const r = rel(e.path)
-    const isDir = r === '.' || r === 'src' || r === 'notes', isFile = r in FILES || r === 'out-link' || r === '/home/t/dev/secret.txt'
+    const isDir = r === '.' || r === 'src' || r === 'notes' || r === 'docs' || r === 'data', isFile = r in FILES || r === 'out-link' || r === '/home/t/dev/secret.txt'
     if (!isDir && !isFile) throw Object.assign(new Error(`ENOENT: ${r}`), { code: 'ENOENT' })
     const realPath = r === 'out-link' ? '/home/t/secret.txt' : r.startsWith('/') ? r : r === '.' ? ROOT : `${ROOT}/${r}`
     return { value: { kind: isDir ? 'dir' : 'file', size: isFile ? (FILES[r] ?? 'x').length : 0, mtimeMs: 1, isLink: r === 'out-link', realPath } }
@@ -191,6 +216,7 @@ test('a prompt from the screen that names files with @ brings them in first, as 
   expect(row).toContain('<file path="src/a.ts" lines="2">\n     1\tconst a = 1\n     2\texport default a\n</file>')
   expect(row).toContain('<file path="notes/my file.md" lines="1">')
   expect(row).toContain('<directory path="src/">\nlib/\na.ts\n</directory>')
+  expect(row).toContain('\n\nlogo.png is an image, which this screen cannot attach: read it with the Read tool to see what the user means.')
   expect(row).not.toContain('secret')
   await $.turn.start({ text, turnId: 'tp' })
   await clock.advance(700)
@@ -198,7 +224,33 @@ test('a prompt from the screen that names files with @ brings them in first, as 
   expect([t.via, t.cid]).toEqual(['screen', 'p1'])
   expect(t.files).toEqual([
     { p: 'src/a.ts', kind: 'file', lines: 2, shown: 2 }, { p: 'notes/my file.md', kind: 'file', lines: 1, shown: 1 }, { p: 'src/', kind: 'dir', lines: 2 },
-    { p: '../secret.txt', err: 'outside' }, { p: 'out-link', err: 'outside' }, { p: '/etc/passwd', err: 'outside' }, { p: 'logo.png', kind: 'file', err: 'binary' }, { p: 'nothere.ts', err: 'missing' },
+    { p: '../secret.txt', err: 'outside' }, { p: 'out-link', err: 'outside' }, { p: '/etc/passwd', err: 'outside' }, { p: 'logo.png', kind: 'file', err: 'read' }, { p: 'nothere.ts', err: 'missing' },
+  ])
+})
+
+test('an Excel file named with @ goes in as the text the hub takes out of it, a Shift_JIS one as decoded; a PDF is named for Claude to read', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on, ['fs.read', 'fs.list']); project(on); const h = hub(on)
+  const appended: Any[] = []
+  on('session.append', async (_$: Any, e: Any, next: Any) => { if (e.door === 'note') appended.push(e); return next(e) })
+  on('prompt.submit', (_$: Any, e: Any) => ({ text: e.text }))
+  await started($, on, clock)
+  const text = '@docs/plan.xlsx と @data/sjis.csv を比べて。@docs/spec.pdf も。@data/blob.dat @data/old.xls'
+  h.queue.push({ id: 'p4', type: 'prompt', text })
+  await clock.advance(700); await clock.settle()
+  const row = appended[0].message.content[0].text as string
+  expect(row).toContain('(an Office file as the text taken out of it):')
+  expect(row).toMatch(/<file path="docs\/plan.xlsx" converted="Excel workbook: [^"]+">\n## 売上\nrow\tA\tB\n1\t日付\t店舗\n2\t2026-04-01\t渋谷\n<\/file>/)
+  expect(row).toContain('<file path="data/sjis.csv" lines="2" encoding="shift_jis">\n     1\t名前,点数\n     2\t山田,90\n</file>')
+  expect(row).toContain('docs/spec.pdf is a PDF, which this screen cannot attach: read it with the Read tool')
+  expect(row).not.toContain('blob.dat'); expect(row).not.toContain('old.xls')
+  // the hub is asked for the converted file and the one that would not read as UTF-8, by where they really are
+  expect(h.posts.filter(x => x.path === '/api/mod/doc').map(x => x.body.path)).toEqual([`${ROOT}/docs/plan.xlsx`, `${ROOT}/data/sjis.csv`, `${ROOT}/data/blob.dat`])
+  await $.turn.start({ text, turnId: 'tx' })
+  await clock.advance(700)
+  expect(h.events.find(e => e.k === 'turn').files).toEqual([
+    { p: 'docs/plan.xlsx', kind: 'file', lines: 4, shown: 4, as: 'xlsx' }, { p: 'data/sjis.csv', kind: 'file', lines: 2, shown: 2, as: 'shift_jis' },
+    { p: 'docs/spec.pdf', kind: 'file', err: 'read' }, { p: 'data/blob.dat', kind: 'file', err: 'binary' }, { p: 'data/old.xls', kind: 'file', err: 'legacy' },
   ])
 })
 
@@ -360,7 +412,7 @@ test('a hub left running from an older version is stopped once, and this version
   on('process.run', (_$: Any, e: Any) => {
     runs.push([...e.argv])
     if (e.argv.includes('--stop')) version = null
-    if (e.argv.includes('--daemon')) version = '0.5.6'
+    if (e.argv.includes('--daemon')) version = '0.5.7'
     return { value: { exitCode: 0, stdout: 'main\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   hub(on, { version: () => version })

@@ -1,5 +1,5 @@
 {
   "name": "fogcast",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "霧読み：すべてのターミナルの会話・道具・使用量を、localhost のブラウザ画面にまとめて映す"
 }

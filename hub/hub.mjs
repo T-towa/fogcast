@@ -16,14 +16,15 @@
  */
 import http from 'node:http'
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
-import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, renameSync, statSync, appendFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, renameSync, statSync, appendFileSync, realpathSync } from 'node:fs'
 import { readdir, stat, open } from 'node:fs/promises'
 import { homedir, platform } from 'node:os'
-import { join, dirname, basename, isAbsolute } from 'node:path'
+import { join, dirname, basename, isAbsolute, sep, extname } from 'node:path'
+import { inflateRawSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
-export const VERSION = '0.5.6'
+export const VERSION = '0.5.7'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ARGS = process.argv.slice(2)
 const PORT = Number(process.env.FOGCAST_PORT) || 4317
@@ -395,6 +396,7 @@ function apply(c, ev) {
       e.files = Array.isArray(ev.files) && ev.files.length ? ev.files.slice(0, 10).map(f => ({
         p: str(f && f.p, 300), kind: f && f.kind === 'dir' ? 'dir' : 'file', lines: num(f && f.lines) || undefined,
         shown: num(f && f.shown) || undefined, err: /^[a-z]{1,12}$/.test(str(f && f.err, 12)) ? f.err : undefined,
+        as: /^[a-z0-9_-]{1,12}$/.test(str(f && f.as, 12)) ? f.as : undefined,
       })).filter(f => f.p) : undefined
       setStatus(c, 'work', '依頼を受け取りました', t); block(c, 'work', ev.text || '続きの作業', t)
       e.text = str(ev.text, 8000); e.n = c.turnNo
@@ -814,6 +816,160 @@ async function filesFor(c, q) {
   return { files: hits.slice(0, 40).map(([, f]) => f), total: v.files.length, more: hits.length > 40 }
 }
 
+/* ---------------- what @ hands Claude when the Mod cannot read it itself ---------------- */
+// The Mod reads text files with the engine's own reader. An .xlsx, .docx or .pptx is a zip of XML it cannot open, and a CSV
+// that Japanese Excel saved is Shift_JIS: Node reads both, and the Mod sends what comes back as the file's text. Only files
+// inside the channel's folder; values, not formulas or layout.
+const DOC_MAX = 30 << 20, ENTRY_MAX = 64 << 20, DOC_UNPACKED = 256 << 20, DOC_TEXT_MAX = 600_000
+const XML_ENT = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" }
+const unxml = s => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, k) => {
+  if (k[0] !== '#') return XML_ENT[k] ?? m
+  try { return String.fromCodePoint(k[1] === 'x' || k[1] === 'X' ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10)) } catch { return m } })
+const xattr = (tag, name) => { const m = new RegExp(`\\s${name}="([^"]*)"`).exec(tag); return m ? unxml(m[1]) : '' }
+const relId = tag => xattr(tag, 'r:id') || unxml((/\s[\w.-]+:id="([^"]*)"/.exec(tag) || [])[1] || '')
+const bare = x => x == null ? x : x.replace(/<(\/?)[A-Za-z_][\w.-]*:/g, '<$1')       // <x:row> → <row>
+const zpath = p => { const out = []; for (const x of p.split('/')) { if (x === '..') out.pop(); else if (x && x !== '.') out.push(x) } return out.join('/') }
+/** A zip's directory: each entry's name, how it is packed, and where its data is. */
+function zipDir(buf) {
+  let e = -1
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) if (buf.readUInt32LE(i) === 0x06054b50) { e = i; break }
+  if (e < 0) return null
+  const n = buf.readUInt16LE(e + 10), out = new Map()
+  let p = buf.readUInt32LE(e + 16)
+  for (let k = 0; k < n; k++) {
+    if (p + 46 > buf.length || buf.readUInt32LE(p) !== 0x02014b50) return null
+    const nl = buf.readUInt16LE(p + 28)
+    out.set(buf.toString('utf8', p + 46, p + 46 + nl), { method: buf.readUInt16LE(p + 10), csize: buf.readUInt32LE(p + 20), usize: buf.readUInt32LE(p + 24), lo: buf.readUInt32LE(p + 42) })
+    p += 46 + nl + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32)
+  }
+  out.left = DOC_UNPACKED      // what all its parts may come to, unpacked: a file that would unpack to more is read no further
+  return out
+}
+function zipText(buf, dir, name) {
+  const e = dir.get(name); if (!e || e.lo + 30 > buf.length || buf.readUInt32LE(e.lo) !== 0x04034b50) return null
+  const at = e.lo + 30 + buf.readUInt16LE(e.lo + 26) + buf.readUInt16LE(e.lo + 28), data = buf.subarray(at, at + e.csize)
+  const most = Math.min(ENTRY_MAX, dir.left)
+  try {
+    const raw = e.method === 0 ? data : e.method === 8 ? inflateRawSync(data, { maxOutputLength: most }) : null
+    if (!raw || raw.length > most) return null
+    dir.left -= raw.length
+    return raw.toString('utf8')
+  } catch { return null }
+}
+/** An OOXML part's relationships: id → the part it points at. */
+function zipRels(buf, dir, part) {
+  const d = part.slice(0, part.lastIndexOf('/') + 1), x = bare(zipText(buf, dir, `${d}_rels/${part.slice(d.length)}.rels`)) || '', m = new Map()
+  for (const t of x.match(/<Relationship\b[^>]*>/g) || []) { const id = xattr(t, 'Id'), tg = xattr(t, 'Target'); if (id && tg && xattr(t, 'TargetMode') !== 'External') m.set(id, tg.startsWith('/') ? zpath(tg) : zpath(d + tg)) }
+  return m
+}
+const colNum = ref => { let n = 0; for (const ch of String(ref).replace(/\d+$/, '').toUpperCase()) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1 }
+const colName = n => { let s = ''; for (n++; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s }
+/** An Excel workbook: every sheet in tab order, as tab-separated rows under its column letters, each led by its row number. */
+function xlsxText(buf, dir) {
+  const wb = bare(zipText(buf, dir, 'xl/workbook.xml')); if (!wb) return null
+  const R = zipRels(buf, dir, 'xl/workbook.xml'), d1904 = /<workbookPr\b[^>]*\bdate1904="(1|true)"/.test(wb)
+  // shared strings, one to a <si>; the reading over kanji (<rPh>) is not the cell's text
+  const ss = (bare(zipText(buf, dir, 'xl/sharedStrings.xml')) || '').match(/<si>[\s\S]*?<\/si>|<si\/>/g)?.map(si =>
+    unxml((si.replace(/<rPh\b[\s\S]*?<\/rPh>/g, '').match(/<t\b[^>]*>[\s\S]*?<\/t>|<t\b[^>]*\/>/g) || []).map(t => t.replace(/<[^>]+>/g, '')).join(''))) || []
+  // the styles that show a number as a date or a time
+  const sty = bare(zipText(buf, dir, 'xl/styles.xml')) || '', fmt = new Map()
+  for (const t of sty.match(/<numFmt\b[^>]*>/g) || []) fmt.set(Number(xattr(t, 'numFmtId')), xattr(t, 'formatCode'))
+  const xfs = ((/<cellXfs\b[\s\S]*?<\/cellXfs>/.exec(sty) || [''])[0].match(/<xf\b[^>]*>/g) || []).map(t => Number(xattr(t, 'numFmtId')) || 0)
+  const dated = id => (id >= 14 && id <= 22) || (id >= 27 && id <= 36) || (id >= 45 && id <= 47) || (id >= 50 && id <= 58)
+    || (fmt.has(id) && /[ymdhs]/i.test(fmt.get(id).replace(/"[^"]*"|\[[^\]]*\]|\\./g, '')))
+  const when = v => { const n = Number(v), d = new Date(Math.round((n + (d1904 ? 1462 : 0) - 25569) * 864e5)); if (!Number.isFinite(n) || isNaN(d)) return v
+    const iso = d.toISOString()
+    return n < 1 ? iso.slice(11, 16) : n % 1 ? `${iso.slice(0, 10)} ${iso.slice(11, 16)}` : iso.slice(0, 10) }
+  const out = []; let size = 0
+  for (const t of wb.match(/<sheet\b[^>]*>/g) || []) {
+    const name = xattr(t, 'name'), part = R.get(relId(t)), x = part && bare(zipText(buf, dir, part))
+    const hid = /hidden/i.test(xattr(t, 'state')) ? ' (hidden sheet)' : ''
+    if (!x) { out.push(`## ${name}${hid}`, '(could not read this sheet)'); continue }
+    const rows = []; let width = 0
+    for (const row of x.match(/<row\b[^>]*\/>|<row\b[^>]*>[\s\S]*?<\/row>/g) || []) {
+      const rn = Number(xattr(row.slice(0, row.indexOf('>') + 1), 'r')) || (rows.length ? rows[rows.length - 1][0] + 1 : 1), cells = []
+      for (const c of row.match(/<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g) || []) {
+        const head = c.slice(0, c.indexOf('>') + 1), ref = xattr(head, 'r'), ty = xattr(head, 't'), col = ref ? colNum(ref) : cells.length
+        let v = (/<v>([\s\S]*?)<\/v>/.exec(c) || [])[1]
+        if (ty === 'inlineStr') v = unxml((c.replace(/<rPh\b[\s\S]*?<\/rPh>/g, '').match(/<t\b[^>]*>[\s\S]*?<\/t>/g) || []).map(s => s.replace(/<[^>]+>/g, '')).join(''))
+        else if (v == null) { const f = (/<f\b[^>]*>([\s\S]*?)<\/f>/.exec(c) || [])[1]; if (!f) continue; v = '=' + unxml(f) }   // a formula never calculated (a file a script wrote)
+        else if (ty === 's') v = ss[Number(v)] ?? ''
+        else if (ty === 'b') v = v === '1' ? 'TRUE' : 'FALSE'
+        else if (ty === 'str' || ty === 'e' || ty === 'd') v = unxml(v)
+        else if (dated(xfs[Number(xattr(head, 's')) || 0] || 0)) v = when(v)
+        if (v === '' || col < 0 || col > 16383) continue
+        cells[col] = String(v).replace(/\s*[\t\r\n]+\s*/g, ' ')
+        width = Math.max(width, col + 1)
+      }
+      if (cells.length) rows.push([rn, cells])
+    }
+    // a sheet that reaches far to the right (a stray cell in column XFD) gives each cell as column=value instead
+    const wide = width > 52
+    out.push(`## ${name}${hid}${wide && rows.length ? ' (wide: each cell as column=value)' : ''}`)
+    if (!rows.length) { out.push('(empty)'); continue }
+    if (!wide) out.push(['row', ...Array.from({ length: width }, (_, k) => colName(k))].join('\t'))
+    for (const [rn, cells] of rows) {
+      const line = wide ? [rn, ...cells.map((v, k) => `${colName(k)}=${v}`).filter(Boolean)].join('\t')
+        : [rn, ...Array.from({ length: cells.length }, (_, k) => cells[k] ?? '')].join('\t')
+      out.push(line); size += line.length
+      if (size > DOC_TEXT_MAX) { out.push(`(… the rest of this workbook is not shown)`); return out.join('\n') }
+    }
+  }
+  return out.join('\n')
+}
+/** A Word document: its paragraphs, a table's cells split by tabs; deleted text and field codes left out. */
+function docxText(buf, dir) {
+  const x = zipText(buf, dir, 'word/document.xml'); if (x == null) return null
+  const flat = s => s.replace(/<w:delText\b[\s\S]*?<\/w:delText>|<w:instrText\b[\s\S]*?<\/w:instrText>/g, '').replace(/<w:tab\/>/g, '\t')
+    .replace(/<w:br\b[^>]*\/>|<w:cr\/>/g, '\n').replace(/<\/w:p>/g, '\n')
+  const body = flat(x).replace(/<w:tc\b[\s\S]*?<\/w:tc>/g, tc => tc.replace(/<[^>]+>/g, '').replace(/\s*\n\s*/g, ' ').trim() + '\t').replace(/<\/w:tr>/g, '\n')
+  return unxml(body.replace(/<[^>]+>/g, '')).replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+// a slide's or a note's number, date, header and footer, and the notes page's picture of its slide: not what it says
+const NOT_SAID = /<p:sp>(?:(?!<\/p:sp>)[\s\S])*?type="(?:sldNum|sldImg|dt|hdr|ftr)"[\s\S]*?<\/p:sp>/g
+/** A PowerPoint deck: each slide's text in the deck's order, with its speaker notes. */
+function pptxText(buf, dir) {
+  const pr = zipText(buf, dir, 'ppt/presentation.xml'); if (!pr) return null
+  const R = zipRels(buf, dir, 'ppt/presentation.xml'), out = []
+  const para = x => unxml(x.replace(/<a:br\b[^>]*\/>|<\/a:p>/g, '\n').replace(/<a:tab\/>/g, '\t').replace(/<[^>]+>/g, '')).replace(/[ \t]+\n/g, '\n').replace(/\n{2,}/g, '\n').trim()
+  ;(pr.match(/<p:sldId\b[^>]*>/g) || []).forEach((t, i) => {
+    const part = R.get(relId(t)), x = part && zipText(buf, dir, part); if (!x) return
+    out.push(`## Slide ${i + 1}${/<p:sld\b[^>]*\bshow="(0|false)"/.test(x) ? ' (hidden)' : ''}`, para(x.replace(NOT_SAID, '')) || '(no text)')
+    for (const tg of zipRels(buf, dir, part).values()) if (/notesSlide/.test(tg)) {
+      const n = zipText(buf, dir, tg), say = n && para(n.replace(NOT_SAID, ''))
+      if (say) out.push(`Notes: ${say}`) }
+  })
+  return out.join('\n')
+}
+/** Text in another encoding: a byte-order mark first, then UTF-8, Shift_JIS and EUC-JP, the first that decodes cleanly. */
+function decodeText(buf) {
+  if (buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) return { text: buf.toString('utf8', 3), enc: 'utf-8' }
+  if (buf[0] === 0xff && buf[1] === 0xfe) return { text: new TextDecoder('utf-16le').decode(buf.subarray(2)), enc: 'utf-16le' }
+  if (buf[0] === 0xfe && buf[1] === 0xff) return { text: new TextDecoder('utf-16be').decode(buf.subarray(2)), enc: 'utf-16be' }
+  if (buf.includes(0)) return null
+  for (const enc of ['utf-8', 'shift_jis', 'euc-jp']) { try { return { text: new TextDecoder(enc, { fatal: true }).decode(buf), enc } } catch {} }
+  return null
+}
+const DOC_KIND = { xlsx: 'xlsx', xlsm: 'xlsx', xltx: 'xlsx', xltm: 'xlsx', docx: 'docx', docm: 'docx', dotx: 'docx', dotm: 'docx', pptx: 'pptx', pptm: 'pptx', potx: 'pptx', potm: 'pptx' }
+/** A file under the channel's folder, as text: { kind: xlsx | docx | pptx | text, text, enc? } or { error }. */
+function docOf(c, path) {
+  let root, p
+  if (!absPath(c.cwd) || !absPath(path)) return { error: 'missing' }
+  try { root = realpathSync(absPath(c.cwd)); p = realpathSync(absPath(path)) } catch { return { error: 'missing' } }
+  if (p !== root && !p.startsWith(root.endsWith(sep) ? root : root + sep)) return { error: 'outside' }
+  let s; try { s = statSync(p) } catch { return { error: 'missing' } }
+  if (!s.isFile()) return { error: 'missing' }
+  if (s.size > DOC_MAX) return { error: 'large' }
+  const buf = readFileSync(p), kind = DOC_KIND[extname(p).slice(1).toLowerCase()]
+  if (kind) {
+    const dir = zipDir(buf), text = dir && (kind === 'xlsx' ? xlsxText : kind === 'docx' ? docxText : pptxText)(buf, dir)
+    return text == null ? { error: 'format' } : { kind, text: text.length > DOC_TEXT_MAX ? text.slice(0, DOC_TEXT_MAX) + '\n(… cut here)' : text }
+  }
+  if (s.size > 1 << 20) return { error: 'large' }
+  const d = decodeText(buf)
+  return d ? { kind: 'text', text: d.text, enc: d.enc } : { error: 'binary' }
+}
+
 /* ---------------- the screen's streams ---------------- */
 const streams = new Set()   // { res, client }
 function emit(s, msg) { try { s.res.write(`data: ${JSON.stringify(msg)}\n\n`) } catch {} }
@@ -972,6 +1128,14 @@ const routes = {
   'POST /api/mod/open': async () => {
     const url = `http://127.0.0.1:${PORT}/#k=${TOKEN}`
     return [200, { opened: await openBrowser(url) }]
+  },
+  // an Office file or a text in another encoding, read for @ from the screen (docOf keeps to the channel's folder).
+  // Only the terminal's Mod asks: a page in a browser (even this hub's own screen) never reads a file's contents here
+  'POST /api/mod/doc': (b, req) => {
+    if (req.headers.origin) return [403, { error: 'origin' }]
+    const c = chans.get(str(b.chan, 64)); if (!c) return [404, { error: 'chan' }]
+    const r = docOf(c, b.path)
+    return [200, r.error ? { ok: false, error: r.error } : { ok: true, ...r }]
   },
   'POST /api/mod/bye': (b) => { const c = chans.get(str(b.chan, 64)); if (c && c.status !== 'off') { const e = apply(c, { k: 'end', reason: str(b.reason, 20) || 'exit', resume: b.resume, t: now() }); if (e) broadcast({ type: 'ev', chan: c.id, ev: e }); chanDirty.add(c.id) } return [200, { ok: true }] },
 

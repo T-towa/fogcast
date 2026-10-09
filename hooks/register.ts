@@ -4,13 +4,13 @@
 // Nothing here adds to the model's context: the hooks watch and pass everything on as
 // it was. The one exception is /fog's one-line answer, which says where the screen is.
 import type { Register } from 'claude-code'
-import { linkFor, verb, summarize, outline, fileChange, todosOf, textOf, srcLabel, statusLine, older, isLocalSrc, midTurnText, clip, str, keepText, questionsOf, answersFor, commandRow, effortLevels, modelKey, settingOf, effortSet, mentionsOf, mentionCandidates, numbered, type Reading } from './shape'
+import { linkFor, verb, summarize, outline, fileChange, todosOf, textOf, srcLabel, statusLine, older, isLocalSrc, midTurnText, clip, str, keepText, questionsOf, answersFor, commandRow, effortLevels, modelKey, settingOf, effortSet, mentionsOf, mentionCandidates, numbered, cutText, type Reading } from './shape'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any
 
 /** Keep in step with .claude-plugin/plugin.json and hub/hub.mjs (a test checks). */
-export const VERSION = '0.5.6'
+export const VERSION = '0.5.7'
 const DEFAULT_PORT = 4317
 /** Claude Code drops a toast asked to stay longer than this (0.1.0 lost its pairing notice that way). */
 const TOAST_MAX = 60000
@@ -427,18 +427,29 @@ function cmdTell(run: CmdRun) {
 // The terminal attaches what a typed prompt names with @; a plugin's prompt gets no such expansion. So the files go in
 // here, as a row the model reads (the person does not see it) right before the prompt, read as the Read tool shows
 // them. Only what lies inside this terminal's folder is read; anything else stays a name, for Claude to read or not.
-type Attached = { p: string; kind?: 'file' | 'dir'; lines?: number; shown?: number; err?: string }
+// The row can carry text only: an Excel, Word or PowerPoint file goes in as the text the hub takes out of it, a text
+// saved in Shift_JIS (a CSV from Excel) as the hub decodes it, and an image or a PDF is named for Claude to open itself.
+type Attached = { p: string; kind?: 'file' | 'dir'; lines?: number; shown?: number; err?: string; as?: string }
 const PER_FILE = 100_000, ALL_FILES = 200_000, MAX_LINES = 2000, MAX_BYTES = 1 << 20
-const NOT_TEXT = /\.(png|jpe?g|gif|webp|bmp|ico|pdf|zip|gz|tgz|7z|jar|exe|dll|so|dylib|woff2?|ttf|otf|mp[34]|mov|wav)$/i
+const DOCS = /\.(xlsx|xlsm|xltx|xltm|docx|docm|dotx|dotm|pptx|pptm|potx|potm)$/i
+const READS = /\.(png|jpe?g|gif|webp|pdf)$/i              // what the Read tool shows Claude as it is
+const OLD_DOCS = /\.(xls|doc|ppt)$/i                       // Office's older binary files: not read
+const NOT_TEXT = /\.(bmp|ico|tiff?|heic|avif|psd|zip|gz|tgz|bz2|xz|7z|rar|jar|exe|dll|so|dylib|bin|class|wasm|woff2?|ttf|otf|eot|mp[34]|m4a|aac|ogg|flac|mov|avi|mkv|webm|wav|sqlite3?)$/i
+const CONVERTED: Record<string, string> = {
+  xlsx: 'Excel workbook: each sheet under ## and its name, its rows as tab-separated cell values led by the row number, under the column letters; values as last saved (a formula shows only where no value was saved)',
+  docx: 'Word document: its paragraphs, table cells separated by tabs',
+  pptx: 'PowerPoint deck: each slide\'s text under ## Slide and its number, with its speaker notes',
+}
 async function attachments($: Any, text: string): Promise<{ row: string; items: Attached[] }> {
   const names = mentionsOf(text)
-  const items: Attached[] = [], parts: string[] = []
+  const items: Attached[] = [], parts: string[] = [], reads: string[] = []
   if (!names.length) return { row: '', items }
   // every path is read from this terminal's folder (what the terminal's @ resolves against), and must land inside it
   const base = String(st.cwd || '').replace(/[\\/]+$/, '')
   const at = (p: string) => `${base}/${p}`
   const root = (await $.fs.stat(base || '.', { resolve: true }).catch(() => null))?.realPath || base
   const inside = (real: string) => !!real && (real === root || real.startsWith(root.endsWith('/') ? root : root + '/'))
+  const hubRead = (real: string) => post($, '/api/mod/doc', { chan: CHAN, path: real })
   let budget = ALL_FILES
   for (const name of names) {
     if (/^(~|\/|[A-Za-z]:[\\/]|\\\\)/.test(name)) { items.push({ p: name, err: 'outside' }); continue }
@@ -461,21 +472,43 @@ async function attachments($: Any, text: string): Promise<{ row: string; items: 
       items.push({ p: p.replace(/\/?$/, '/'), kind: 'dir', lines: names2.length })
       continue
     }
+    if (READS.test(p)) { reads.push(p); items.push({ p, kind: 'file', err: 'read' }); continue }
+    if (OLD_DOCS.test(p)) { items.push({ p, kind: 'file', err: 'legacy' }); continue }
     if (NOT_TEXT.test(p)) { items.push({ p, kind: 'file', err: 'binary' }); continue }
+    if (DOCS.test(p)) {
+      if (budget < 2000) { items.push({ p, kind: 'file', err: 'budget' }); continue }
+      const d = await hubRead(s.realPath)
+      if (!d?.ok || typeof d.text !== 'string' || !CONVERTED[d.kind]) { items.push({ p, kind: 'file', err: d?.error === 'large' ? 'large' : 'unread' }); continue }
+      const t = cutText(d.text, Math.min(PER_FILE, budget))
+      budget -= t.body.length
+      parts.push(`<file path="${p}" converted="${CONVERTED[d.kind]}">\n${t.body}\n</file>${t.cut ? `\n(Only the start of ${p} is shown here; open the file with a script when the rest is needed.)` : ''}`)
+      items.push({ p, kind: 'file', lines: t.lines, shown: t.shown, as: d.kind })
+      continue
+    }
     if (Number(s.size) > MAX_BYTES) { items.push({ p, kind: 'file', err: 'large' }); continue }
-    const raw = await $.fs.read(at(p)).catch(() => null)
-    if (typeof raw !== 'string') { items.push({ p, kind: 'file', err: 'missing' }); continue }
-    if (raw.includes('\u0000')) { items.push({ p, kind: 'file', err: 'binary' }); continue }
+    const read: unknown = await $.fs.read(at(p)).catch(() => null)
+    let raw = typeof read === 'string' ? read : '', enc = ''
+    // not UTF-8 (a Shift_JIS CSV, a UTF-16 text): the hub tries the encodings it knows; a NUL with none of them is a binary
+    if (typeof read !== 'string' || raw.includes('\u0000') || raw.includes('\uFFFD')) {
+      const d = await hubRead(s.realPath)
+      if (d?.ok && typeof d.text === 'string') { raw = d.text; if (d.enc && d.enc !== 'utf-8') enc = String(d.enc) }
+      else if (typeof read !== 'string') { items.push({ p, kind: 'file', err: 'missing' }); continue }
+      else if (raw.includes('\u0000') || d?.error === 'binary') { items.push({ p, kind: 'file', err: 'binary' }); continue }
+    }
     if (budget < 2000) { items.push({ p, kind: 'file', err: 'budget' }); continue }
     const n = numbered(raw, MAX_LINES, Math.min(PER_FILE, budget))
     budget -= n.body.length
     const range = n.shown < n.lines ? `1-${n.shown} of ${n.lines}` : String(n.lines)
-    parts.push(`<file path="${p}" lines="${range}">\n${n.body}\n</file>${n.shown < n.lines ? `\n(The rest of ${p} is not shown here; read it with the Read tool when needed.)` : ''}`)
-    items.push({ p, kind: 'file', lines: n.lines, shown: n.shown })
+    parts.push(`<file path="${p}" lines="${range}"${enc ? ` encoding="${enc}"` : ''}>\n${n.body}\n</file>${n.shown < n.lines ? `\n(The rest of ${p} is not shown here; read it with the Read tool when needed.)` : ''}`)
+    items.push({ p, kind: 'file', lines: n.lines, shown: n.shown, ...(enc ? { as: enc } : {}) })
   }
-  const row = parts.length
-    ? `The user named these with @ in the message that follows, sent from the Fogcast screen (where Claude Code does not attach @ mentions itself). Here is what they held when it was sent, as the terminal's @ would have attached them:\n\n${parts.join('\n\n')}`
-    : ''
+  if (!parts.length && !reads.length) return { row: '', items }
+  const them = reads.length > 1
+  const row = [
+    'The user named these with @ in the message that follows, sent from the Fogcast screen (where Claude Code does not attach @ mentions itself).',
+    parts.length ? ` Here is what they held when it was sent, as the terminal's @ would have attached them${parts.some(x => x.includes(' converted="')) ? ' (an Office file as the text taken out of it)' : ''}:\n\n${parts.join('\n\n')}` : '',
+    reads.length ? `${parts.length ? '\n\n' : ' '}${reads.join(', ')} ${them ? 'are images or PDFs' : /\.pdf$/i.test(reads[0]!) ? 'is a PDF' : 'is an image'}, which this screen cannot attach: read ${them ? 'them' : 'it'} with the Read tool to see what the user means.` : '',
+  ].join('')
   return { row, items }
 }
 /** A prompt from the screen: the files it names go in first, then the prompt, as the person's own words. */
@@ -484,7 +517,7 @@ async function sendPrompt($: Any, text: string, entry: { files?: Attached[] }) {
   if (a.items.length) entry.files = a.items
   if (a.row) {
     const r = await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: a.row }] } }).catch(() => null)
-    if (!r || r.deny) entry.files = a.items.map(x => (x.err ? x : { p: x.p, kind: x.kind, err: 'refused' }))
+    if (!r || r.deny) entry.files = a.items.map(x => (x.err && x.err !== 'read' ? x : { p: x.p, kind: x.kind, err: 'refused' }))
   }
   await $.prompt.submit({ text, asUser: true })
 }

@@ -853,6 +853,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 .you .att .af{display:inline-flex;gap:6px;align-items:baseline;max-width:100%;padding:2px 9px 3px;border-radius:999px;background:rgba(21,17,10,.12);font:600 11.5px/1.5 var(--f-mono);overflow-wrap:anywhere}
 .you .att .af small{font:600 10.5px/1 var(--f-body);color:rgba(21,17,10,.62)}
 .you .att .af.bad{background:none;outline:1px dashed rgba(21,17,10,.4);color:rgba(21,17,10,.6)}
+.you .att .af.ref{background:none;outline:1px solid rgba(21,17,10,.38)}
 
 .flow{position:relative;padding-left:54px;gap:9px}
 .solo .flow{padding-left:0}
@@ -965,13 +966,16 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 @media (prefers-reduced-motion: reduce){ .spin{animation:none;border-right-color:var(--yolk)} }
 
 /* ---------- a command's arguments, over the message box while it is typed (where the palette sits) ---------- */
-.argHint{position:absolute;left:0;right:0;bottom:calc(100% + 8px);z-index:19;display:flex;flex-wrap:wrap;gap:3px 9px;align-items:baseline;padding:10px 14px;border-radius:14px;
+.argHint{position:absolute;left:0;right:0;bottom:calc(100% + 8px);z-index:19;display:grid;gap:7px;padding:10px 14px;border-radius:14px;
   background:linear-gradient(160deg,rgba(34,38,54,.98),rgba(12,14,22,.99));border:1px solid var(--rim);box-shadow:0 14px 40px rgba(0,0,0,.5);font-size:12px;color:var(--mute);pointer-events:none}
 .argHint[hidden]{display:none}
 .argHint .hk{font:700 11px/1 var(--f-body);color:var(--yolk-ink);background:var(--yolk);padding:3px 7px 2px}
 .argHint code{font:600 12px/1.4 var(--f-mono);color:var(--ink);background:none;padding:0}
 .argHint .ah{font:12px/1.4 var(--f-mono);color:var(--teal)}
 .argHint .ad{font-size:11.5px;color:var(--faint);min-width:0}
+.argHint .ar{display:flex;flex-wrap:wrap;gap:3px 9px;align-items:baseline;min-width:0}
+.argHint .hk.t{background:var(--teal);color:var(--teal-ink)}
+.argHint .aw{color:var(--ink);min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ---------- putting away ended channels ---------- */
 .wallHead .sum .tidy{margin-left:10px;border:1px solid rgba(243,239,226,.35);background:rgba(255,255,255,.05);border-radius:999px;padding:3px 11px;font-size:11.5px;color:var(--ink)}
@@ -1219,7 +1223,7 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
         <div class="pal" id="pal" hidden>
           <div class="palhd"><span class="tag teal" id="palTag">コマンド</span><span class="s" id="palSub">このチャンネルで使えるもの</span></div>
           <ul id="palList" role="listbox" aria-label="コマンド"></ul>
-          <div class="palft">↑↓ で選ぶ · Enter で入れる · Esc で閉じる</div>
+          <div class="palft" id="palFt">↑↓ で選ぶ · Enter で入れる · Esc で閉じる</div>
         </div>
         <div class="argHint" id="ctlHint" role="status" hidden></div>
         <textarea id="ask" rows="1" aria-label="このチャンネルに送る文（「/」でコマンド、「@」でファイル）" aria-autocomplete="list" aria-controls="palList" aria-expanded="false" placeholder="このチャンネルに送る（Enter で送信、Shift+Enter で改行）"></textarea>
@@ -1592,7 +1596,7 @@ const PAST=LIVE? [] : [
 /* the demo's conversations on disk, by folder: what the resume picker lists (the live page reads the terminal's) */
 /* the demo channels' folder, for @ in the message box (the live screen asks the hub for the terminal's own) */
 const DEMO_FILES=['README.md','CLAUDE.md','package.json','tsconfig.json','.claude-plugin/plugin.json','hooks/hooks.json','hooks/register.ts','hooks/register.test.ts','hooks/shape.ts','hooks/bridge.ts',
-  'hub/hub.mjs','hub/ui.html','hub/guide.html','ui-src/build.sh','ui-src/fc1.js','ui-src/fc2.js','ui-src/fc3.js','ui-src/fc4.js','ui-src/fc-head.html','ui-src/guide.html','test/hub.test.mjs','test/simulate.mjs','docs/forecast.md','docs/statusline.md'];
+  'hub/hub.mjs','hub/ui.html','hub/guide.html','ui-src/build.sh','ui-src/fc1.js','ui-src/fc2.js','ui-src/fc3.js','ui-src/fc4.js','ui-src/fc-head.html','ui-src/guide.html','test/hub.test.mjs','test/simulate.mjs','docs/forecast.md','docs/statusline.md','docs/schedule.xlsx','docs/screen.png'];
 const DEMO_CONVOS=LIVE? {} : {
   '~/dev/fogcast':[
     {id:'7f3a9c2e-1b4d-4e8a-9c21-3d4e5f6a8b90',title:'statusline-fix',first:'ステータスラインの幅が崩れる不具合を直して',last:'狭い端末でも 1 行に収まるか確かめて',age:95,size:412e3,
@@ -2504,13 +2508,19 @@ function aiHead(c,t){ const m=mdl(c); return `<div class="aihd"><i class="av">${
 function youHTML(body,src,t,extra){ return `<div class="you"><div class="meta"><span>${src}</span>${t?`<time>${hm(t)}</time>`:''}</div><div class="body">${body}${extra||''}</div></div>`; }
 /* the files a prompt from this screen named with @: what went to Claude with it, and what did not (and why) */
 const ATT_ERR={missing:['見つかりません','このターミナルのフォルダにありません。'],outside:['フォルダの外','このターミナルのフォルダの外なので添付していません。Claude が必要なら自分で読みます。'],
-  binary:['テキストでない','画像やバイナリは添付していません。Claude が必要なら Read で読みます。'],large:['大きすぎます','1 MB を超えるので添付していません。Claude が必要なら Read で読みます。'],
-  budget:['上限超え','ほかのファイルで添付の上限（20 万字）に達したので、添付していません。'],refused:['添付できません','Claude Code が受け付けませんでした。']};
+  binary:['テキストでない','文字にできないファイル（圧縮ファイル・音声・動画など）は添付していません。'],large:['大きすぎます','大きいので添付していません（文字のファイルは 1 MB、Excel などは 30 MB まで）。Claude が必要なら自分で読みます。'],
+  budget:['上限超え','ほかのファイルで添付の上限（20 万字）に達したので、添付していません。'],refused:['添付できません','Claude Code が受け付けませんでした。'],
+  legacy:['古い形式','.xls・.doc・.ppt からは中身を取り出せません。.xlsx・.docx・.pptx で保存し直すと添付できます。'],
+  unread:['読めません','中身を取り出せませんでした。パスワードが付いているか、壊れているかもしれません。'],
+  read:['Claude が開く','画像と PDF はこの画面からは添付できないので、Claude が Read で開いて見るように伝えました。']};
+// a file that went in as text taken out of it, or read in another encoding
+const ATT_AS={xlsx:['Excel','Excel のブックから、シートごとのセルの値を文字にして'],docx:['Word','Word の文書から文字を取り出して'],pptx:['PowerPoint','PowerPoint のスライドとノートから文字を取り出して'],
+  shift_jis:['Shift_JIS','Shift_JIS の文字として読んで'],'euc-jp':['EUC-JP','EUC-JP の文字として読んで'],'utf-16le':['UTF-16','UTF-16 の文字として読んで'],'utf-16be':['UTF-16','UTF-16 の文字として読んで']};
 function filesHTML(files){ if(!files||!files.length) return '';
-  return `<div class="att"><span class="ak">添付</span>${files.map(f=>{ const e=f.err&&ATT_ERR[f.err];
-    if(f.err) return `<span class="af bad" title="${esc(e?e[1]:f.err)}">@${esc(f.p)}<small>${esc(e?e[0]:f.err)}</small></span>`;
+  return `<div class="att"><span class="ak">添付</span>${files.map(f=>{ const e=f.err&&ATT_ERR[f.err], as=f.as&&ATT_AS[f.as];
+    if(f.err) return `<span class="af ${f.err==='read'?'ref':'bad'}" title="${esc(e?e[1]:f.err)}">@${esc(f.p)}<small>${esc(e?e[0]:f.err)}</small></span>`;
     const n= f.kind==='dir'? `${fmtN(f.lines||0)} 件` : f.shown&&f.lines&&f.shown<f.lines? `${fmtN(f.shown)} / ${fmtN(f.lines)} 行` : `${fmtN(f.lines||0)} 行`;
-    return `<span class="af" title="${f.kind==='dir'?'フォルダの中の一覧':'ファイルの中身'}を、この依頼といっしょに Claude に渡しました">@${esc(f.p)}<small>${n}</small></span>`; }).join('')}</div>`; }
+    return `<span class="af" title="${as? as[1]+'、' : f.kind==='dir'? 'フォルダの中の一覧を、' : 'ファイルの中身を、'}この依頼といっしょに Claude に渡しました">@${esc(f.p)}<small>${as? esc(as[0])+' · ' : ''}${n}</small></span>`; }).join('')}</div>`; }
 function foldHTML(n,t,preview,k){ return `<button class="fold" type="button" aria-expanded="true"><span class="tn">ターン ${n}</span>${t?`<span class="tm">${hm(t)}</span>`:''}<span class="p">${preview}</span><span class="k">${k}</span><span class="chev" aria-hidden="true"></span></button>`; }
 /* a turn's header opens and closes it; one the person opened or closed by hand stays as they left it */
 function foldBind(li){ const b=li.querySelector('.fold'); b.setAttribute('aria-expanded',String(!li.classList.contains('folded')));
@@ -2877,15 +2887,17 @@ document.addEventListener('keydown',e=>{
   const tag=(e.target.tagName||'').toLowerCase();
   if(tag==='textarea'||tag==='input'||tag==='select'||e.metaKey||e.ctrlKey||e.altKey||!$('scrim').hidden) return;
   if(/^[0-9]$/.test(e.key)&&(+e.key===0||chN(+e.key))){ select(+e.key); e.preventDefault(); }
-  if(e.key==='/'&&sel){ e.preventDefault(); $('ask').value='/'; $('ask').focus(); openPal(); } });
+  if(e.key==='/'&&sel){ e.preventDefault(); cmdStart(); } });
 
 /* ================= composer and its command palette ================= */
 const pal={items:[],i:0,open:false,mode:'cmd',tok:null,seq:0,wait:false,err:'',recent:false};
+let aside=null;          // {v, s, e}: the message being written when a command was started (cmdStart)
 function palQuery(){ const v=$('ask').value; return v.startsWith('/')? v.slice(1).split(/\s/)[0].toLowerCase() : ''; }
 function openPal(){ const c=chN(sel); if(!c||c.status==='off') return; const q=palQuery(); pal.mode='cmd'; pal.seq++; $('palTag').textContent='コマンド';
   const all=commandsFor(c); pal.items=all.filter(x=>!q||x.n.toLowerCase().includes(q)||x.d.toLowerCase().includes(q));
   pal.items.sort((a,b)=>(q&&a.n.startsWith(q)?0:1)-(q&&b.n.startsWith(q)?0:1)); pal.i=Math.min(pal.i,Math.max(0,pal.items.length-1));
   $('palSub').textContent=`ch.${c.num} ${c.name} で使えるもの ${all.length} 件（起動したフォルダで変わります）`;
+  $('palFt').textContent=`↑↓ で選ぶ · Enter で入れる · Esc で${aside&&aside.v.trim()?'やめて、書きかけに戻る':'閉じる'}`;
   renderPal(); $('pal').hidden=false; pal.open=true; $('ask').setAttribute('aria-expanded','true'); }
 function closePal(){ const was=pal.open; $('pal').hidden=true; pal.open=false; pal.seq++; $('ask').setAttribute('aria-expanded','false'); $('ask').removeAttribute('aria-activedescendant'); if(was) ctlHint(); }
 function renderPal(){ if(pal.mode==='file'){ renderFiles(); return; } let g='', html='';
@@ -2906,7 +2918,7 @@ function atToken(){ const a=$('ask'), v=a.value, i=a.selectionStart==null? v.len
 let fileTimer=0;
 function openFiles(t){ const c=chN(sel); if(!c||c.status==='off') return;
   if(pal.mode!=='file'||!pal.open||!pal.tok||pal.tok.q!==t.q) pal.i=0;
-  pal.mode='file'; pal.tok=t; $('palTag').textContent='ファイル';
+  pal.mode='file'; pal.tok=t; $('palTag').textContent='ファイル'; $('palFt').textContent='↑↓ で選ぶ · Enter で入れる · Esc で閉じる';
   $('palSub').textContent=`ch.${c.num} ${c.name} のフォルダ（${c.cwd}）から。送ると、選んだファイルの中身がこの依頼といっしょに Claude に渡ります`;
   if(!pal.open){ pal.items=[]; pal.wait=true; pal.err=''; renderPal(); $('pal').hidden=false; pal.open=true; $('ask').setAttribute('aria-expanded','true'); }
   clearTimeout(fileTimer); const seq=++pal.seq;
@@ -2936,9 +2948,10 @@ function demoFiles(q){ q=String(q||'').toLowerCase().replace(/^\.\//,'');
   const hits=demoTree().map(f=>[fileScore(f.p,q),f]).filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]||Number(a[1].d)-Number(b[1].d)||a[1].p.localeCompare(b[1].p));
   return {ok:true,files:hits.slice(0,40).map(x=>x[1])}; }
 function demoAttach(text){ const out=[], re=/(^|[\s(（「『【、。，．：；])@(?:"([^"\n]+)"|([^\s"]+))/g; let m;
-  while((m=re.exec(String(text)))&&out.length<10){ const raw=(m[2]||m[3]||'').trim(), p=(/^[\w./~@+#%=,-]+/.exec(raw)||[raw])[0].replace(/[,.]+$/,''), dir=p.replace(/\/$/,'');
+  while((m=re.exec(String(text)))&&out.length<10){ let raw=(m[2]||m[3]||'').trim(); const k=m[3]? raw.search(/[、。，．：；）」』】]@/) : -1; if(k>0){ raw=raw.slice(0,k); re.lastIndex=m.index+m[1].length+1+k; }
+    const p=(/^[\w./~@+#%=,-]+/.exec(raw)||[raw])[0].replace(/[,.]+$/,''), dir=p.replace(/\/$/,'');
     if(out.some(x=>x.p===p||x.p===dir+'/')) continue;
-    if(DEMO_FILES.includes(p)) out.push({p,kind:'file',lines:60+(p.length*37)%400});
+    if(DEMO_FILES.includes(p)) out.push(/\.(png|jpe?g|gif|webp|pdf)$/i.test(p)? {p,kind:'file',err:'read'} : /\.xlsx$/i.test(p)? {p,kind:'file',lines:38,shown:38,as:'xlsx'} : {p,kind:'file',lines:60+(p.length*37)%400});
     else if(DEMO_FILES.some(f=>f.startsWith(dir+'/'))) out.push({p:dir+'/',kind:'dir',lines:DEMO_FILES.filter(f=>f.startsWith(dir+'/')&&!f.slice(dir.length+1).includes('/')).length});
     else out.push({p:raw,err:/^(~|\/)/.test(raw)?'outside':'missing'}); }
   return out; }
@@ -2951,6 +2964,7 @@ function pickFile(i){ const x=pal.items[i], t=atToken()||pal.tok; if(!x||!t) ret
   closePal(); ctlHint(); }
 $('palList').addEventListener('mousedown',e=>{ const li=e.target.closest('.po'); if(li){ e.preventDefault(); pickPal(+li.dataset.i); } });
 $('ask').addEventListener('input',()=>{ const v=$('ask').value, t=atToken(); askFit();
+  if(!v&&aside){ closePal(); asideBack(); return; }      // the command was erased: back to what was being written
   if(t) openFiles(t);
   else if(v.startsWith('/')&&!/\s/.test(v)) { pal.i=0; openPal(); }
   else if(pal.open) closePal();
@@ -2962,15 +2976,26 @@ $('ask').addEventListener('keydown',e=>{
     if(e.key==='ArrowDown'){ e.preventDefault(); pal.i=Math.min(pal.items.length-1,pal.i+1); renderPal(); return; }
     if(e.key==='ArrowUp'){ e.preventDefault(); pal.i=Math.max(0,pal.i-1); renderPal(); return; }
     if((e.key==='Enter'||e.key==='Tab')&&!e.isComposing&&pal.items.length){ e.preventDefault(); pickPal(pal.i); return; }
-    if(e.key==='Escape'){ e.preventDefault(); closePal(); return; } }
+    if(e.key==='Escape'){ e.preventDefault(); const cmd=pal.mode==='cmd'; closePal(); if(cmd) asideBack(); return; } }
+  if(e.key==='Escape'&&aside&&!e.isComposing){ e.preventDefault(); asideBack(); return; }
   // the suggestion in the empty box: Tab (or →) takes it, as in the terminal
   if((e.key==='Tab'&&!e.shiftKey||e.key==='ArrowRight')&&!e.isComposing&&!$('ask').value&&takeSugg()){ e.preventDefault(); return; }
   if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); $('ctl').requestSubmit(); } });
-$('ask').addEventListener('blur',()=>setTimeout(()=>{ if(document.activeElement!==$('ask')) closePal(); },120));
-$('bCmd').addEventListener('click',()=>{ if(pal.open&&pal.mode==='cmd'){ closePal(); return; } if(!$('ask').value.startsWith('/')) $('ask').value='/'; $('ask').focus(); pal.i=0; openPal(); askFit(); });
+$('ask').addEventListener('blur',()=>setTimeout(()=>{ if(document.activeElement!==$('ask')){ closePal(); ctlHint(); } },120));
+$('ask').addEventListener('focus',()=>ctlHint());
+$('bCmd').addEventListener('click',()=>{ if(pal.open&&pal.mode==='cmd'){ closePal(); asideBack(); return; } cmdStart(); });
+/* the command button (and "/") puts what is being written aside, and it comes back once the command is sent, or put away
+   (Esc, the button again, the box emptied); a message sent in its place brings it back too */
+function cmdStart(){ const c=chN(sel); if(!c||c.status==='off') return; const a=$('ask'), v=a.value;
+  if(!v.startsWith('/')){       // (an empty box is kept too: put away, the command leaves no "/" behind)
+    if(v.trim()||!aside){ const was=aside&&aside.v, k=was? was.length+1 : 0; aside={v:(was? was+'\n' : '')+v,s:k+a.selectionStart,e:k+a.selectionEnd}; }
+    a.value='/'; }
+  a.focus(); a.setSelectionRange(a.value.length,a.value.length); pal.i=0; openPal(); askFit(); ctlHint(); }
+function asideBack(){ if(!aside) return false; const a=$('ask'), x=aside; aside=null; a.value=x.v; a.focus();
+  try{ a.setSelectionRange(x.s,x.e); }catch{} askFit(); ctlHint(); return true; }
 $('ctl').addEventListener('submit',e=>{ e.preventDefault(); const c=chN(sel), v=$('ask').value.trim(); if(!c||!v||c.status==='off') return;
-  if(v.startsWith('/')){ const m=v.slice(1).match(/^(\S+)\s*([\s\S]*)$/); if(!m) return; if(queueCmd(c,m[1],m[2].trim())){ $('ask').value=''; closePal(); askFit(); toEnd(false); } return; }
-  sendText(c,v); $('ask').value=''; closePal(); askFit(); ctlHint(); toEnd(false); });       // what you send is at the bottom: so are you
+  if(v.startsWith('/')){ const m=v.slice(1).match(/^(\S+)\s*([\s\S]*)$/); if(!m) return; if(queueCmd(c,m[1],m[2].trim())){ $('ask').value=''; closePal(); askFit(); toEnd(false); asideBack(); } return; }
+  sendText(c,v); $('ask').value=''; closePal(); askFit(); ctlHint(); toEnd(false); asideBack(); });       // what you send is at the bottom: so are you
 
 /* the message box grows with what is typed, a line at a time, up to a share of the window; past that it scrolls inside.
    The screen above gives up the room it takes (down to a floor), and a channel read to its end stays at its end */
@@ -3053,11 +3078,13 @@ function qDone(d,ev){ if(!d||d.classList.contains('done')) return; d.classList.r
   st.textContent= ev.err? '答えずに閉じられました（ターミナルで取り消したか、止めました）' : ev.by==='screen'? 'この画面で答えました' : 'ターミナルで答えました';
 }
 
-/* ================= Claude Code's guess at your next prompt (Tab takes it), and a command's arguments ================= */
+/* ================= Claude Code's guess at your next prompt (Tab takes it), a command's arguments, the message put aside ================= */
 function ctlHint(){ const c=chN(sel), h=$('ctlHint'), sb=$('bSugg');
   if(!c){ h.hidden=true; sb.hidden=true; return; }
-  const v=$('ask').value, m=/^\/(\S+)(\s*)$/.exec(v), cmd=!pal.open&&m&&commandsFor(c).find(x=>x.n===m[1]);
-  const html= cmd&&cmd.h? `<span class="hk">引数</span><code>/${esc(cmd.n)}</code> <span class="ah">${esc(cmd.h)}</span>${cmd.d?` <span class="ad">${esc(cmd.d)}</span>`:''}` : '';
+  // over the box while it is in use: a command's arguments, and the message put aside for the command
+  const v=$('ask').value, on=!pal.open&&document.activeElement===$('ask'), m=/^\/(\S+)(\s*)$/.exec(v), cmd=on&&m&&commandsFor(c).find(x=>x.n===m[1]);
+  const html=(cmd&&cmd.h? `<div class="ar"><span class="hk">引数</span><code>/${esc(cmd.n)}</code> <span class="ah">${esc(cmd.h)}</span>${cmd.d?` <span class="ad">${esc(cmd.d)}</span>`:''}</div>` : '')
+    +(on&&aside&&aside.v.trim()? `<div class="ar"><span class="hk t">書きかけ</span><span class="aw">${esc(cut1(aside.v,90))}</span><span class="ad">${v.startsWith('/')?'コマンドを送るか、Esc でやめると戻ります':'送ると戻ります'}</span></div>` : '');
   if(h.dataset.key!==html){ h.dataset.key=html; h.innerHTML=html; } h.hidden=!html;
   const sg=!v&&!!c.suggest&&c.status==='idle'; if(sb.hidden===sg){ sb.hidden=!sg; $('ctl').classList.toggle('sg',sg); } }
 $('bSugg').addEventListener('click',()=>{ takeSugg(); });

@@ -185,6 +185,9 @@ tr:last-child td{border-bottom:0}
 th{font-size:12px;letter-spacing:.06em;color:var(--mute);font-weight:500;background:color-mix(in srgb,var(--line) 45%,transparent)}
 td:first-child{white-space:nowrap}
 td.w{white-space:normal;width:34%}
+.tbl.fit table{min-width:0}
+.tbl.fit td.w{width:30%}
+td small{display:block;margin-top:3px;font-size:11.5px;color:var(--mute);font-weight:400}
 kbd{font:600 12px/1 var(--f-mono);padding:3px 6px;border-radius:6px;border:1px solid var(--line);border-bottom-width:2px;background:var(--paper);color:var(--ink)}
 
 .rules{margin:10px 0 0;padding-left:1.2em;display:grid;gap:6px;max-width:46em;color:var(--mute);font-size:14px}
@@ -210,7 +213,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
 <!-- body -->
 <div class="page" lang="ja">
   <header class="cover">
-    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.5.6</span></div>
+    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.5.7</span></div>
     <h1><span class="mark">FOGCAST</span><span class="ja">霧読み</span></h1>
     <p class="lead">Claude Code を何本ものターミナルで動かしているときに、すべての会話・道具の呼び出し・使用量を、ブラウザの 1 画面にまとめて映す Mod です。画面から依頼を送る、<code>/</code> のコマンドを実行する、ツールの実行を許可する、といった操作もできます。</p>
     <dl class="facts">
@@ -263,7 +266,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <div class="cmd"><code>node -v &amp;&amp; claude --version</code><button class="copy" type="button">コピー</button></div></li>
           <li><b class="t">zip を解凍して、ホームフォルダに置く</b>
             <p>ダウンロードフォルダにある場合は、次のコマンドで <code>~/fogcast</code> ができます。</p>
-            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.5.6.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.5.7.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>Finder でダブルクリックして、できた <code>fogcast</code> フォルダをホームフォルダに移してもかまいません。中にある <code>.claude-plugin</code> は見えないフォルダなので、中身だけを選ばずにフォルダごと移してください。</p></li>
           <li><b class="t">マーケットプレイスとして追加する</b>
             <div class="cmd"><code>claude plugin marketplace add ~/fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -290,7 +293,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td>画面</td><td>Windows のブラウザで見ます。<code>/fog</code> で Windows の既定のブラウザが開きます（0.1.2 から）。WSL2 は localhost を Windows に転送するので、<code>http://127.0.0.1:4317</code> で届きます。</td></tr>
           </tbody>
         </table></div>
-        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.5.6.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
+        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.5.7.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
         <p class="note"><span class="lb">お知らせ</span><span>Windows のブラウザでつながらないときは、PowerShell で <code>wsl --shutdown</code> を実行してから WSL を開き直すと直ることがあります。</span></p>
       </section>
 
@@ -337,7 +340,8 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td class="w">チャンネルを切り替える</td><td><kbd>0</kbd>〜<kbd>9</kbd> のキー（<kbd>0</kbd> は全チャンネル）。ダイヤル、タイル、番組表の帯を押しても切り替わります。</td></tr>
             <tr><td class="w">依頼を送る</td><td>送信欄に書いて <kbd>Enter</kbd>（改行は <kbd>Shift</kbd>+<kbd>Enter</kbd>）。そのターミナルで入力したのと同じ扱いです。Claude が作業中なら、今のターンが終わってから始まります。</td></tr>
             <tr><td class="w">コマンドやスキルを実行する</td><td>送信欄で <kbd>/</kbd> を打って一覧から選びます。</td></tr>
-            <tr><td class="w">ファイルを指定する</td><td>送信欄で <kbd>@</kbd> を打って一覧から選びます。中身が依頼といっしょに Claude に渡ります。</td></tr>
+            <tr><td class="w">ファイルを指定する</td><td>送信欄で <kbd>@</kbd> を打って一覧から選びます。中身が依頼といっしょに Claude に渡ります（Excel・Word・PowerPoint は文字にして）。</td></tr>
+            <tr><td class="w">書きかけのままコマンドを使う</td><td>「<b>/</b> コマンド」を押します。書きかけの文はよけておかれ、コマンドを送るか <kbd>Esc</kbd> でやめると送信欄に戻ります。</td></tr>
             <tr><td class="w">次の入力の提案を使う</td><td>空の送信欄で <kbd>Tab</kbd>（または <kbd>→</kbd>）。送信欄の右端の「提案を入れる」を押しても入ります。</td></tr>
             <tr><td class="w">前のやりとりを読み返す</td><td>レールの「履歴」でカードを押すと、その会話の位置に飛びます。</td></tr>
             <tr><td class="w">最新に戻る</td><td>右下の <b>↓</b> を押します。読み返しているあいだに届いたメッセージの数が出ます。</td></tr>
@@ -363,9 +367,20 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <p class="muted">長い文を書くと、送信欄は行に合わせて広がります。画面の高さのおよそ 3 分の 1（スマホでは 3 割）まで広がったら、それより先は送信欄の中でスクロールします。そのぶん上の画面が縮み、会話のいちばん下を見ていたなら、いちばん下が見えたままです。送ると元の高さに戻ります。</p>
             <h3>ファイルを指定する（@）</h3>
             <p class="muted">送信欄で <kbd>@</kbd> を打つと、そのチャンネルのフォルダのファイルとフォルダの一覧が出ます（最初は最近変わったファイル。git が無視するものは出ません）。続けて名前の一部を打つと絞り込めます。<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> か <kbd>Tab</kbd> で <code>@パス</code> として入ります。フォルダを選ぶと、その中が続けて出ます。送ると、指定したファイルの中身がこの依頼といっしょに Claude に渡ります（ターミナルの <code>@</code> と同じ扱いです）。依頼の吹き出しの下には「添付」として、渡したファイルと行数が出ます。</p>
+            <div class="tbl fit"><table>
+              <thead><tr><th>ファイル</th><th>Claude に渡すもの</th></tr></thead>
+              <tbody>
+                <tr><td class="w">文字のファイル<small>コード・Markdown・CSV など</small></td><td>中身をそのまま（ターミナルの <code>@</code> と同じく、行番号つき）。Excel で保存した CSV のような Shift_JIS や、UTF-16 の文字も読み直して渡し、「添付」に「Shift_JIS」などと出ます。</td></tr>
+                <tr><td class="w">Excel<small>.xlsx・.xlsm</small></td><td>シートごとに、セルの値を表の形の文字にして渡します。列は A・B・C…、行は Excel の行番号のままなので、「B12 の値」のように話せます。値は最後に保存したときのもので、数式そのものは渡しません（値が保存されていない数式だけ <code>=C2*2</code> のように式を渡します）。日付は <code>2026-04-01</code> の形。隠したシートには印が付きます。書式・グラフ・画像は渡しません。</td></tr>
+                <tr><td class="w">Word<small>.docx</small></td><td>本文の文字。表はセルをタブで区切ります。消した変更履歴の文字は入れません。</td></tr>
+                <tr><td class="w">PowerPoint<small>.pptx</small></td><td>スライドごとの文字と、発表者のノート。非表示のスライドには印が付きます。</td></tr>
+                <tr><td class="w">画像と PDF<small>.png・.jpg・.gif・.webp・.pdf</small></td><td>この画面からは添付できないので、Claude に Read で開いて見るよう伝えます（Read は画像と PDF をそのまま読めます）。「添付」には「Claude が開く」と出ます。</td></tr>
+                <tr><td class="w">渡さないもの</td><td>古い形式の <code>.xls</code>・<code>.doc</code>・<code>.ppt</code>（<code>.xlsx</code> などで保存し直すと渡せます）、パスワード付きのファイル、圧縮ファイル・音声・動画など。「添付」にその理由が出ます。</td></tr>
+              </tbody>
+            </table></div>
             <ul class="rules">
-              <li>渡すのは、そのターミナルのフォルダの中にあるものだけです。フォルダの外のパス、画像やバイナリ、1 MB を超えるファイルは渡さず、「添付」にそのことを出します（Claude が必要なら自分で Read で読みます）。</li>
-              <li>長いファイルは先頭の 2000 行まで、1 つの依頼で全部で 20 万字までです。フォルダを指定すると、その中の一覧を渡します。</li>
+              <li>渡すのは、そのターミナルのフォルダの中にあるものだけです。フォルダの外のパスは渡さず、「添付」にそのことを出します（Claude が必要なら自分で読みます）。</li>
+              <li>文字のファイルは 1 MB まで、Excel などは 30 MB までです。長いファイルは先頭の 2000 行（Excel などは文字にして 10 万字）まで、1 つの依頼で全部で 20 万字までで、続きは Claude が必要なら自分で読みます。フォルダを指定すると、その中の一覧を渡します。</li>
               <li>Claude Code は、プラグインから送った依頼の <code>@</code> を自分では展開しません。そこで Fogcast が送る直前にファイルを読み、Claude だけが読む形で依頼の直前に入れています（ターミナルの画面には出ません）。作業中に送ったときは、今のターンが終わってから、ファイルと依頼をいっしょに入れます。</li>
             </ul>
             <h3>次の入力の提案</h3>
@@ -380,6 +395,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
               <li><b>ターミナルで打つ</b>：<code>/recap</code> など、Claude Code が本人がターミナルで打ったときだけ実行するもの。この画面からは送りません。</li>
             </ul>
             <p class="muted"><code>/clear</code> は確認してから実行します。作業中に実行したコマンドは、今のターンが終わってから実行します。ターミナルで打ったコマンドも、その結果の 1 行（「Set effort level to high」など）がこの画面に出ます。</p>
+            <p class="muted">送信欄に書きかけの文があるときに「<b>/</b> コマンド」を押すと（送信欄の外で <kbd>/</kbd> を押しても）、書きかけの文はよけておかれ、送信欄が <code>/</code> になります。よけているあいだは、送信欄の上に「書きかけ」として出ます。コマンドを送るか、<kbd>Esc</kbd>・もう一度「<b>/</b> コマンド」・<code>/</code> を消すのどれかでやめると、書きかけの文が送信欄に戻ります（コマンドの代わりにほかの文を送ったときも、そのあとで戻ります）。</p>
             <h3>前の会話に戻る（/resume）</h3>
             <p class="muted"><code>/resume</code> を選ぶと、そのチャンネルのフォルダで前に話した会話の一覧が出ます。並びと名前はターミナルの <code>/resume</code> の一覧と同じで、<code>/rename</code> で付けた名前、なければ Claude Code が付けた名前、それもなければ最初の依頼で出ます（いつ、大きさ、最後の依頼も）。言葉で絞り込めます。「再開」を押すと、ターミナルで <code>/resume</code> したのと同じく、そのチャンネルが選んだ会話の続きになります。チャンネルは終わらずにそのまま続き、会話の欄には「前の会話を再開しました」と、その会話の最後の 20 往復までが出ます。それまでの会話は残っていて、同じ一覧からまた戻れます。ターミナルで <code>/resume</code> したときも、同じように出ます。</p>
             <ul class="rules">
@@ -500,7 +516,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
           <thead><tr><th>キー</th><th>すること</th></tr></thead>
           <tbody>
             <tr><td><kbd>0</kbd>〜<kbd>9</kbd></td><td>チャンネルを切り替えます（<kbd>0</kbd> は全チャンネル）。</td></tr>
-            <tr><td><kbd>/</kbd></td><td>開いているチャンネルのコマンドの一覧を出します。<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> で入れ、<kbd>Esc</kbd> で閉じます。<code>/resume</code>・<code>/model</code>・<code>/effort</code> は、この画面に選ぶ画面が開きます。</td></tr>
+            <tr><td><kbd>/</kbd></td><td>開いているチャンネルのコマンドの一覧を出します。<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> で入れ、<kbd>Esc</kbd> で閉じます。書きかけの文は、コマンドのあとに送信欄に戻ります。<code>/resume</code>・<code>/model</code>・<code>/effort</code> は、この画面に選ぶ画面が開きます。</td></tr>
             <tr><td><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>送信 / 改行。質問のカードの「ほかの答え」でも同じです（<kbd>Enter</kbd> で答えます）。</td></tr>
             <tr><td><kbd>Tab</kbd> / <kbd>→</kbd></td><td>空の送信欄に、Claude Code の次の入力の提案を入れます。</td></tr>
             <tr><td><kbd>@</kbd></td><td>送信欄で、そのチャンネルのフォルダのファイルの一覧を出します。</td></tr>
@@ -515,7 +531,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>新しい版に更新する</h3>
         <ol class="steps">
           <li><b class="t">新しい zip で <code>~/fogcast</code> を上書きする</b>
-            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.5.6.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.5.7.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>ファイル名は受け取った版に合わせてください。</p></li>
           <li><b class="t">版を更新する</b>
             <div class="cmd"><code>claude plugin update fogcast@fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -576,7 +592,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>仕様</h3>
         <div class="tbl"><table>
           <tbody>
-            <tr><td>版</td><td>0.5.6</td></tr>
+            <tr><td>版</td><td>0.5.7</td></tr>
             <tr><td>必要なもの</td><td>Claude Code 2.1.290 以降（Mod が使える版）、Node.js 18 以上</td></tr>
             <tr><td>日付の区切り</td><td>画面（ブラウザ）の時計に合わせます。WSL の時計が Windows と違う地域になっていても、カレンダーと連続日数は画面の日付で数えます（0.3.0 から）。</td></tr>
             <tr><td>確かめた環境</td><td>Linux。WSL は、Windows のブラウザを開くところを Linux 上で見立てて確かめました。macOS とネイティブの Windows はまだ確かめていません。</td></tr>
@@ -584,7 +600,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td>コンテキストへの影響</td><td>毎回のコンテキストに足すものはありません（<code>claude plugin details</code> で約 0 トークン）。増えるのは、コマンドの一覧の <code>/fog</code> 1 行と、<code>/fog</code> を実行したときの結果 1 行だけです。読み込んだスキル・エージェント・MCP の一覧と、スキルやエージェントの説明、コマンドの引数、次の入力の提案は、Claude Code の手元の情報から読むだけで、モデルには送りません。画面から答えた質問は、ターミナルで答えたときと同じ答えとして Claude に渡ります。</td></tr>
             <tr><td>受け皿の終了</td><td>ターミナルも画面もつながっていない状態が 20 分続くと、自動で終わります。次に <code>claude</code> を起動すると、自動で起動します。</td></tr>
             <tr><td>保存するもの</td><td><code>~/.fogcast/</code> に、鍵（token）、state.json（コミュの使用回数と最近の使用（カードごとに直近 20 回の、依頼の書き出しや道具の入力の要約）、使用枠の読み取り、日ごとの記録（ターン数・トークン・料金、チャンネル名ごとの内訳、使ったものの回数。35 日ぶん）、ステータス（EXP・能力・記録）、終わったセッションの再開 ID と最初の依頼の書き出し）、hub.log。会話の本文（返答や道具の結果の全文）と、送ってまだ始まっていない文は受け皿のメモリにだけ置き、ファイルには書きません。</td></tr>
-            <tr><td>@ の一覧と添付</td><td>送信欄で <code>@</code> を打ったとき、受け皿がそのチャンネルのフォルダのファイル名を読みます（git があれば <code>git ls-files</code>、なければフォルダをたどり、<code>node_modules</code> などは飛ばします）。送るときは、<code>@</code> で指定したファイルの中身をターミナル側の Mod が読み、Claude に渡します。どちらも保存はしません。</td></tr>
+            <tr><td>@ の一覧と添付</td><td>送信欄で <code>@</code> を打ったとき、受け皿がそのチャンネルのフォルダのファイル名を読みます（git があれば <code>git ls-files</code>、なければフォルダをたどり、<code>node_modules</code> などは飛ばします）。送るときは、<code>@</code> で指定したファイルの中身をターミナル側の Mod が読み、Claude に渡します。Excel・Word・PowerPoint と UTF-8 でない文字のファイルは、Mod に頼まれた受け皿が、そのチャンネルのフォルダの中にあることを確かめてから読み、文字にして返します（ファイルの中の XML から文字を取り出すだけで、マクロは動かさず、ほかのアプリも使いません）。どれも保存はしません。</td></tr>
             <tr><td>読むもの</td><td>Claude Code の会話のファイル（<code>~/.claude/projects/…/&lt;セッション ID&gt;.jsonl</code>）は、<code>/resume</code> の一覧を開いたとき（各ファイルの最初と最後だけ）と、会話を再開したとき（その会話の最後の部分）にだけ読みます。読むのは、そのチャンネルのフォルダの会話だけです。</td></tr>
           </tbody>
         </table></div>
@@ -602,7 +618,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
     </main>
   </div>
 
-  <footer><span>Fogcast（霧読み）0.5.6 取扱説明書</span><span>画面の歯車（設定）の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
+  <footer><span>Fogcast（霧読み）0.5.7 取扱説明書</span><span>画面の歯車（設定）の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
 </div>
 <script>
 (function(){

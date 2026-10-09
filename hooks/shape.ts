@@ -211,7 +211,10 @@ export function mentionsOf(text: string): string[] {
   const re = /(^|[\s(（「『【、。，．：；])@(?:"([^"\n]+)"|([^\s"]+))/g
   let m: RegExpExecArray | null
   while ((m = re.exec(String(text || ''))) && out.length < 10) {
-    const p = (m[2] ?? m[3] ?? '').trim()
+    let p = (m[2] ?? m[3] ?? '').trim()
+    // 「@a.ts、@b.ts」: a mark of Japanese punctuation right before another @ ends this one, and the next starts there
+    const k = m[3] ? p.search(/[、。，．：；）」』】]@/) : -1
+    if (k > 0) { p = p.slice(0, k); re.lastIndex = m.index + m[1]!.length + 1 + k }
     if (p && !out.includes(p)) out.push(p)
   }
   return out
@@ -224,6 +227,9 @@ export function mentionsOf(text: string): string[] {
 export function mentionCandidates(p: string): string[] {
   const out = [p]
   const trimmed = p.replace(/[,.;:!?)\]}」』】、。，．！？）]+$/u, ''); if (trimmed && !out.includes(trimmed)) out.push(trimmed)
+  // a name in Japanese runs into the sentence (`@売上.xlsxを見て`): it ends after an extension
+  const ends = [...p.matchAll(/\.[A-Za-z0-9]{1,10}(?=[^A-Za-z0-9]|$)/g)].map(m => m.index! + m[0].length).reverse()
+  for (const e of ends) { const c = p.slice(0, e); if (!out.includes(c)) out.push(c) }
   const head = /^[\w./~@+#%=,-]+/.exec(p)?.[0]?.replace(/[,.]+$/, ''); if (head && !out.includes(head)) out.push(head)
   return out
 }
@@ -240,6 +246,18 @@ export function numbered(text: string, maxLines: number, maxChars: number): { bo
     out.push(row); size += row.length + 1
   }
   return { body: out.join('\n'), lines: all.length, shown: out.length }
+}
+
+/** A converted file's text (a workbook, a document) as it goes to the model: whole lines up to `maxChars`, unnumbered. */
+export function cutText(text: string, maxChars: number): { body: string; lines: number; shown: number; cut: boolean } {
+  const all = String(text).replace(/\r\n?/g, '\n').replace(/\n+$/, '').split('\n')
+  const out: string[] = []
+  let size = 0, cut = false
+  for (const l of all) {
+    if (size + l.length + 1 > maxChars) { if (!out.length) out.push(l.slice(0, Math.max(0, maxChars - 1)) + '…'); cut = true; break }
+    out.push(l); size += l.length + 1
+  }
+  return { body: out.join('\n'), lines: all.length, shown: out.length, cut }
 }
 
 /** A longer text kept with its line breaks (a skill's description): trimmed, blank runs closed up, cut at `n`. */
