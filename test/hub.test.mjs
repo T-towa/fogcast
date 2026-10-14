@@ -241,6 +241,73 @@ test('each day keeps its turns, tokens, cost and what was used; a terminal\'s re
   assert.deepEqual(snap.chans.find(c => c.id === 'chan-day-2').events.map(e => e.k), ['turn', 'tool', 'toolEnd', 'turnEnd'])
 })
 
+test('today\'s usage goes on across sessions: a session begun under this hub counts from nothing, a resume\'s restored cost is not counted', async () => {
+  const d = new Date(), today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const ctx = { tokens: 1000, window: 200000, percent: 1 }, t = Date.now()
+  const day = async () => { const s = stream('screen-today'); const m = await s.wait(x => x.type === 'hello'); s.stop(); return m.usage.daily[today].chans.find(x => x.name === 'todaybook') }
+  // a new terminal: its first reading already carries its first turn's cost
+  await req('POST', '/api/mod/hello', { chan: 'chan-today-1', sid: 's-t1', cwd: '/home/me/dev/todaybook', startedAt: Date.now() })
+  await req('POST', '/api/mod/sync', { chan: 'chan-today-1', events: [
+    { k: 'turn', t, id: 'tt1', text: 'x' }, { k: 'turnEnd', t, id: 'tt1', ms: 5, usage: { in: 10, out: 5, cw: 5, cr: 0 } },
+    { k: 'measure', t, ctx, limits: [], usd: 0.4 },
+  ] })
+  assert.deepEqual([(await day()).tok, (await day()).usd], [20, 0.4])
+  // it resumes another conversation, whose cost so far comes back with it: that is not today's
+  await req('POST', '/api/mod/sync', { chan: 'chan-today-1', events: [
+    { k: 'resumed', t, from: 's-t1', sid: 's-t1b', title: '前の会話' }, { k: 'measure', t, ctx, limits: [], usd: 5.4 }, { k: 'measure', t, ctx, limits: [], usd: 5.7 },
+  ] })
+  assert.equal((await day()).usd, 0.7)
+  // that terminal goes and another of the same folder starts: the day's row for the folder goes on
+  await req('POST', '/api/mod/bye', { chan: 'chan-today-1', reason: 'exit' })
+  await req('POST', '/api/mod/hello', { chan: 'chan-today-2', sid: 's-t2', cwd: '/home/me/dev/todaybook', startedAt: Date.now() })
+  await req('POST', '/api/mod/sync', { chan: 'chan-today-2', events: [
+    { k: 'turn', t, id: 'tt2', text: 'y' }, { k: 'turnEnd', t, id: 'tt2', ms: 5, usage: { in: 30, out: 0, cw: 0, cr: 0 } }, { k: 'measure', t, ctx, limits: [], usd: 0.1 },
+  ] })
+  const row = await day()
+  assert.deepEqual([row.turns, row.tok, row.usd], [2, 50, 0.8])
+})
+
+test('an image attached on the screen is checked and kept; only a key holder sees it again, and it goes to the terminal with its message', async () => {
+  await req('POST', '/api/mod/hello', { chan: 'chan-img', mod: '0.6.0', sid: U(40), cwd: '/home/me/dev/pics' })
+  const png = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.alloc(40, 7)])
+  const up = await req('POST', '/api/ui/image', { chan: 'chan-img', name: 'shot.png', type: 'image/png', data: png.toString('base64') })
+  assert.equal(up.status, 200); assert.match(up.json.id, /^[0-9a-f]{16}$/)
+  // what the bytes are decides, not what the screen says
+  assert.equal((await req('POST', '/api/ui/image', { chan: 'chan-img', type: 'image/png', data: Buffer.from('<svg onload=alert(1)>').toString('base64') })).status, 415)
+  assert.equal((await req('POST', '/api/ui/image', { chan: 'chan-img', type: 'image/png', data: '' })).status, 400)
+  // seen again with the key, as itself
+  const got = await new Promise((resolve, reject) => http.get({ host: '127.0.0.1', port: PORT, path: `/api/ui/image?id=${up.json.id}`, headers: { 'x-fogcast-token': TOKEN } }, r => {
+    const ch = []; r.on('data', d => ch.push(d)); r.on('end', () => resolve({ status: r.statusCode, type: r.headers['content-type'], body: Buffer.concat(ch) })) }).on('error', reject))
+  assert.deepEqual([got.status, got.type, got.body.equals(png)], [200, 'image/png', true])
+  assert.equal((await req('GET', `/api/ui/image?id=${up.json.id}`, undefined, { 'x-fogcast-token': 'nope' })).status, 401)
+  assert.equal((await req('GET', '/api/ui/image?id=0123456789abcdef')).status, 404)
+  assert.equal((await req('GET', '/api/ui/image?id=../token')).status, 404)
+  // sent with a message: the terminal gets where it is kept; the screens see it pending and then on the turn
+  const s = stream('screen-img'); await s.wait(m => m.type === 'hello')
+  assert.equal((await req('POST', '/api/ui/send', { chan: 'chan-img', text: '', imgs: ['0123456789abcdef'] })).status, 410)
+  const sent = await req('POST', '/api/ui/send', { chan: 'chan-img', text: '', imgs: [up.json.id], local: 'L1' })
+  const pend = await s.wait(m => m.type === 'chan' && m.chan.id === 'chan-img' && m.chan.pending.length)
+  assert.deepEqual([pend.chan.pending[0].text, pend.chan.pending[0].imgs], ['（画像 1 枚）', [up.json.id]])
+  const sync = await req('POST', '/api/mod/sync', { chan: 'chan-img', events: [] })
+  const cmd = sync.json.commands.find(c => c.type === 'prompt')
+  assert.equal(cmd.text, '（画像 1 枚）')
+  assert.deepEqual(cmd.imgs, [{ id: up.json.id, path: join(HOME, 'uploads', `${up.json.id}.png`) }])
+  await req('POST', '/api/mod/sync', { chan: 'chan-img', events: [{ k: 'turn', t: Date.now(), id: 'ti', text: '（画像 1 枚）', via: 'screen', cid: sent.json.id }] })
+  const t = await s.wait(m => m.type === 'ev' && m.ev.k === 'turn' && m.ev.id === 'ti')
+  assert.deepEqual(t.ev.imgs, [up.json.id])
+  s.stop()
+})
+
+test('a message with quotes at its head is labelled by its own words', async () => {
+  await req('POST', '/api/mod/hello', { chan: 'chan-quote', mod: '0.6.0', sid: U(41), cwd: '/home/me/dev/quotes' })
+  const text = '> 引用：ターン 2 · Claude の返答\n> 長い説明の一部\n>\n> 続き\n\nここをもう少し詳しく'
+  await req('POST', '/api/mod/sync', { chan: 'chan-quote', events: [{ k: 'turn', t: Date.now(), id: 'tq', text }] })
+  const s = stream('screen-quote'); const m = await s.wait(x => x.type === 'hello'); s.stop()
+  const c = m.chans.find(x => x.id === 'chan-quote')
+  assert.equal(c.blocks.at(-1).label, 'ここをもう少し詳しく')
+  assert.equal(c.events.find(e => e.k === 'turn').text, text)          // the message itself goes on whole
+})
+
 test('a project\'s own skills join コミュ when loaded; one from everywhere only when called', async () => {
   await req('POST', '/api/mod/hello', { chan: 'chan-sk', mod: '0.2.0', sid: 's-sk', cwd: '/home/me/dev/skills', links: [
     { id: 'skill:house-style', kind: 'skill', label: 'house-style', src: '.claude', dt: 90 },
@@ -625,7 +692,7 @@ test('@ in the message box lists the terminal\'s files: what git does not ignore
   put('README.md', '# r', 50); put('src/app.ts', 'a', 5); put('src/lib/apply.ts', 'b', 30); put('src/lib/util.ts', 'c', 40); put('docs/api.md', 'd', 20)
   put('secret.env', 's', 1); put('node_modules/pkg/index.js', 'n', 2); put('.gitignore', 'secret.env\nnode_modules/\n', 90)
   const git = spawnSync('git', ['-C', proj, 'init', '-q']).status === 0
-  await req('POST', '/api/mod/hello', { chan: 'chan-files', mod: '0.5.8', sid: U(30), cwd: proj })
+  await req('POST', '/api/mod/hello', { chan: 'chan-files', mod: '0.6.0', sid: U(30), cwd: proj })
   const files = async q => (await req('POST', '/api/ui/files', { chan: 'chan-files', q })).json
   const app = await files('app')
   assert.equal(app.ok, true)
@@ -643,19 +710,19 @@ test('@ in the message box lists the terminal\'s files: what git does not ignore
   // outside a repository: walked, the folders that are never meant left out
   const plain = mkdtempSync(join(tmpdir(), 'fogcast-plain-'))
   mkdirSync(join(plain, 'node_modules', 'x'), { recursive: true }); writeFileSync(join(plain, 'node_modules', 'x', 'i.js'), 'n'); writeFileSync(join(plain, 'notes.txt'), 'n')
-  await req('POST', '/api/mod/hello', { chan: 'chan-plain', mod: '0.5.8', sid: U(31), cwd: plain })
+  await req('POST', '/api/mod/hello', { chan: 'chan-plain', mod: '0.6.0', sid: U(31), cwd: plain })
   const listed = async q => (await req('POST', '/api/ui/files', { chan: 'chan-plain', q })).json.files.map(f => f.p)
   assert.deepEqual(await listed('notes'), ['notes.txt'])
   assert.deepEqual(await listed('i.js'), [])
   // a terminal whose folder is gone: said so
-  await req('POST', '/api/mod/hello', { chan: 'chan-gone', mod: '0.5.8', sid: U(32), cwd: join(plain, 'gone') })
+  await req('POST', '/api/mod/hello', { chan: 'chan-gone', mod: '0.6.0', sid: U(32), cwd: join(plain, 'gone') })
   const gone = (await req('POST', '/api/ui/files', { chan: 'chan-gone', q: 'a' })).json
   assert.equal(gone.ok, false)
   rmSync(proj, { recursive: true, force: true }); rmSync(plain, { recursive: true, force: true })
 })
 
 test('a turn carries the files its prompt named with @, as the terminal attached them', async () => {
-  await req('POST', '/api/mod/hello', { chan: 'chan-att', mod: '0.5.8', sid: U(33), cwd: '/home/me/dev/att' })
+  await req('POST', '/api/mod/hello', { chan: 'chan-att', mod: '0.6.0', sid: U(33), cwd: '/home/me/dev/att' })
   const s = stream('screen-att'); await s.wait(m => m.type === 'hello')
   await req('POST', '/api/mod/sync', { chan: 'chan-att', events: [{ k: 'turn', t: Date.now(), id: 'ta', text: '@src/a.ts を見て', via: 'screen', files: [
     { p: 'src/a.ts', kind: 'file', lines: 120, shown: 120 }, { p: 'src/', kind: 'dir', lines: 4 }, { p: 'x.ts', err: 'missing' }, { p: 'y', err: '<script>' }, { nope: 1 },
@@ -729,7 +796,7 @@ test('@ hands Claude what an Excel, Word or PowerPoint file says, and a text sav
   writeFileSync(join(dir, 'broken.xlsx'), 'not a zip')
   writeFileSync(join(HOME, 'outside.csv'), 'a,b\n')
   symlinkSync(join(HOME, 'outside.csv'), join(dir, 'link.csv'))
-  await req('POST', '/api/mod/hello', { chan: 'chan-doc', mod: '0.5.8', sid: U(34), cwd: dir })
+  await req('POST', '/api/mod/hello', { chan: 'chan-doc', mod: '0.6.0', sid: U(34), cwd: dir })
   const doc = async p => (await req('POST', '/api/mod/doc', { chan: 'chan-doc', path: p.startsWith('/') ? p : join(dir, p) })).json
   assert.deepEqual(await doc('book.xlsx'), { ok: true, kind: 'xlsx', text: [
     '## 売上', 'row\tA\tB\tC\tD\tE\tF', '1\t日付\t店舗\t数量', '2\t2026-04-01\tA & B\t12\t=C2*2\t36\tTRUE', '4\t2026-04-01 13:45', '## 控え (hidden sheet)', '(empty)'].join('\n') })

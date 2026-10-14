@@ -155,16 +155,24 @@ function openDay(d){ const w=new Date(d).getDay(), today=d===dayStart(Date.now()
     <h3>よく使ったもの</h3>${r.links.length? `<ul class="daylinks">${r.links.map(x=>`<li><span class="k k-${x.kind}">${KIND[x.kind]||x.kind}</span><b>${esc(x.label)}</b><span class="n">${x.n} 回</span></li>`).join('')}</ul>` : '<p class="note">ツールやスキルは使われていません。</p>'}
     <p class="note">トークンは入力・出力・キャッシュ作成の合計です（キャッシュの読み込み ${fmt(r.cr)} は含みません）。料金は、Claude Code が数えた金額のうち、この日に増えた分です。</p>`;
   openSheet(`<div class="hd"><span class="tag teal">${today?'今日':'記録'}</span><button class="btn small" type="button" data-close>閉じる</button></div><h2 id="sheetT">${md(d)}（${DOW[w]}）の使用</h2>${body}`); }
-function usesBlk(){ const maxT=Math.max(1,...CH.map(c=>c.tok)), tt=CH.reduce((a,c)=>a+c.tok,0), tc=CH.reduce((a,c)=>a+c.cost,0);
+/* today's tokens and cost by channel. The live page takes them from the hub's record of the day, which goes on across
+   sessions (/clear, a new claude, a channel put away, the hub restarting) and starts again at midnight; a channel by the
+   same folder name adds to the same row. The demo adds up its channels */
+function todayUse(){
+  if(!LIVE) return {rows:CH.map(c=>({nums:[c.num],name:c.name,tok:c.tok,usd:c.cost})),tok:CH.reduce((a,c)=>a+c.tok,0),usd:CH.reduce((a,c)=>a+c.cost,0)};
+  const r=(G.daily||{})[dk(dayStart(Date.now()))], on=CH.filter(c=>c.status!=='off');
+  const rows=(r? r.chans : []).map(x=>({nums:on.filter(c=>c.name===x.name).map(c=>c.num),name:x.name,tok:x.tok,usd:x.usd}));
+  for(const c of on) if(!rows.some(x=>x.name===c.name)) rows.push({nums:[c.num],name:c.name,tok:0,usd:0});
+  return {rows,tok:r? r.tok : 0,usd:r? r.usd : 0}; }
+function usesBlk(){ const T=todayUse(), maxT=Math.max(1,...T.rows.map(x=>x.tok));
   return `<div class="blk"><h3>今日の使用量<small>チャンネル別のトークンとコスト</small></h3><div class="uses" style="display:grid;gap:7px">
-    ${CH.map(c=>`<div class="urow"><span class="nm"><span class="n">${c.num}</span>${esc(c.name)}</span><span class="bar"><i style="width:${(c.tok/maxT*100).toFixed(1)}%"></i></span><span class="v">${fmt(c.tok)} · $${c.cost.toFixed(2)}</span></div>`).join('')}
-    <div class="urow tot"><span class="nm">合計</span><span></span><span class="v">${fmt(tt)} · $${tc.toFixed(2)}</span></div></div></div>`; }
+    ${T.rows.map(x=>`<div class="urow${x.nums.length?'':' gone'}"><span class="nm"><span class="n">${x.nums.length? x.nums.join('·') : '—'}</span>${esc(x.name)}</span><span class="bar"><i style="width:${(x.tok/maxT*100).toFixed(1)}%"></i></span><span class="v">${fmt(x.tok)} · $${x.usd.toFixed(2)}</span></div>`).join('')||'<p class="note">今日はまだ使っていません。</p>'}
+    <div class="urow tot"><span class="nm">合計</span><span></span><span class="v">${fmt(T.tok)} · $${T.usd.toFixed(2)}</span></div></div></div>`; }
 function renderForecast(){
   if(G.five.none&&G.seven.none){ $('pF').innerHTML=`<div class="blk"><h3>使用枠の天気予報</h3><p class="note">5 時間枠と週の枠の値は、Claude の応答が返ってくるたびに届きます。最初の応答のあとに予報が出ます（API キーで使っている場合は使用枠がないので出ません）。</p></div>${usesBlk()}`; return; }
   const f=fc5(), f7=fc7(), five=G.five, seven=G.seven;
   const says5= f.hit? `このペースだと <b>${hm(f.hit)}</b> に上限に達し、リセットの ${hm(five.resetAt)} まで使えません。` : (f.proj>=95? `このペースだとリセット直前に約 <b>${Math.round(f.proj)}%</b>。ぎりぎり持つ見込みです。` : `このペースならリセット時に約 <b>${Math.round(f.proj)}%</b>。上限には届かない見込みです。`);
   const says7= f7.hit? `このペースだと <b>${md(f7.hit)}（${wkd(f7.hit)}）${hm(f7.hit)}ごろ</b>に上限に達し、リセットまで使えません。` : (f7.proj>=95? `このペースだとリセット直前に約 <b>${Math.round(f7.proj)}%</b>。ぎりぎり持つ見込みです。` : `このペースならリセット時に約 <b>${Math.round(f7.proj)}%</b>。週の終わりまで持ちそうです。`);
-  const maxT=Math.max(1,...CH.map(c=>c.tok)), tt=CH.reduce((a,c)=>a+c.tok,0), tc=CH.reduce((a,c)=>a+c.cost,0);
   $('pF').innerHTML=`
   <div class="blk"><h3>5時間枠<small>全チャンネル合計 · リセット ${hm(five.resetAt)}（あと ${span(f.left)}）</small></h3>
     <div class="fc"><span class="ico">${WX[f.wx]}</span><span class="big">${five.pc.toFixed(0)}%<small>予報 ${WXN[f.wx]}</small></span><span class="says${f.hit?' bad':''}">${says5}</span></div>
@@ -174,9 +182,7 @@ function renderForecast(){
     <div class="fc"><span class="ico">${WX[f7.wx]}</span><span class="big">${seven.pc.toFixed(0)}%<small>予報 ${WXN[f7.wx]}</small></span><span class="says${f7.hit?' bad':''}">${says7}</span></div>
     ${meter(seven.pc,f7.proj)}
     <div class="cal" role="group" aria-label="週のカレンダー">${calCells()}</div></div>
-  <div class="blk"><h3>今日の使用量<small>チャンネル別のトークンとコスト</small></h3><div class="uses" style="display:grid;gap:7px">
-    ${CH.map(c=>`<div class="urow"><span class="nm"><span class="n">${c.num}</span>${esc(c.name)}</span><span class="bar"><i style="width:${(c.tok/maxT*100).toFixed(1)}%"></i></span><span class="v">${fmt(c.tok)} · $${c.cost.toFixed(2)}</span></div>`).join('')}
-    <div class="urow tot"><span class="nm">合計</span><span></span><span class="v">${fmt(tt)} · $${tc.toFixed(2)}</span></div></div></div>`;
+  ${usesBlk()}`;
   $('pF').querySelectorAll('.day[data-d]').forEach(b=>b.addEventListener('click',()=>openDay(+b.dataset.d)));
 }
 
@@ -294,7 +300,7 @@ function histTurn(li,c){ const q=qs=>{ const e=li.querySelector(qs); return e? e
   for(let i=al.length-1;i>=0&&!a;i--) a=al[i].textContent.replace(/\s+/g,' ').trim().slice(0,160);
   const st= li.querySelector('.qcard:not(.done)')? 'ask' : li.querySelector('.perm')? 'wait' : k==='進行中'? 'run' : (li.dataset.ab==='1'||/中断/.test(k))? 'stop' : '';
   const x={el:li,c,turn:true,n:q('.fold .tn'),tm:q('.fold .tm'),t:+li.dataset.t||0,p:q('.fold .p'),src:q('.you .meta span').replace(/から$/,''),
-    att:li.querySelectorAll('.you .att .af:not(.bad)').length,a,k:st==='run'?'':k,st,k0:k};
+    att:li.querySelectorAll('.you .att .af:not(.bad)').length+li.querySelectorAll('.full > .you .uimg img').length,a,k:st==='run'?'':k,st,k0:k};
   if(st!=='run'&&st!=='ask'&&st!=='wait') histDone.set(li,x); else histDone.delete(li);
   return x; }
 function histOf(c){ const out=[];

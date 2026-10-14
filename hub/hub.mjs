@@ -16,7 +16,7 @@
  */
 import http from 'node:http'
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
-import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, renameSync, statSync, appendFileSync, realpathSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, renameSync, statSync, appendFileSync, realpathSync, readdirSync, unlinkSync } from 'node:fs'
 import { readdir, stat, open } from 'node:fs/promises'
 import { homedir, platform } from 'node:os'
 import { join, dirname, basename, isAbsolute, sep, extname } from 'node:path'
@@ -24,7 +24,7 @@ import { inflateRawSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
-export const VERSION = '0.5.8'
+export const VERSION = '0.6.0'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ARGS = process.argv.slice(2)
 const PORT = Number(process.env.FOGCAST_PORT) || 4317
@@ -37,6 +37,7 @@ const ASK_MS = 120e3             // how long an approval waits on the screen bef
 const PAIR_MS = 5 * 60e3
 const EVENTS_KEPT = 600          // per channel, for the screen to replay
 const MAX_BODY = 2 * 1024 * 1024
+const IMG_BODY = 15 * 1024 * 1024  // an image the screen sends, as base64
 
 /* ---------------- --stop: end a running hub; --daemon: start a detached copy of this file and return ---------------- */
 if (ARGS.includes('--stop')) {
@@ -142,6 +143,7 @@ function makeChan(id, h) {
     endedAt: null, lastSeen: now(), ctx: { tokens: 0, window: 200000, percent: 0 }, usd: 0, tok: 0, perTurn: [], blocks: [], tasks: [], files: {},
     agents: [], ops: [], active: null, loaded: h.loaded || null, commands: Array.isArray(h.commands) ? h.commands.slice(0, 400) : [], breakdown: h.breakdown || null,
     turn: null, waits: new Map(), queue: [], events: [], seq: 0, turnNo: 0, viaScreen: new Set(),
+    fresh: num(h.startedAt) >= HUB_T0,       // its session began while this hub ran: its cost is counted from nothing
     q: null, pending: [], suggest: '',
     // the conversation's file and its folder (the project's other conversations, for /resume), its name, effort and model choices
     tp: absPath(h.tp), tdir: absPath(h.tdir), title: '', effort: level(h.effort), models: modelsOf(h.models), efforts: effortsOf(h.efforts),
@@ -193,6 +195,7 @@ const linkLive = new Map()   // link id → Set of channel ids using it right no
 const changedLinks = new Set()
 // while a terminal replays what it kept (after this hub restarted), what is already counted is not counted again
 let replaying = false
+const HUB_T0 = Date.now()          // a session that began after this, the hub has seen whole
 function use(id, c, x, r, t = now()) {
   const l = S.links[id]; if (!l || replaying) return
   { const d = dayRec(t); d.links[id] = (d.links[id] || 0) + 1 }
@@ -362,9 +365,12 @@ function apply(c, ev) {
       const x = ev.ctx || {}
       c.ctx = { tokens: Math.max(0, num(x.tokens)), window: Math.max(1, num(x.window, c.ctx.window)), percent: clamp(num(x.percent), 0, 100) }
       if (typeof ev.usd === 'number') {
-        // the session's cost so far: what it grew by since the last reading is that day's
-        if (typeof c.usdSeen === 'number' && ev.usd > c.usdSeen && !replaying) { const dd = ev.usd - c.usdSeen, d = dayRec(t); d.usd += dd; dayChan(d, c).usd += dd; S.life.usd += dd; markSave() }
-        c.usdSeen = ev.usd; c.usd = ev.usd
+        // the session's cost so far: what it grew by since the last reading is that day's. A session that began while
+        // this hub ran counts from nothing (its first reading too); the first reading after a resume, which may carry
+        // the cost the conversation had before, only sets where the next ones count from
+        const was = c.usdSkip ? null : typeof c.usdSeen === 'number' ? c.usdSeen : c.fresh ? 0 : null
+        if (was !== null && ev.usd > was && !replaying) { const dd = ev.usd - was, d = dayRec(t); d.usd += dd; dayChan(d, c).usd += dd; S.life.usd += dd; markSave() }
+        c.usdSeen = ev.usd; c.usd = ev.usd; c.usdSkip = false
       }
       for (const r of Array.isArray(ev.limits) ? ev.limits : []) reading(str(r.kind, 30), num(r.pc), r.resetsAt, t)
       broadcastGlobal()
@@ -384,13 +390,17 @@ function apply(c, ev) {
     }
     case 'turn': {
       c.turnNo++
-      c.turn = { id: str(ev.id, 80), t0: t, ctxAt: c.ctx.tokens, ops: 0, text: str(ev.text, 2000) }
+      c.turn = { id: str(ev.id, 80), t0: t, ctxAt: c.ctx.tokens, ops: 0, text: str(said(ev.text), 2000) }
       c.ops = []; c.suggest = ''
-      // a prompt this screen sent has started: its pending bubble gives way to the turn
+      // a prompt this screen sent has started: its pending bubble gives way to the turn (and hands it the images it carried)
+      let carried
       if (ev.via === 'screen' && c.pending.length) {
         const i = ev.cid ? c.pending.findIndex(p => p.id === ev.cid) : c.pending.findIndex(p => p.text === str(ev.text, 2000))
+        if (i >= 0) carried = c.pending[i].imgs
         c.pending.splice(i >= 0 ? i : 0, 1)
       }
+      const imgs = (Array.isArray(ev.imgs) ? ev.imgs : carried || []).filter(isImgId).slice(0, 5)
+      if (imgs.length) e.imgs = imgs
       if (ev.cid) e.cid = str(ev.cid, 40)
       // the files a prompt from the screen named with @, as the terminal attached them (or why not)
       e.files = Array.isArray(ev.files) && ev.files.length ? ev.files.slice(0, 10).map(f => ({
@@ -398,7 +408,7 @@ function apply(c, ev) {
         shown: num(f && f.shown) || undefined, err: /^[a-z]{1,12}$/.test(str(f && f.err, 12)) ? f.err : undefined,
         as: /^[a-z0-9_-]{1,12}$/.test(str(f && f.as, 12)) ? f.as : undefined,
       })).filter(f => f.p) : undefined
-      setStatus(c, 'work', '依頼を受け取りました', t); block(c, 'work', ev.text || '続きの作業', t)
+      setStatus(c, 'work', '依頼を受け取りました', t); block(c, 'work', said(ev.text) || '続きの作業', t)
       e.text = str(ev.text, 8000); e.n = c.turnNo
       break
     }
@@ -503,7 +513,7 @@ function apply(c, ev) {
       const from = str(ev.from, 100) || c.sid, sid = str(ev.sid, 100)
       if (!sid) return null
       if (from && from !== sid) { c.sid = from; remember(c, 'resume') }          // the one left behind can be resumed in turn
-      c.sid = sid; c.title = str(ev.title, 200)
+      c.sid = sid; c.title = str(ev.title, 200); c.usdSkip = true
       // a conversation never named goes by what it began with, as its past entry here has it
       const was = c.title ? null : S.past.find(p => p.id === sid)
       const tp = absPath(ev.tp); if (tp && basename(tp) === `${sid}.jsonl`) { c.tp = tp; c.tdir = dirname(tp) }
@@ -528,7 +538,7 @@ function apply(c, ev) {
     case 'turnEnd': {
       const u = ev.usage || {}
       c.tok += num(u.in) + num(u.cw) + num(u.out)
-      if (!replaying) { const d = dayRec(t), x = dayChan(d, c), tk = num(u.in) + num(u.cw) + num(u.out); d.turns++; d.tok += tk; d.cr += num(u.cr); x.turns++; x.tok += tk; markSave(); grewTurn(t, tk, !ev.aborted) }
+      if (!replaying) { const d = dayRec(t), x = dayChan(d, c), tk = num(u.in) + num(u.cw) + num(u.out); d.turns++; d.tok += tk; d.cr += num(u.cr); x.turns++; x.tok += tk; markSave(); grewTurn(t, tk, !ev.aborted); broadcastGlobal() }
       if (c.turn) {
         const grew = Math.max(0, c.ctx.tokens - c.turn.ctxAt)
         c.perTurn.push(grew); if (c.perTurn.length > 40) c.perTurn.shift()
@@ -694,7 +704,7 @@ async function sessionsOf(c) {
     let info; try { info = await peek(join(dir, `${f.id}.jsonl`), f.size) } catch { continue }
     if (!info.first && !info.title && !info.last) continue        // nothing was asked in it
     const o = openIn.get(f.id)
-    out.push({ id: f.id, title: str(info.title, 200), first: str(info.first, 300), last: str(info.last, 300), t: Math.round(f.t), size: f.size, ...(o ? { open: { num: o.num, name: o.name } } : {}) })
+    out.push({ id: f.id, title: str(info.title, 200), first: str(said(info.first), 300), last: str(said(info.last), 300), t: Math.round(f.t), size: f.size, ...(o ? { open: { num: o.num, name: o.name } } : {}) })
     if (out.length >= 50) break
   }
   return { cwd: c.cwd, sessions: out }
@@ -814,6 +824,42 @@ async function filesFor(c, q) {
   for (const f of v.files) { const s = fileScore(f, q); if (s >= 0) hits.push([s, f]) }
   hits.sort((a, b) => a[0] - b[0] || Number(a[1].d) - Number(b[1].d) || a[1].p.localeCompare(b[1].p))
   return { files: hits.slice(0, 40).map(([, f]) => f), total: v.files.length, more: hits.length > 40 }
+}
+
+/* ---------------- images the screen attaches to a message: kept here a week, for Claude to open with Read ---------------- */
+// A plugin cannot hand Claude a picture itself (what it adds is text): the image is kept as a file, and the terminal's Mod
+// tells Claude to read it there. Only the four kinds Claude's Read shows, told by their bytes, not by what the screen said.
+const UPLOADS = join(DIR, 'uploads'), IMG_MAX = 10 << 20, IMG_KEEP_MS = 7 * 86400e3, IMG_ALL = 300 << 20
+const IMG_KIND = { png: 'image/png', jpg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' }
+const isImgId = id => typeof id === 'string' && /^[0-9a-f]{16}$/.test(id)
+function imgKind(buf) {
+  if (buf.length > 8 && buf.readUInt32BE(0) === 0x89504e47) return 'png'
+  if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpg'
+  if (buf.length > 6 && /^GIF8[79]a$/.test(buf.toString('latin1', 0, 6))) return 'gif'
+  if (buf.length > 12 && buf.toString('latin1', 0, 4) === 'RIFF' && buf.toString('latin1', 8, 12) === 'WEBP') return 'webp'
+  return null
+}
+function imgFile(id) {
+  if (!isImgId(id)) return null
+  for (const ext of Object.keys(IMG_KIND)) { const path = join(UPLOADS, `${id}.${ext}`); if (existsSync(path)) return { path, ext } }
+  return null
+}
+// a week's worth, and no more than 300 MB: the oldest go first
+function imgSweep() {
+  let files
+  try { files = readdirSync(UPLOADS) } catch { return }
+  files = files.map(n => { const p = join(UPLOADS, n); try { const s = statSync(p); return { p, t: s.mtimeMs, size: s.size } } catch { return null } }).filter(Boolean).sort((a, b) => a.t - b.t)
+  let total = files.reduce((a, f) => a + f.size, 0)
+  for (const f of files) if (Date.now() - f.t > IMG_KEEP_MS || total > IMG_ALL) { try { unlinkSync(f.p); total -= f.size } catch {} }
+}
+setTimeout(imgSweep, 5000).unref(); setInterval(imgSweep, 6 * 3600e3).unref()
+// a message's words without the quotes at its head (the screen puts them there as "> 引用：…" lines): what a label shows
+const QHEAD = '> 引用：'
+function said(t) {
+  t = String(t || ''); if (!t.startsWith(QHEAD)) return t
+  const L = t.split('\n'); let i = 0
+  while (i < L.length && L[i].startsWith(QHEAD)) { i++; while (i < L.length && /^>( |$)/.test(L[i]) && !L[i].startsWith(QHEAD)) i++; while (i < L.length && !L[i].trim()) i++ }
+  return L.slice(i).join('\n').trim() || '（引用）'
 }
 
 /* ---------------- what @ hands Claude when the Mod cannot read it itself ---------------- */
@@ -1036,10 +1082,10 @@ function send(res, status, body, headers = {}) {
   res.writeHead(status, { 'Content-Type': typeof body === 'string' ? 'text/plain; charset=utf-8' : 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...headers })
   res.end(data)
 }
-function readBody(req) {
+function readBody(req, max = MAX_BODY) {
   return new Promise((resolve, reject) => {
     let size = 0; const chunks = []
-    req.on('data', ch => { size += ch.length; if (size > MAX_BODY) { reject(new Error('too large')); req.destroy() } else chunks.push(ch) })
+    req.on('data', ch => { size += ch.length; if (size > max) { reject(new Error('too large')); req.destroy() } else chunks.push(ch) })
     req.on('end', () => { try { resolve(chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}) } catch (e) { reject(e) } })
     req.on('error', reject)
   })
@@ -1054,7 +1100,7 @@ function page(name) {
   return pages.get(name).html
 }
 page('ui.html'); page('guide.html')
-const CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+const CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data: blob:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 let lastActivity = now()
 const routes = {
   /* ----- from the mod ----- */
@@ -1152,15 +1198,36 @@ const routes = {
   },
   'POST /api/ui/send': (b) => {
     const c = chans.get(str(b.chan, 64)); if (!c || c.status === 'off') return [409, { error: 'このチャンネルは終了しています' }]
-    const text = str(b.text, 100000).trim(); if (!text) return [400, { error: 'empty' }]
+    const imgs = (Array.isArray(b.imgs) ? b.imgs : []).slice(0, 5).map(x => ({ id: str(x, 40), f: imgFile(str(x, 40)) }))
+    if (imgs.some(x => !x.f)) return [410, { error: '添付した画像が見つかりません。もう一度添付してください。' }]
+    const text = str(b.text, 100000).trim() || (imgs.length ? `（画像 ${imgs.length} 枚）` : ''); if (!text) return [400, { error: 'empty' }]
     const id = randomBytes(6).toString('hex')
-    c.queue.push({ id, type: 'prompt', text })
+    c.queue.push({ id, type: 'prompt', text, ...(imgs.length ? { imgs: imgs.map(x => ({ id: x.id, path: x.f.path })) } : {}) })
     // shown at once on every screen, until its turn starts (or it could not be sent)
     c.pending = c.pending.filter(p => !p.err).slice(-9)
-    c.pending.push({ id, text: str(text, 2000), t: now(), queued: c.status !== 'idle', local: str(b.local, 40) || null })
+    c.pending.push({ id, text: str(text, 2000), ...(imgs.length ? { imgs: imgs.map(x => x.id) } : {}), t: now(), queued: c.status !== 'idle', local: str(b.local, 40) || null })
     c.suggest = ''                                          // a prompt sent puts the suggestion away, as in the terminal
     chanDirty.add(c.id)
     return [200, { ok: true, id, queued: c.status !== 'idle' }]
+  },
+  // an image for the message being written: its bytes checked, kept under a name of its own, named back by its id
+  'POST /api/ui/image': (b) => {
+    const buf = Buffer.from(str(b.data, IMG_BODY), 'base64')
+    if (!buf.length) return [400, { error: '画像が空です' }]
+    if (buf.length > IMG_MAX) return [413, { error: '画像が大きすぎます（10 MB まで）' }]
+    const ext = imgKind(buf); if (!ext) return [415, { error: 'PNG・JPEG・GIF・WebP の画像だけを添付できます' }]
+    const id = randomBytes(8).toString('hex')
+    try { mkdirSync(UPLOADS, { recursive: true, mode: 0o700 }); writeFileSync(join(UPLOADS, `${id}.${ext}`), buf, { mode: 0o600 }) }
+    catch (e) { log('image', e.message); return [500, { error: '画像を保存できませんでした' }] }
+    return [200, { ok: true, id }]
+  },
+  // shown in a message on any screen: fetched with the key (never in the address), as what it is and nothing else
+  'GET /api/ui/image': (b, req, res) => {
+    const f = imgFile(new URL(req.url, 'http://h').searchParams.get('id') || '')
+    let data; try { data = f && readFileSync(f.path) } catch {}
+    if (!data) return [404, { error: 'gone' }]
+    res.writeHead(200, { 'Content-Type': IMG_KIND[f.ext], 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'" })
+    res.end(data)
   },
   'POST /api/ui/unsend': (b) => {
     const c = chans.get(str(b.chan, 64)); if (!c) return [404, { error: 'chan' }]
@@ -1333,7 +1400,7 @@ async function handle(req, res) {
   let body = {}
   if (req.method === 'POST') {
     if (!String(req.headers['content-type'] || '').includes('application/json')) return send(res, 415, { error: 'json' })
-    try { body = await readBody(req) } catch { return send(res, 400, { error: 'body' }) }
+    try { body = await readBody(req, url.pathname === '/api/ui/image' ? IMG_BODY : MAX_BODY) } catch { return send(res, 400, { error: 'body' }) }
   }
   const client = str(req.headers['x-fogcast-client'], 64) || null
   try {

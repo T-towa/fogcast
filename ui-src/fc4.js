@@ -31,14 +31,16 @@ function tail(c){ const p=c.pendLi; if(p&&p.isConnected&&c.log.lastElementChild!
 const AV='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><path d="M3.5 8c2.2-1.6 4.3-1.6 6.5 0s4.3 1.6 6.5 0c1.2-.9 2.4-1.1 4-.6"/><path d="M3.5 13c2.2-1.6 4.3-1.6 6.5 0s4.3 1.6 6.5 0c1.2-.9 2.4-1.1 4-.6"/><path d="M3.5 18c2.2-1.6 4.3-1.6 6.5 0s4.3 1.6 6.5 0"/></svg>';
 const mdl=c=> typeof modelName==='function'? modelName(c.model) : (c.model||'');
 function aiHead(c,t){ const m=mdl(c); return `<div class="aihd"><i class="av">${AV}</i><b>Claude</b><span>${esc(m)}${m&&t?' · ':''}${t?hm(t):''}</span></div>`; }
-function youHTML(body,src,t,extra){ return `<div class="you"><div class="meta"><span>${src}</span>${t?`<time>${hm(t)}</time>`:''}</div><div class="body">${body}${extra||''}</div></div>`; }
+// msg: {raw, imgs} — the message as sent and the images it carried, kept on the bubble to quote it or send it again
+function youHTML(body,src,t,extra,msg){ const d=msg? ` data-raw="${esc(msg.raw||'')}"${msg.imgs&&msg.imgs.length?` data-imgs="${esc(msg.imgs.join(','))}"`:''}` : '';
+  return `<div class="you"${d}><div class="meta"><span>${src}</span>${t?`<time>${hm(t)}</time>`:''}</div><div class="body">${body}${extra||''}</div></div>`; }
 /* the files a prompt from this screen named with @: what went to Claude with it, and what did not (and why) */
 const ATT_ERR={missing:['見つかりません','このターミナルのフォルダにありません。'],outside:['フォルダの外','このターミナルのフォルダの外なので添付していません。Claude が必要なら自分で読みます。'],
   binary:['テキストでない','文字にできないファイル（圧縮ファイル・音声・動画など）は添付していません。'],large:['大きすぎます','大きいので添付していません（文字のファイルは 1 MB、Excel などは 30 MB まで）。Claude が必要なら自分で読みます。'],
   budget:['上限超え','ほかのファイルで添付の上限（20 万字）に達したので、添付していません。'],refused:['添付できません','Claude Code が受け付けませんでした。'],
   legacy:['古い形式','.xls・.doc・.ppt からは中身を取り出せません。.xlsx・.docx・.pptx で保存し直すと添付できます。'],
   unread:['読めません','中身を取り出せませんでした。パスワードが付いているか、壊れているかもしれません。'],
-  read:['Claude が開く','画像と PDF はこの画面からは添付できないので、Claude が Read で開いて見るように伝えました。']};
+  read:['Claude が開く','画像と PDF は、Claude が Read で開いて見るように伝えました。']};
 // a file that went in as text taken out of it, or read in another encoding
 const ATT_AS={xlsx:['Excel','Excel のブックから、シートごとのセルの値を文字にして'],docx:['Word','Word の文書から文字を取り出して'],pptx:['PowerPoint','PowerPoint のスライドとノートから文字を取り出して'],
   shift_jis:['Shift_JIS','Shift_JIS の文字として読んで'],'euc-jp':['EUC-JP','EUC-JP の文字として読んで'],'utf-16le':['UTF-16','UTF-16 の文字として読んで'],'utf-16be':['UTF-16','UTF-16 の文字として読んで']};
@@ -150,16 +152,17 @@ async function demoAsk(c,ev,ops,tid){
   q.qs.forEach((x,i)=>{ const a=answer&&answer[i]; A[x.q]= a? [...a.pick.map(k=>x.opts[k].l),...(a.text?[a.text]:[])].join(', ') : x.opts[0].l; });
   qDone(card,{by,answers:A}); li.querySelector('.r').textContent=Object.values(A).join(' / ');
   block(c,'work',q.qs[0].q); setStatus(c,'work',by==='screen'?'この画面で答えました':'質問に答えました'); await sleep(700); }
-async function turn(c,T,text,byUser,files){
+async function turn(c,T,text,byUser,files,msg){
   const tid=++c.turnId, t0=Date.now(), num=++c.turnNo;
   foldOld(c); c.suggest='';
   const li=document.createElement('li'); li.className='turn'; li.dataset.t=t0;
-  li.innerHTML=`${foldHTML(num,t0,esc(strip(text)),'進行中')}
-    <div class="full">${youHTML(text,byUser?'この画面から':'ターミナルから',t0,filesHTML(files))}<div class="flow">${aiHead(c,t0)}<ul class="ops"></ul><div class="ans"></div></div><div class="turnFt"></div></div>`;
+  const plain= msg&&msg.raw!=null? (bodyText(msg.raw)||'（引用）') : plainOf(text);
+  li.innerHTML=`${foldHTML(num,t0,esc(cut1(plain,120)),'進行中')}
+    <div class="full">${youHTML(text,byUser?'この画面から':'ターミナルから',t0,filesHTML(files)+imgsHTML(msg&&msg.imgs),msg&&msg.raw!=null? msg : {raw:plainOf(text)})}<div class="flow">${aiHead(c,t0)}<ul class="ops"></ul><div class="ans"></div></div><div class="turnFt"></div></div>`;
   foldBind(li);
   c.log.appendChild(li); tail(c); scrollIf(c); endMark(c);
   const ops=li.querySelector('.ops'), ans=li.querySelector('.ans'), st={ops:0,tok:0};
-  c.ops=[]; setStatus(c,'work','依頼を受け取りました'); block(c,'work',strip(text)); spend(c,1.2,true,st);
+  c.ops=[]; setStatus(c,'work','依頼を受け取りました'); block(c,'work',plain); spend(c,1.2,true,st);
   await sleep(900); if(tid!==c.turnId) return;
   for(const ev of T.events){ if(tid!==c.turnId) return;
     if(ev.task){ task(c,ev.task); dirty=true; await sleep(450); continue; }
@@ -176,7 +179,7 @@ async function turn(c,T,text,byUser,files){
   li.querySelector('.turnFt').innerHTML=`<span>${st.ops}件の操作</span><span>コンテキスト +${fmt(st.tok)}</span><span>${sec}秒</span>`;
   li.querySelector('.fold .k').textContent=`${st.ops}件の操作 · +${fmt(st.tok)} · ${sec}秒`;
   c.perTurn.push(st.tok); if(c.perTurn.length>40) c.perTurn.shift();
-  endBlock(c); use('claude',c,{x:strip(text).slice(0,48),r:`${st.ops}件の操作`}); stTurn(st.tok*6);
+  endBlock(c); use('claude',c,{x:plain.slice(0,48),r:`${st.ops}件の操作`}); stTurn(st.tok*6);
   setStatus(c,'idle','入力待ち');
   // Claude Code's guess at the next prompt: in the demo, the next one its script has
   if(!c.queue.length&&c.script.length) c.suggest=strip(c.script[c.idx%c.script.length].prompt);
@@ -329,7 +332,7 @@ function resumedBox(c,ev){ c.cur=null; const li=document.createElement('li'); li
   c.log.appendChild(li); }
 function histTurns(c,items,more){ if(!items||!items.length) return; const li=document.createElement('li'); li.className='hist';
   li.innerHTML=`<details class="histBox"${items.length<=2?' open':''}><summary><b>再開した会話のこれまで</b><span>${items.length} 往復${more?`（その前に ${more} 往復）`:''}</span></summary>
-    <div class="histIn">${items.map(x=>`${x.u?youHTML(userText(x.u),'以前の依頼',x.t||0):''}${x.a?`<div class="ans">${x.html? x.a : typeof mdLite==='function'? mdLite(x.a) : esc(x.a)}</div>`:''}`).join('')}</div></details>`;
+    <div class="histIn">${items.map(x=>`${x.u?youHTML(userText(x.u),'以前の依頼',x.t||0,'',{raw:x.u}):''}${x.a?`<div class="ans">${x.html? x.a : typeof mdLite==='function'? mdLite(x.a) : esc(x.a)}</div>`:''}`).join('')}</div></details>`;
   c.log.appendChild(li); }
 
 function openModel(c){
@@ -373,13 +376,13 @@ async function loop(c){ const lid=++c.loopId; await sleep(c.delay);
     if(!c.script.length) continue;
     const T=c.script[c.idx%c.script.length]; c.idx++;
     if(it&&it.lid) pendDone(c,x=>x.lid===it.lid);       // its bubble gives way to the turn
-    await turn(c,T,it? it.text : esc(T.prompt),!!it,it&&it.files);
+    await turn(c,T,it? it.text : esc(T.prompt),!!it,it&&it.files,it&&{raw:it.raw,imgs:it.imgs});
     await sleep(2500+Math.random()*3000); } }
 function stopTurn(c){ if(c.status!=='work'&&c.status!=='wait') return; c.turnId++;
   c.log.querySelectorAll('.op.run').forEach(li=>{ li.classList.remove('run'); li.querySelector('.r').textContent='中断'; });
   c.log.querySelectorAll('.perm').forEach(p=>p.remove());
   c.log.querySelectorAll('.typing').forEach(e=>e.classList.remove('typing'));
-  const ts=c.log.querySelectorAll('.turn'), lt=ts[ts.length-1]; if(lt) lt.querySelector('.fold .k').textContent='中断';
+  const ts=c.log.querySelectorAll('.turn'), lt=ts[ts.length-1]; if(lt){ lt.querySelector('.fold .k').textContent='中断'; lt.dataset.ab='1'; lt.querySelector('.turnFt').innerHTML=`<span>止めました</span>${REDO}`; }
   c.agents.forEach(a=>{ if(a.st==='run') a.st='stop'; }); [...LINKS,...ALL].forEach(l=>l.live.delete(c.num)); c.active=null; endBlock(c);
   add(c,`<div class="sys"><b>ターンを止めました</b><span>実行中の道具も止めています。次の依頼から続けられます。</span></div>`);
   setStatus(c,'idle','入力待ち'); }
@@ -412,6 +415,7 @@ document.addEventListener('keydown',e=>{
   if(coKeys(e)||co) return;
   const tag=(e.target.tagName||'').toLowerCase();
   if(tag==='textarea'||tag==='input'||tag==='select'||e.metaKey||e.ctrlKey||e.altKey||!$('scrim').hidden) return;
+  if(e.key==='Escape'&&!e.isComposing){ if(act) actHide(true); if(escStop()) e.preventDefault(); return; }
   if(/^[0-9]$/.test(e.key)&&(+e.key===0||chN(+e.key))){ select(+e.key); e.preventDefault(); }
   if(e.key==='/'&&sel){ e.preventDefault(); cmdStart(); } });
 
@@ -474,6 +478,7 @@ function demoFiles(q){ q=String(q||'').toLowerCase().replace(/^\.\//,'');
   const hits=demoTree().map(f=>[fileScore(f.p,q),f]).filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]||Number(a[1].d)-Number(b[1].d)||a[1].p.localeCompare(b[1].p));
   return {ok:true,files:hits.slice(0,40).map(x=>x[1])}; }
 function demoAttach(text){ const out=[], re=/(^|[\s(（「『【、。，．：；])@(?:"([^"\n]+)"|([^\s"]+))/g; let m;
+  text=String(text).split('\n').filter(l=>!/^\s*>/.test(l)).join('\n');          // a quote's @ names nothing
   while((m=re.exec(String(text)))&&out.length<10){ let raw=(m[2]||m[3]||'').trim(); const k=m[3]? raw.search(/[、。，．：；）」』】]@/) : -1; if(k>0){ raw=raw.slice(0,k); re.lastIndex=m.index+m[1].length+1+k; }
     const p=(/^[\w./~@+#%=,-]+/.exec(raw)||[raw])[0].replace(/[,.]+$/,''), dir=p.replace(/\/$/,'');
     if(out.some(x=>x.p===p||x.p===dir+'/')) continue;
@@ -504,6 +509,7 @@ $('ask').addEventListener('keydown',e=>{
     if((e.key==='Enter'||e.key==='Tab')&&!e.isComposing&&pal.items.length){ e.preventDefault(); pickPal(pal.i); return; }
     if(e.key==='Escape'){ e.preventDefault(); const cmd=pal.mode==='cmd'; closePal(); if(cmd) asideBack(); return; } }
   if(e.key==='Escape'&&aside&&!e.isComposing){ e.preventDefault(); asideBack(); return; }
+  if(e.key==='Escape'&&!e.isComposing&&e.keyCode!==229){ if(act) actHide(true); if(escStop()){ e.preventDefault(); return; } }
   // the suggestion in the empty box: Tab (or →) takes it, as in the terminal
   if((e.key==='Tab'&&!e.shiftKey||e.key==='ArrowRight')&&!e.isComposing&&!$('ask').value&&takeSugg()){ e.preventDefault(); return; }
   if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); $('ctl').requestSubmit(); } });
@@ -518,23 +524,150 @@ function cmdStart(){ const c=chN(sel); if(!c||c.status==='off') return; const a=
     a.value='/'; }
   a.focus(); a.setSelectionRange(a.value.length,a.value.length); pal.i=0; openPal(); askFit(); ctlHint(); }
 function asideBack(){ if(!aside) return false; const a=$('ask'), x=aside; aside=null; a.value=x.v; a.focus();
+  if(x.att){ att.quotes=x.att.quotes; att.imgs=x.att.imgs; attDraw(); }
   try{ a.setSelectionRange(x.s,x.e); }catch{} askFit(); ctlHint(); return true; }
-$('ctl').addEventListener('submit',e=>{ e.preventDefault(); const c=chN(sel), v=$('ask').value.trim(); if(!c||!v||c.status==='off') return;
+$('ctl').addEventListener('submit',e=>{ e.preventDefault(); const c=chN(sel), v=$('ask').value.trim(); if(!c||c.status==='off'||(!v&&!att.imgs.length)) return;
   if(v.startsWith('/')){ const m=v.slice(1).match(/^(\S+)\s*([\s\S]*)$/); if(!m) return; if(queueCmd(c,m[1],m[2].trim())){ $('ask').value=''; closePal(); askFit(); toEnd(false); asideBack(); } return; }
-  sendText(c,v); $('ask').value=''; closePal(); askFit(); ctlHint(); toEnd(false); asideBack(); });       // what you send is at the bottom: so are you
+  if(att.imgs.some(m=>m.st==='err')){ toast('info','送れなかった画像があります','その画像を × で外してから送ってください。'); return; }
+  // what is still being sent of the images is waited for; the box is free at once
+  const quotes=att.quotes, imgs=att.imgs, jobs=imgs.filter(m=>m.st==='up').map(m=>m.job);
+  att.quotes=[]; att.imgs=[]; attDraw(); $('ask').value=''; closePal(); askFit(); ctlHint(); toEnd(false); asideBack();       // what you send is at the bottom: so are you
+  const go=()=>{ if(imgs.some(m=>m.st!=='ok')){ att.quotes=quotes; att.imgs=imgs; if(!$('ask').value) $('ask').value=v; attDraw(); toast('info','画像を送れませんでした','送信欄に戻しました。外すか、もう一度送ってください。'); return; }
+    sendText(c,withQuotes(v||`（画像 ${imgs.length} 枚）`,quotes),imgs.map(m=>m.id)); };
+  if(jobs.length) Promise.allSettled(jobs).then(go); else go(); });
 
 /* the message box grows with what is typed, a line at a time, up to a share of the window; past that it scrolls inside.
    The screen above gives up the room it takes (down to a floor), and a channel read to its end stays at its end */
-const ASK_MIN=46;
+const ASK_MIN=44;
 function askFit(){ const a=$('ask'), root=document.documentElement;
   if($('ctl').hidden){ root.style.setProperty('--askGrow','0px'); return; }
   const max=Math.round(Math.max(120,Math.min(innerHeight*(innerWidth<=620? .3 : .36),360)));
-  const view=$('chan'), atEnd=!view.hidden&&stick;
-  a.style.height='auto'; const want=Math.max(ASK_MIN,a.scrollHeight+2), h=Math.min(want,max);
+  const view=$('chan'), atEnd=!view.hidden&&stick, strip=$('ctlAtt').hidden? 0 : $('ctlAtt').offsetHeight;
+  a.style.height='auto'; const want=Math.max(ASK_MIN,a.scrollHeight), h=Math.min(want,max);
   a.style.height=h+'px'; a.style.overflowY= want>max? 'auto' : 'hidden';
-  root.style.setProperty('--askGrow',Math.max(0,h-ASK_MIN)+'px');
+  root.style.setProperty('--askGrow',Math.max(0,h-ASK_MIN+strip)+'px');
   if(atEnd) view.scrollTop=view.scrollHeight; }
 addEventListener('resize',askFit);
+
+/* ================= what goes with the message being written: quotes from the conversation, and images ================= */
+const att={quotes:[],imgs:[]};      // quotes: {label, text}; imgs: {lid, id, name, url, st: 'up'|'ok'|'err', err, job}
+function attDraw(){ const h=$('ctlAtt'), n=att.quotes.length+att.imgs.length; h.hidden=!n;
+  h.innerHTML=att.quotes.map((q,i)=>`<span class="aq" title="${esc(cut1(q.text,300))}"><b>引用</b><span class="ql">${esc(q.label)}</span><span class="qx">${esc(cut1(q.text,48))}</span><button type="button" class="ax" data-q="${i}" aria-label="この引用を外す">×</button></span>`).join('')
+    +att.imgs.map((m,i)=>`<span class="ai ${m.st}" title="${esc(m.err||m.name||'画像')}"><img src="${m.url||IMG_BLANK}" alt="${esc(m.name||'画像')}">${m.st==='up'?'<i class="spin" aria-hidden="true"></i>':''}<button type="button" class="ax" data-i="${i}" aria-label="この画像を外す">×</button></span>`).join('');
+  askFit(); }
+$('ctlAtt').addEventListener('click',e=>{ const b=e.target.closest('.ax'); if(!b) return;
+  if(b.dataset.q!=null) att.quotes.splice(+b.dataset.q,1);
+  else { const m=att.imgs.splice(+b.dataset.i,1)[0]; if(m&&m.url&&!m.sent&&!(m.id&&IMG_URL.get(m.id)===m.url)) URL.revokeObjectURL(m.url); }
+  attDraw(); $('ask').focus(); });
+function addQuote(label,text){ text=String(text||'').replace(/\r\n?/g,'\n').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim(); if(!text) return;
+  if(text.length>Q_CHARS) text=text.slice(0,Q_CHARS-1)+'…';
+  if(att.quotes.length>=Q_MAX){ toast('info',`引用は ${Q_MAX} つまでです`,'どれかを × で外してから引用してください。'); return; }
+  att.quotes.push({label,text}); attDraw(); const a=$('ask'); a.focus(); a.setSelectionRange(a.value.length,a.value.length); }
+
+/* ================= over a message: quote it (or the part of it you selected), or send your own again ================= */
+const ACT=document.createElement('div'); ACT.className='bubAct'; ACT.hidden=true; ACT.setAttribute('role','toolbar'); ACT.setAttribute('aria-label','このメッセージ');
+$('screen').appendChild(ACT);
+let act=null, actT=0;
+const touchOnly=()=>matchMedia('(hover: none)').matches;
+const bubOf=n=>{ const e=n&&(n.nodeType===1? n : n.parentElement); const b=e&&e.closest('#logs .you, #logs .flow > .ans, #logs .histIn > .ans'); return b&&!b.closest('.pends')&&b.textContent.trim()? b : null; };
+function actShow(el,pick){ clearTimeout(actT); act={el,pick};
+  const own=el.classList.contains('you')&&el.dataset.raw!=null&&!el.closest('.hist');
+  ACT.innerHTML=`<button type="button" data-a="q">${pick?'選んだところを引用':'引用'}</button>${own&&!pick?'<button type="button" data-a="re">もう一度送る</button><button type="button" data-a="ed">直して送る</button>':''}`;
+  ACT.hidden=false;
+  const sc=$('screen').getBoundingClientRect(), r=pick? pick.rect : (el.querySelector('.body')||el).getBoundingClientRect(), w=ACT.offsetWidth, h=ACT.offsetHeight;
+  let x=pick? r.left+r.width/2-w/2 : r.right-w, y=r.top-h-6; if(y<sc.top+6) y=pick? r.bottom+6 : r.top+6;
+  x=Math.max(sc.left+6,Math.min(x,sc.right-w-6)); ACT.style.left=Math.round(x-sc.left)+'px'; ACT.style.top=Math.round(y-sc.top)+'px'; }
+function actHide(now){ clearTimeout(actT); if(now){ ACT.hidden=true; act=null; } else actT=setTimeout(()=>{ ACT.hidden=true; act=null; },260); }
+$('logs').addEventListener('mouseover',e=>{ if(touchOnly()||(act&&act.pick)) return; const b=bubOf(e.target); if(!b) return; if(!act||act.el!==b) actShow(b,null); else clearTimeout(actT); });
+$('logs').addEventListener('mouseout',e=>{ if(!act||act.pick||ACT.contains(e.relatedTarget)||bubOf(e.relatedTarget)===act.el) return; actHide(); });
+ACT.addEventListener('mouseenter',()=>clearTimeout(actT));
+ACT.addEventListener('mouseleave',()=>{ if(act&&!act.pick) actHide(); });
+$('chan').addEventListener('scroll',()=>{ if(act) actHide(true); },{passive:true});
+// a part of one message selected: quote just that
+function selPick(){ const s=getSelection(); if(!s||s.isCollapsed||!s.rangeCount) return null; const a=bubOf(s.anchorNode); if(!a||a!==bubOf(s.focusNode)) return null;
+  const text=s.toString().trim(); return text? {el:a,text,rect:s.getRangeAt(0).getBoundingClientRect()} : null; }
+['mouseup','keyup','touchend'].forEach(k=>$('logs').addEventListener(k,()=>setTimeout(()=>{ const p=selPick(); if(p) actShow(p.el,p); else if(act&&act.pick) actHide(true); },10)));
+// a tap where there is no pointer to rest on a message: its buttons come and go with taps
+$('logs').addEventListener('click',e=>{ const q=e.target.closest('.you .uq'); if(q){ quoteGo(q); return; }
+  const im=e.target.closest('.uimg img'); if(im&&!im.classList.contains('miss')){ imgOpen(im); return; }
+  if(!touchOnly()||e.target.closest('a,button,summary,input,textarea')||selPick()) return;
+  const b=bubOf(e.target); if(b){ act&&act.el===b? actHide(true) : actShow(b,null); } });
+document.addEventListener('pointerdown',e=>{ if(act&&!ACT.contains(e.target)&&!bubOf(e.target)) actHide(true); });
+ACT.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(!b||!act) return; const {el,pick}=act, c=chN(sel); actHide(true);
+  if(b.dataset.a==='q'){ addQuote(quoteLabel(el),pick? pick.text : quoteText(el)); try{ getSelection().removeAllRanges(); }catch{} return; }
+  const raw=el.dataset.raw||'', imgs=(el.dataset.imgs||'').split(',').filter(Boolean);
+  if(b.dataset.a==='re') again(c,raw,imgs); else editAgain(raw,imgs); });
+// where a quote came from: the turn and who said it
+function quoteLabel(el){ const who=el.classList.contains('you')? 'あなたの依頼' : 'Claude の返答';
+  if(el.closest('.hist')) return `再開した会話 · ${who}`;
+  const tn=el.closest('li.turn')?.querySelector('.fold .tn')?.textContent.trim(); return tn? `${tn} · ${who}` : who; }
+function quoteText(el){ return el.classList.contains('you')? bodyText(el.dataset.raw!=null? el.dataset.raw : el.querySelector('.body').innerText) : el.innerText; }
+// a quote in a message goes to where it came from, when that is still in this channel
+function quoteGo(q){ const c=chN(sel), m=/^ターン (\d+)/.exec(q.dataset.label||''); if(!c||!m) return;
+  const li=[...c.log.querySelectorAll('li.turn')].find(x=>x.querySelector('.fold .tn')?.textContent.trim()===`ターン ${m[1]}`);
+  if(li) histGo({el:li,turn:true,c}); else toast('info','引用したところは、この画面にはもうありません',esc(q.dataset.label)); }
+$('logs').addEventListener('keydown',e=>{ const q=e.target.closest&&e.target.closest('.uq'); if(q&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); quoteGo(q); } });
+
+/* ================= sending a message again: as it was, or back in the box to change first ================= */
+function again(c,raw,imgs){ if(!c||c.status==='off'||(!raw.trim()&&!imgs.length)) return; sendText(c,raw,imgs); toEnd(false); }
+function editAgain(raw,imgs){ const a=$('ask');
+  // what was being written waits (with what went with it) until this one is sent, or put away with Esc
+  if(a.value.trim()||att.quotes.length||att.imgs.length) aside={v:a.value,s:a.selectionStart,e:a.selectionEnd,att:{quotes:att.quotes,imgs:att.imgs}};
+  const q=splitQuotes(raw); att.quotes=q.quotes.slice(0,Q_MAX);
+  att.imgs=imgs.slice(0,IMG_MAX).map(id=>({lid:rid(),id,name:'画像',url:IMG_URL.get(id)||'',st:'ok',sent:true}));
+  att.imgs.forEach(m=>{ if(!m.url&&LIVE) imgLoad(m.id).then(u=>{ m.url=u; attDraw(); }).catch(()=>{ m.st='err'; m.err='この画像はもうありません（7 日で消えます）'; attDraw(); }); });
+  a.value=q.text; attDraw(); askFit(); ctlHint(); a.focus(); a.setSelectionRange(a.value.length,a.value.length); }
+// a stopped turn offers its message again
+const REDO='<span class="redo"><button type="button" data-redo="re">もう一度送る</button><button type="button" data-redo="ed">直して送る</button></span>';
+$('logs').addEventListener('click',e=>{ const b=e.target.closest('[data-redo]'); if(!b) return; const y=b.closest('li.turn')?.querySelector('.full > .you'); if(!y) return;
+  const raw=y.dataset.raw||'', imgs=(y.dataset.imgs||'').split(',').filter(Boolean); b.dataset.redo==='re'? again(chN(sel),raw,imgs) : editAgain(raw,imgs); });
+
+/* ================= Esc stops the channel's turn, as in the terminal (once nothing else is there to put away) ================= */
+function escStop(){ const c=chN(sel); if(!c||(c.status!=='work'&&c.status!=='wait')) return false;
+  LIVE? liveStop(c) : stopTurn(c); const b=$('bStop'); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); return true; }
+
+/* ================= images that go with a message: pasted, dropped or picked; made small enough here, kept by the hub ================= */
+const IMG_EDGE=2000, IMG_BYTES=4.5e6, IMG_MAX=5, IMG_BLANK='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+const IMG_URL=new Map();          // an image's id → where this page shows it from (its own copy, or the hub's, fetched once)
+async function prepImg(f){ let bmp; try{ bmp=await createImageBitmap(f); }catch{ return {err:'画像として読めませんでした'}; }
+  const W=bmp.width, H=bmp.height, big=Math.max(W,H)>IMG_EDGE;
+  if(/^image\/(png|jpeg|gif|webp)$/.test(f.type)&&!big&&f.size<=IMG_BYTES){ bmp.close&&bmp.close(); return {blob:f,type:f.type}; }
+  const k=big? IMG_EDGE/Math.max(W,H) : 1, cw=Math.max(1,Math.round(W*k)), ch=Math.max(1,Math.round(H*k));
+  const cv=document.createElement('canvas'); cv.width=cw; cv.height=ch; cv.getContext('2d').drawImage(bmp,0,0,cw,ch); bmp.close&&bmp.close();
+  let blob=await new Promise(r=>cv.toBlob(r,'image/png'));
+  if(!blob||blob.size>IMG_BYTES) blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.88));
+  return blob&&blob.size<=IMG_BYTES*2? {blob,type:blob.type} : {err:'大きすぎて縮められませんでした'}; }
+const b64=blob=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=()=>rej(r.error); r.readAsDataURL(blob); });
+function addImages(files){ const c=chN(sel); if(!c||c.status==='off') return;
+  const list=[...(files||[])].filter(f=>f&&/^image\//.test(f.type));
+  if(!list.length){ toast('info','添付できるのは画像だけです','PNG・JPEG・GIF・WebP の画像を貼り付けるか、ドラッグしてください。'); return; }
+  for(const f of list){ if(att.imgs.length>=IMG_MAX){ toast('info',`画像は 1 回に ${IMG_MAX} 枚までです`,''); break; }
+    const m={lid:rid(),id:'',name:f.name||'画像',url:URL.createObjectURL(f),st:'up',err:''}; att.imgs.push(m);
+    m.job=(async()=>{ const p=await prepImg(f); if(p.err){ m.st='err'; m.err=p.err; attDraw(); return; }
+      if(p.blob!==f){ URL.revokeObjectURL(m.url); m.url=URL.createObjectURL(p.blob); }
+      if(!LIVE){ m.id='d'+m.lid; IMG_URL.set(m.id,m.url); m.st='ok'; attDraw(); return; }
+      try{ const r=await api('/api/ui/image',{chan:c.id,name:m.name,type:p.type,data:await b64(p.blob)}); m.id=r.id; IMG_URL.set(r.id,m.url); m.st='ok'; }
+      catch(err){ m.st='err'; m.err=`送れませんでした（${err.message}）`; }
+      attDraw(); })(); }
+  attDraw(); $('ask').focus(); }
+$('bImg').addEventListener('click',()=>$('imgPick').click());
+$('imgPick').addEventListener('change',e=>{ addImages(e.target.files); e.target.value=''; });
+// pasted: an image alone is attached; text that comes with a picture of itself (cells copied from Excel) goes in as text
+$('ask').addEventListener('paste',e=>{ const d=e.clipboardData; if(!d) return; const files=[...(d.files||[])].filter(f=>/^image\//.test(f.type));
+  if(!files.length||(d.getData('text/plain')||'').trim()) return; e.preventDefault(); addImages(files); });
+let dragN=0; const dragFiles=e=>[...((e.dataTransfer&&e.dataTransfer.types)||[])].includes('Files'), dropOk=()=>sel&&!$('ctl').hidden&&chN(sel)&&chN(sel).status!=='off';
+['dragenter','dragover'].forEach(k=>document.addEventListener(k,e=>{ if(!dragFiles(e)||!dropOk()) return; e.preventDefault(); if(k==='dragenter') dragN++; $('drop').hidden=false; }));
+document.addEventListener('dragleave',e=>{ if(!dragFiles(e)) return; if(--dragN<=0){ dragN=0; $('drop').hidden=true; } });
+document.addEventListener('drop',e=>{ if(!dragFiles(e)) return; e.preventDefault(); dragN=0; $('drop').hidden=true; if(dropOk()) addImages(e.dataTransfer.files); });
+// in a message: small, from this page's own copy or the hub's; pressed, shown large
+function imgsHTML(ids){ return ids&&ids.length? `<div class="uimg">${ids.map(id=>`<img data-img="${esc(id)}" alt="添付した画像">`).join('')}</div>` : ''; }
+function imgFill(root){ (root||document).querySelectorAll('img[data-img]:not([src])').forEach(im=>{ const id=im.dataset.img, u=IMG_URL.get(id);
+  if(u){ im.src=u; return; }
+  im.src=IMG_BLANK;
+  if(!LIVE){ im.classList.add('miss'); return; }
+  imgLoad(id).then(x=>{ im.src=x; }).catch(()=>{ im.classList.add('miss'); im.alt='この画像はもうありません（7 日で消えます）'; im.title=im.alt; }); }); }
+new MutationObserver(()=>imgFill($('logs'))).observe($('logs'),{childList:true,subtree:true});
+function imgOpen(im){ openSheet(`<div class="hd"><span class="tag">添付した画像</span><button class="btn small" type="button" data-close>閉じる</button></div><h2 id="sheetT" class="vh">添付した画像</h2><img class="bigImg" src="${im.src}" alt="添付した画像">`); }
 $('bStop').addEventListener('click',()=>{ const c=chN(sel); if(c) LIVE? liveStop(c) : stopTurn(c); });
 $('bCompact').addEventListener('click',()=>{ const c=chN(sel); if(!c||c.status==='off') return; if(LIVE){ liveCompact(c); return; }
   if(c.status!=='idle'){ queueCmd(c,'compact',''); return; } compact(c,true); });
@@ -544,23 +677,41 @@ $('bPause').addEventListener('click',e=>{ G.paused=!G.paused; e.currentTarget.se
 /* ================= what you send shows at once: it waits at the bottom of the channel until its turn starts ================= */
 // c.pend: [{lid, id, text, t, st:'sending'|'queued'|'sent'|'err', err}]; the hub keeps the same list for every screen
 /* a message as typed: line breaks kept, a very long one cut (the terminal has it whole) */
-function userText(t){ t=String(t||''); const long=t.length>1600; return esc(long? t.slice(0,1600) : t).replace(/\n/g,'<br>')+(long?'<span class="more">…（続きはターミナルで）</span>':''); }
+function userText(t){ const q=splitQuotes(t); t=q.text; const long=t.length>1600;
+  return q.quotes.map(x=>`<span class="uq" role="link" tabindex="0" data-label="${esc(x.label)}"><b>${esc(x.label)}</b><span>${esc(cut1(x.text,400))}</span></span>`).join('')
+    +esc(long? t.slice(0,1600) : t).replace(/\n/g,'<br>')+(long?'<span class="more">…（続きはターミナルで）</span>':''); }
+/* quotes: what a message took from earlier in the conversation goes to Claude as Markdown quotes at its head, each led by
+   where it came from, then a blank line and the message:
+     > 引用：ターン 3 · Claude の返答
+     > …
+   The terminal shows it as typed; this screen draws the quotes above the words */
+const QHEAD='> 引用：', Q_MAX=3, Q_CHARS=1500;
+const quoteBlock=q=>[QHEAD+q.label,...String(q.text).split('\n').map(l=>l? '> '+l : '>')].join('\n');
+function withQuotes(text,quotes){ if(!quotes||!quotes.length) return text; const b=quotes.map(quoteBlock).join('\n\n'); return text? `${b}\n\n${text}` : b; }
+function splitQuotes(t){ const L=String(t||'').split('\n'), quotes=[]; let i=0;
+  while(i<L.length&&L[i].startsWith(QHEAD)){ const label=L[i].slice(QHEAD.length).trim(), body=[]; i++;
+    while(i<L.length&&/^>( |$)/.test(L[i])&&!L[i].startsWith(QHEAD)){ body.push(L[i].replace(/^> ?/,'')); i++; }
+    quotes.push({label,text:body.join('\n')}); while(i<L.length&&!L[i].trim()) i++; }
+  return quotes.length? {quotes,text:L.slice(i).join('\n')} : {quotes,text:String(t||'')}; }
+const bodyText=t=>splitQuotes(t).text;
+const plainOf=h=>{ const d=document.createElement('div'); d.innerHTML=String(h||''); return d.textContent; };     // the demo's scripted messages are HTML
 const PST={sending:'送っています…',sent:'ターミナルに渡しました · まもなく始まります',queued:'順番待ち · 今の作業が終わると始まります',err:'送れませんでした'};
 function renderPend(c){ const items=c.pend||(c.pend=[]);
   if(!items.length){ if(c.pendLi) c.pendLi.remove(); return; }
   let p=c.pendLi; if(!p){ p=c.pendLi=document.createElement('li'); p.className='pends'; }
   if(c.log.lastElementChild!==p) c.log.appendChild(p);
-  p.innerHTML=items.map((x,i)=>`<div class="pend ${x.st}" data-i="${i}">${youHTML(userText(x.text),x.other?'ほかの画面から':'この画面から',x.t)}
+  p.innerHTML=items.map((x,i)=>`<div class="pend ${x.st}" data-i="${i}">${youHTML(userText(x.text),x.other?'ほかの画面から':'この画面から',x.t,imgsHTML(x.imgs))}
     <div class="pst">${x.st==='err'?`<b>${PST.err}</b>${x.err?`<span>${esc(x.err)}</span>`:''}<button class="linkbtn" type="button" data-re>もう一度送る</button><button class="linkbtn" type="button" data-drop>消す</button>`:`<i class="spin" aria-hidden="true"></i><span>${PST[x.st]||''}</span>`}</div></div>`).join('');
-  p.querySelectorAll('[data-re]').forEach(b=>b.addEventListener('click',()=>{ const x=items[+b.closest('.pend').dataset.i]; dropPend(c,x); sendText(c,x.text); }));
+  p.querySelectorAll('[data-re]').forEach(b=>b.addEventListener('click',()=>{ const x=items[+b.closest('.pend').dataset.i]; dropPend(c,x); sendText(c,x.text,x.imgs); }));
   p.querySelectorAll('[data-drop]').forEach(b=>b.addEventListener('click',()=>dropPend(c,items[+b.closest('.pend').dataset.i])));
   scrollIf(c); }
 function dropPend(c,x){ const i=(c.pend||[]).indexOf(x); if(i<0) return; c.pend.splice(i,1); if(LIVE&&x.id&&x.st==='err') api('/api/ui/unsend',{chan:c.id,id:x.id}).catch(()=>{}); renderPend(c); }
 function pendDone(c,pred){ const n=(c.pend||[]).length; c.pend=(c.pend||[]).filter(x=>!pred(x)); if(c.pend.length!==n) renderPend(c); }
-function sendText(c,text){ c.suggest='';           // as in the terminal, a prompt sent puts the suggestion away
-  if(LIVE){ liveSend(c,text); return; }
-  const lid=rid(); (c.pend||(c.pend=[])).push({lid,text,t:Date.now(),st:c.status==='idle'?'sent':'queued'}); renderPend(c);
-  c.queue.push({type:'prompt',text:esc(text),lid,files:demoAttach(text)}); askFit(); }
+// text: as it goes to Claude (quotes at its head); imgs: the ids of the images that go with it
+function sendText(c,text,imgs){ c.suggest=''; imgs=(imgs||[]).slice(0,IMG_MAX);           // as in the terminal, a prompt sent puts the suggestion away
+  if(LIVE){ liveSend(c,text,imgs); return; }
+  const lid=rid(); (c.pend||(c.pend=[])).push({lid,text,imgs,t:Date.now(),st:c.status==='idle'?'sent':'queued'}); renderPend(c);
+  c.queue.push({type:'prompt',raw:text,text:userText(text),lid,files:demoAttach(text),imgs}); askFit(); }
 
 /* ================= Claude's questions (AskUserQuestion): answer here or in the terminal; the first answer counts ================= */
 // q: {id, qs:[{q, h, multi, opts:[{l, d}]}]}; send(answers) resolves once the answer is on its way

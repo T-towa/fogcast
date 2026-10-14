@@ -209,8 +209,10 @@ export function effortSet(text: string): string {
 export function mentionsOf(text: string): string[] {
   const out: string[] = []
   const re = /(^|[\s(（「『【、。，．：；])@(?:"([^"\n]+)"|([^\s"]+))/g
+  // a quoted line (one the screen quoted from the conversation, or any "> ") names nothing: it is what was said then
+  const said = String(text || '').split('\n').filter(l => !/^\s*>/.test(l)).join('\n')
   let m: RegExpExecArray | null
-  while ((m = re.exec(String(text || ''))) && out.length < 10) {
+  while ((m = re.exec(said)) && out.length < 10) {
     let p = (m[2] ?? m[3] ?? '').trim()
     // 「@a.ts、@b.ts」: a mark of Japanese punctuation right before another @ ends this one, and the next starts there
     const k = m[3] ? p.search(/[、。，．：；）」』】]@/) : -1

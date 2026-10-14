@@ -34,6 +34,7 @@
           <div id="logs"></div>
           <div class="live" id="live"></div>
         </div>
+        <div class="drop" id="drop" hidden aria-hidden="true"><span>画像を落とすと、送る文に添付します</span></div>
         <button class="toEnd" id="toEnd" type="button" hidden title="いちばん下（最新）へ" aria-label="いちばん下（最新）へ"><span class="nw" id="toEndN"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v12M6.5 11.5 12 17l5.5-5.5M6 20.5h12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <div class="glare" aria-hidden="true"></div>
         <div class="wipe" id="wipe" aria-hidden="true"><span class="band"><b id="wipeN"></b><small id="wipeS"></small></span></div>
@@ -47,9 +48,14 @@
           <div class="palft" id="palFt">↑↓ で選ぶ · Enter で入れる · Esc で閉じる</div>
         </div>
         <div class="argHint" id="ctlHint" role="status" hidden></div>
-        <textarea id="ask" rows="1" aria-label="このチャンネルに送る文（「/」でコマンド、「@」でファイル）" aria-autocomplete="list" aria-controls="palList" aria-expanded="false" placeholder="このチャンネルに送る（Enter で送信、Shift+Enter で改行）"></textarea>
+        <div class="field" id="field">
+          <div class="attach" id="ctlAtt" hidden></div>
+          <textarea id="ask" rows="1" aria-label="このチャンネルに送る文（「/」でコマンド、「@」でファイル）" aria-autocomplete="list" aria-controls="palList" aria-expanded="false" placeholder="このチャンネルに送る（Enter で送信、Shift+Enter で改行）"></textarea>
+        </div>
         <button class="sgtIn" type="button" id="bSugg" hidden title="Claude Code の次の入力の提案を、送信欄に入れる">提案を入れる<kbd>Tab</kbd></button>
         <div class="btns">
+          <button class="btn icoBtn" type="button" id="bImg" aria-label="画像を添付する" title="画像を添付する（貼り付け・ドラッグでも）"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="4.6" width="17.6" height="14.8" rx="2.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8.6" cy="9.6" r="1.8" fill="currentColor"/><path d="M4.6 17.4l4.6-4.8 3.4 3.3 2.6-2.6 4.4 4.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
+          <input type="file" id="imgPick" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
           <button class="btn" type="button" id="bCmd" aria-label="コマンドの一覧を開く"><b>/</b> コマンド</button>
           <button class="btn primary" type="submit" id="bSend">送信</button>
           <button class="btn" type="button" id="bStop">停止</button>

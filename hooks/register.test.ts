@@ -81,7 +81,7 @@ function hub(on: Any, opts: { approvals?: boolean; decision?: string; wait?: () 
     const body = e.init?.body ? JSON.parse(e.init.body) : null
     const ok = (v: unknown) => ({ value: { status: 200, ok: true, headers: {}, text: JSON.stringify(v) } })
     if (path === '/api/health') {
-      const v = opts.version ? opts.version() : '0.5.8'
+      const v = opts.version ? opts.version() : '0.6.0'
       return v === null ? { value: { status: 502, ok: false, headers: {}, text: '' } } : ok({ ok: true, app: 'fogcast', version: v })
     }
     if (e.init?.headers?.['x-fogcast-token'] !== TOKEN) return { value: { status: 401, ok: false, headers: {}, text: '{}' } }
@@ -192,6 +192,8 @@ function project(on: Any) {
     throw Object.assign(new Error(`ENOENT: ${p}`), { code: 'ENOENT' })
   })
   on('fs.stat', (_$: Any, e: Any) => {
+    // where the hub keeps the screen's images (FOGCAST_HOME is ~/.fogcast)
+    if (/^\/home\/t\/\.fogcast\/uploads\/[0-9a-f]{16}\.png$/.test(String(e.path))) return { value: { kind: 'file', size: 2048, mtimeMs: 1, isLink: false, realPath: String(e.path) } }
     const r = rel(e.path)
     const isDir = r === '.' || r === 'src' || r === 'notes' || r === 'docs' || r === 'data', isFile = r in FILES || r === 'out-link' || r === '/home/t/dev/secret.txt'
     if (!isDir && !isFile) throw Object.assign(new Error(`ENOENT: ${r}`), { code: 'ENOENT' })
@@ -252,6 +254,32 @@ test('an Excel file named with @ goes in as the text the hub takes out of it, a 
     { p: 'docs/plan.xlsx', kind: 'file', lines: 4, shown: 4, as: 'xlsx' }, { p: 'data/sjis.csv', kind: 'file', lines: 2, shown: 2, as: 'shift_jis' },
     { p: 'docs/spec.pdf', kind: 'file', err: 'read' }, { p: 'data/blob.dat', kind: 'file', err: 'binary' }, { p: 'data/old.xls', kind: 'file', err: 'legacy' },
   ])
+})
+
+test('an image attached on the screen goes to Claude as a file to read, which Read then opens without a dialog; a quote names no file', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on, ['fs.read', 'fs.list', 'tool.check']); project(on); const h = hub(on)
+  on('tool.check', (_$: Any, e: Any) => ({ decision: e.tool === 'Read' ? 'ask' : 'allow' }))       // outside the folder, Read asks
+  const appended: Any[] = []
+  on('session.append', async (_$: Any, e: Any, next: Any) => { if (e.door === 'note') appended.push(e); return next(e) })
+  on('prompt.submit', (_$: Any, e: Any) => ({ text: e.text }))
+  await started($, on, clock)
+  const PIC = '/home/t/.fogcast/uploads/0123456789abcdef.png'
+  const text = '> 引用：ターン 1 · Claude の返答\n> @src/a.ts を直しました\n\nこの画像のとおりに直して'
+  h.queue.push({ id: 'p9', type: 'prompt', text, imgs: [{ id: '0123456789abcdef', path: PIC }, { id: 'fedcba9876543210', path: '/etc/passwd' }] })
+  await clock.advance(700); await clock.settle()
+  const row = appended[0].message.content[0].text as string
+  expect(row).toContain(`The user attached an image to the message that follows, on the Fogcast screen`)
+  expect(row).toContain(`open it with the Read tool to see what the user means.\n- ${PIC}`)
+  expect(row).not.toContain('/etc/passwd')                      // only where the hub keeps them
+  expect(row).not.toContain('src/a.ts')                         // the @ in a quote is what was said then, not a file to attach
+  await $.turn.start({ text, turnId: 'tp9' })
+  await clock.advance(700)
+  expect(h.events.find(e => e.k === 'turn' && e.cid === 'p9').imgs).toEqual(['0123456789abcdef', 'fedcba9876543210'])
+  // Claude opens it: no dialog for that file, and only that one
+  expect((await $.tool.check({ tool: 'Read', input: { file_path: PIC } })).decision).toBe('allow')
+  expect((await $.tool.check({ tool: 'Read', input: { file_path: '/etc/passwd' } })).decision).toBe('ask')
+  expect((await $.tool.check({ tool: 'Write', input: { file_path: PIC } })).decision).toBe('allow')      // (the stand-in allows everything else)
 })
 
 test('a prompt with @ sent while a turn runs waits for it, its files going in right before it', async ($: Any, on: Any) => {
@@ -412,7 +440,7 @@ test('a hub left running from an older version is stopped once, and this version
   on('process.run', (_$: Any, e: Any) => {
     runs.push([...e.argv])
     if (e.argv.includes('--stop')) version = null
-    if (e.argv.includes('--daemon')) version = '0.5.8'
+    if (e.argv.includes('--daemon')) version = '0.6.0'
     return { value: { exitCode: 0, stdout: 'main\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   hub(on, { version: () => version })

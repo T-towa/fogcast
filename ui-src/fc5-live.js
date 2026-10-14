@@ -34,6 +34,13 @@ function liveKeys(){
   const m=/[#&]k=([0-9a-f]{32,})/.exec(location.hash);
   try{ if(m){ localStorage.setItem('fogcast.k',m[1]); history.replaceState(null,'',location.pathname+location.search); } LV.token=m? m[1] : (localStorage.getItem('fogcast.k')||''); }catch(e){ LV.token=m? m[1] : ''; }
   try{ LV.client=localStorage.getItem('fogcast.client')||''; if(!LV.client){ LV.client=rnd(); localStorage.setItem('fogcast.client',LV.client); } }catch(e){ LV.client=LV.client||rnd(); } }
+// an image the hub keeps, fetched once with the key (an <img> cannot send it) and shown from this page's copy
+const imgJobs=new Map();
+function imgLoad(id){ if(IMG_URL.has(id)) return Promise.resolve(IMG_URL.get(id));
+  if(!imgJobs.has(id)) imgJobs.set(id,fetch('/api/ui/image?id='+encodeURIComponent(id),{headers:{'x-fogcast-token':LV.token,'x-fogcast-client':LV.client}})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); }).then(b=>{ const u=URL.createObjectURL(b); IMG_URL.set(id,u); return u; })
+    .finally(()=>imgJobs.delete(id)));
+  return imgJobs.get(id); }
 async function api(path,body){
   const r=await fetch(path,{method:'POST',headers:{'content-type':'application/json','x-fogcast-token':LV.token,'x-fogcast-client':LV.client},body:JSON.stringify(body||{})});
   let j=null; try{ j=await r.json(); }catch(e){}
@@ -197,7 +204,7 @@ function livePending(c,list){ const mine=c.pend||(c.pend=[]), ids=new Set(list.m
   const keep=mine.filter(x=>!x.id||ids.has(x.id));            // ours the hub no longer holds have started
   for(const p of list){ let x=keep.find(y=>y.id===p.id||(p.local&&y.lid===p.local));
     const st=p.err?'err':p.queued?'queued':'sent';
-    if(!x) keep.push({id:p.id,lid:p.local||null,text:p.text,t:p.t,st,err:p.err||'',other:!(p.local&&LV.lids.has(p.local))});
+    if(!x) keep.push({id:p.id,lid:p.local||null,text:p.text,imgs:p.imgs||[],t:p.t,st,err:p.err||'',other:!(p.local&&LV.lids.has(p.local))});
     else Object.assign(x,{id:p.id,st,err:p.err||''}); }
   keep.sort((a,b)=>a.t-b.t);
   const key=keep.map(x=>`${x.id||x.lid}:${x.st}:${x.err||''}`).join('|');
@@ -205,12 +212,13 @@ function livePending(c,list){ const mine=c.pend||(c.pend=[]), ids=new Set(list.m
 const EVH={
   turn(c,ev){ foldOld(c); if(ev.cid) pendDone(c,x=>x.id===ev.cid);
     const li=document.createElement('li'); li.className='turn'; li.dataset.t=ev.t||Date.now(); const n=ev.n||++c.turnNo; c.turnNo=Math.max(c.turnNo,n);
-    li.innerHTML=`${foldHTML(n,ev.t,esc(clip1(ev.text,120)||'（続き）'),'進行中')}
-      <div class="full">${youHTML(userText(ev.text||'（続き）'),ev.via==='screen'?'この画面から':'ターミナルから',ev.t,filesHTML(ev.files))}<div class="flow">${aiHead(c,ev.t)}</div><div class="turnFt"></div></div>`;
+    const said=bodyText(ev.text||'');
+    li.innerHTML=`${foldHTML(n,ev.t,esc(clip1(said,120)||(ev.text?'（引用）':'（続き）')),'進行中')}
+      <div class="full">${youHTML(userText(ev.text||'（続き）'),ev.via==='screen'?'この画面から':'ターミナルから',ev.t,filesHTML(ev.files)+imgsHTML(ev.imgs),{raw:ev.text||'',imgs:ev.imgs||[]})}<div class="flow">${aiHead(c,ev.t)}</div><div class="turnFt"></div></div>`;
     foldBind(li); li.dataset.turn=ev.id||'';
     c.log.appendChild(li); c.cur={li,flow:li.querySelector('.flow'),ops:0,id:ev.id};
-    if(!c.role&&ev.text) c.role=clip1(ev.text,28); },
-  user(c,ev){ flowOf(c).insertAdjacentHTML('beforeend',youHTML(userText(ev.text),ev.mid?'作業中にターミナルから':'ターミナルから',ev.t)); },
+    if(!c.role&&said) c.role=clip1(said,28); },
+  user(c,ev){ flowOf(c).insertAdjacentHTML('beforeend',youHTML(userText(ev.text),ev.mid?'作業中にターミナルから':'ターミナルから',ev.t,'',{raw:ev.text||''})); },
   say(c,ev){ const f=flowOf(c), last=f.lastElementChild; if(last&&last.classList.contains('ans')) last.insertAdjacentHTML('beforeend','<br><br>'+mdLite(ev.text)); else { const d=document.createElement('div'); d.className='ans'; d.innerHTML=mdLite(ev.text); f.appendChild(d); } },
   tool(c,ev,replay){ const f=flowOf(c); let ul=f.lastElementChild; if(!ul||!ul.classList.contains('ops')){ ul=document.createElement('ul'); ul.className='ops'; f.appendChild(ul); }
     const l=ev.link&&LINK[ev.link], li=document.createElement('li'); li.className=`op run k-${l?l.kind:'tool'}${ev.agent?' sub':''}`;
@@ -263,7 +271,7 @@ const EVH={
   note(c,ev){ sysBox(c,`<span>${esc(ev.text)}</span>`); },
 };
 function turnFoot(li,grew){ const d=li.dataset, ab=d.ab==='1';
-  li.querySelector('.turnFt').innerHTML=`<span>${d.ops}件の操作</span><span>コンテキスト +${fmt(grew)}</span><span>${d.sec}秒</span>${ab?'<span>止めました</span>':''}`;
+  li.querySelector('.turnFt').innerHTML=`<span>${d.ops}件の操作</span><span>コンテキスト +${fmt(grew)}</span><span>${d.sec}秒</span>${ab?`<span>止めました</span>${REDO}`:''}`;
   li.querySelector('.fold .k').textContent=`${d.ops}件の操作 · +${fmt(grew)} · ${d.sec}秒${ab?' · 中断':''}`; }
 // what counts as a message for the "新着" count while you read further up (a tool's row does not)
 const END_K=new Set(['turn','user','say','question','wait','cmd','compact','clear','end','resumed','note']);
@@ -304,8 +312,8 @@ function liveModel(c,o){ api('/api/ui/model',{chan:c.id,value:o}).then(r=>{ if(c
 function liveEffort(c,x){ api('/api/ui/effort',{chan:c.id,value:x}).then(r=>{ if(!r.queued){ c.effort=x; dirty=true; } toast(r.queued?'queue':'info',r.queued?'effort の変更を予約しました':`ch.${c.num} ${esc(c.name)} の effort を変えます`,`${esc(x)}${r.queued?' · 今のターンが終わったら':''}`); })
   .catch(err=>toast('info','effort を変えられませんでした',esc(err.message==='effort'?'このターミナルでは選べない値です。':err.message))); }
 // shown at once as a bubble; the hub hands it to the terminal, which starts it when it is free
-function liveSend(c,text){ const lid=rnd(); LV.lids.add(lid); const x={lid,text,t:Date.now(),st:'sending'}; (c.pend||(c.pend=[])).push(x); c.pendKey=null; renderPend(c);
-  api('/api/ui/send',{chan:c.id,text,local:lid}).then(r=>{ x.id=x.id||r.id; if(x.st==='sending') x.st=r.queued?'queued':'sent'; c.pendKey=null; renderPend(c); })
+function liveSend(c,text,imgs){ const lid=rnd(); LV.lids.add(lid); imgs=imgs||[]; const x={lid,text,imgs,t:Date.now(),st:'sending'}; (c.pend||(c.pend=[])).push(x); c.pendKey=null; renderPend(c);
+  api('/api/ui/send',{chan:c.id,text,local:lid,imgs}).then(r=>{ x.id=x.id||r.id; if(x.st==='sending') x.st=r.queued?'queued':'sent'; c.pendKey=null; renderPend(c); })
     .catch(err=>{ x.st='err'; x.err=err.message; c.pendKey=null; renderPend(c); }); }
 function liveForget(list){ api('/api/ui/forget',{chans:list.map(c=>c.id)}).then(r=>{ toast('info',`${list.length===1?`ch.${list[0].num} ${esc(list[0].name)} を`:`${r.gone||list.length} チャンネルを`}片付けました`,'セッションは残っています。「＋ 追加」の過去のセッションから戻れます。'); })
   .catch(err=>toast('info','片付けられませんでした',esc(err.message))); }

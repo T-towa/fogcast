@@ -10,7 +10,7 @@ import { linkFor, verb, summarize, outline, fileChange, todosOf, textOf, srcLabe
 type Any = any
 
 /** Keep in step with .claude-plugin/plugin.json and hub/hub.mjs (a test checks). */
-export const VERSION = '0.5.8'
+export const VERSION = '0.6.0'
 const DEFAULT_PORT = 4317
 /** Claude Code drops a toast asked to stay longer than this (0.1.0 lost its pairing notice that way). */
 const TOAST_MAX = 60000
@@ -56,7 +56,9 @@ const st = {
   /** the address with its key, drawn under /fog's row when no browser could be opened (the stored row, which the model reads, never has it) */
   fogShow: '',
   /** prompts the screen sent, until their turn starts: the hub's id rides along so the screen can swap its pending bubble for the turn */
-  submitted: [] as Array<{ text: string; cid: string; files?: Attached[] }>,
+  submitted: [] as Array<{ text: string; cid: string; files?: Attached[]; imgs?: string[] }>,
+  /** images the person attached on the screen, kept where Fogcast keeps them: the files Claude may read without a dialog */
+  imgOk: new Set<string>(),
   /** each command's argument hint (`[model]`), as the engine lists it for the typeahead */
   hints: new Map<string, string>(),
   /** what each agent type is for (its definition's description), as the engine offers it to the model */
@@ -334,12 +336,14 @@ function perform($: Any, c: Any) {
   const fail = (err: unknown) => push({ k: 'did', cid: c.id, what: c.type, ok: false, error: clip(String((err as Any)?.message ?? err), 200) })
   try {
     if (c.type === 'prompt') {
-      const text = String(c.text), entry: { text: string; cid: string; files?: Attached[] } = { text, cid: String(c.id) }
+      const text = String(c.text), entry: { text: string; cid: string; files?: Attached[]; imgs?: string[] } = { text, cid: String(c.id) }
+      const imgs: Pic[] = (Array.isArray(c.imgs) ? c.imgs : []).slice(0, 5).map((x: Any) => ({ id: String(x?.id ?? ''), path: String(x?.path ?? '') })).filter((x: Pic) => /^[0-9a-f]{16}$/.test(x.id) && x.path)
+      if (imgs.length) entry.imgs = imgs.map(x => x.id)
       st.submitted.push(entry); if (st.submitted.length > 8) st.submitted.shift()
-      if (!mentionsOf(text).length) void $.prompt.submit({ text, asUser: true }).catch(fail)        // starts once the session is idle
+      if (!mentionsOf(text).length && !imgs.length) void $.prompt.submit({ text, asUser: true }).catch(fail)        // starts once the session is idle
       // with files named by @: while a turn runs, the files and the prompt wait for it together, so the row lands right before the prompt
-      else if (st.turnId) st.afterTurn.push(() => { void sendPrompt($, text, entry).catch(fail) })
-      else void sendPrompt($, text, entry).catch(fail)
+      else if (st.turnId) st.afterTurn.push(() => { void sendPrompt($, text, entry, imgs).catch(fail) })
+      else void sendPrompt($, text, entry, imgs).catch(fail)
     } else if (c.type === 'answer') {
       st.qWait.get(String(c.qid))?.(c.answers)                                          // a question still open here takes it
     } else if (c.type === 'command') {
@@ -440,10 +444,27 @@ const CONVERTED: Record<string, string> = {
   docx: 'Word document: its paragraphs, table cells separated by tabs',
   pptx: 'PowerPoint deck: each slide\'s text under ## Slide and its number, with its speaker notes',
 }
-async function attachments($: Any, text: string): Promise<{ row: string; items: Attached[] }> {
+/** An image the screen attached: kept by the hub as a file, which Claude is told to open with Read. */
+type Pic = { id: string; path: string }
+async function pictures($: Any, imgs: Pic[]): Promise<string> {
+  const home = String(st.dir || '').replace(/\/+$/, ''), ok: string[] = []
+  for (const x of imgs) {
+    // only a file where the hub keeps them, by the name it gave it
+    if (!home || !x.path.startsWith(`${home}/uploads/`) || !/\/[0-9a-f]{16}\.(png|jpg|gif|webp)$/.test(x.path)) continue
+    const s = await $.fs.stat(x.path).catch(() => null)
+    if (s?.kind !== 'file') continue
+    ok.push(x.path); st.imgOk.add(x.path)
+  }
+  while (st.imgOk.size > 60) st.imgOk.delete(st.imgOk.values().next().value!)
+  if (!ok.length) return ''
+  const many = ok.length > 1
+  return `The user attached ${many ? `${ok.length} images` : 'an image'} to the message that follows, on the Fogcast screen (where Claude Code cannot attach images itself). ${many ? 'They are' : 'It is'} saved as ${many ? 'files' : 'a file'}: open ${many ? 'each' : 'it'} with the Read tool to see what the user means.\n${ok.map(p => `- ${p}`).join('\n')}`
+}
+async function attachments($: Any, text: string, imgs: Pic[] = []): Promise<{ row: string; items: Attached[] }> {
   const names = mentionsOf(text)
   const items: Attached[] = [], parts: string[] = [], reads: string[] = []
-  if (!names.length) return { row: '', items }
+  const pics = imgs.length ? await pictures($, imgs) : ''
+  if (!names.length) return { row: pics, items }
   // every path is read from this terminal's folder (what the terminal's @ resolves against), and must land inside it
   const base = String(st.cwd || '').replace(/[\\/]+$/, '')
   const at = (p: string) => `${base}/${p}`
@@ -502,18 +523,18 @@ async function attachments($: Any, text: string): Promise<{ row: string; items: 
     parts.push(`<file path="${p}" lines="${range}"${enc ? ` encoding="${enc}"` : ''}>\n${n.body}\n</file>${n.shown < n.lines ? `\n(The rest of ${p} is not shown here; read it with the Read tool when needed.)` : ''}`)
     items.push({ p, kind: 'file', lines: n.lines, shown: n.shown, ...(enc ? { as: enc } : {}) })
   }
-  if (!parts.length && !reads.length) return { row: '', items }
+  if (!parts.length && !reads.length) return { row: pics, items }
   const them = reads.length > 1
   const row = [
     'The user named these with @ in the message that follows, sent from the Fogcast screen (where Claude Code does not attach @ mentions itself).',
     parts.length ? ` Here is what they held when it was sent, as the terminal's @ would have attached them${parts.some(x => x.includes(' converted="')) ? ' (an Office file as the text taken out of it)' : ''}:\n\n${parts.join('\n\n')}` : '',
     reads.length ? `${parts.length ? '\n\n' : ' '}${reads.join(', ')} ${them ? 'are images or PDFs' : /\.pdf$/i.test(reads[0]!) ? 'is a PDF' : 'is an image'}, which this screen cannot attach: read ${them ? 'them' : 'it'} with the Read tool to see what the user means.` : '',
   ].join('')
-  return { row, items }
+  return { row: pics ? `${row}\n\n${pics}` : row, items }
 }
-/** A prompt from the screen: the files it names go in first, then the prompt, as the person's own words. */
-async function sendPrompt($: Any, text: string, entry: { files?: Attached[] }) {
-  const a = await attachments($, text)
+/** A prompt from the screen: the files it names and the images it carries go in first, then the prompt, as the person's own words. */
+async function sendPrompt($: Any, text: string, entry: { files?: Attached[] }, imgs: Pic[] = []) {
+  const a = await attachments($, text, imgs)
   if (a.items.length) entry.files = a.items
   if (a.row) {
     const r = await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: a.row }] } }).catch(() => null)
@@ -639,7 +660,7 @@ export const register: Register = (on) => {
       const via = i >= 0 || lc?.screen ? 'screen' : undefined
       const sent = i >= 0 ? st.submitted.splice(i, 1)[0]! : undefined
       st.lastCmd = null
-      push({ k: 'turn', id: e.turnId, text, via, cid: sent?.cid, ...(sent?.files ? { files: sent.files } : {}) })
+      push({ k: 'turn', id: e.turnId, text, via, cid: sent?.cid, ...(sent?.files ? { files: sent.files } : {}), ...(sent?.imgs ? { imgs: sent.imgs } : {}) })
     } catch {}
     return next(e)
   })
@@ -718,7 +739,9 @@ export const register: Register = (on) => {
     catch (err) { push({ k: 'toolEnd', id, err: true, out: '中断' }); st.tools.delete(id); throw err }
     try {
       st.tools.delete(id); st.ceil.delete(id)
-      const end: Any = { k: 'toolEnd', id, err: !!(r && (r.deny || r.isError)), out: outline(name, r) }
+      // a picture or a PDF read comes back as itself, not as lines
+      const seen = name === 'Read' && r && !r.deny && !r.isError && !String(r.text ?? '').trim() ? (/\.(png|jpe?g|gif|webp)$/i.test(String(args.file_path ?? '')) ? '画像' : /\.pdf$/i.test(String(args.file_path ?? '')) ? 'PDF' : '') : ''
+      const end: Any = { k: 'toolEnd', id, err: !!(r && (r.deny || r.isError)), out: seen || outline(name, r) }
       if (name === 'TaskCreate' && !end.err) { const m = /#(\d+)/.exec(str(r?.text)) ?? /\b(\d+)\b/.exec(str(r?.text)); end.task = { op: 'create', id: m ? m[1] : id, t: clip(str(args.subject) || str(args.description), 200) } }
       push(end)
     } catch {}
@@ -729,6 +752,12 @@ export const register: Register = (on) => {
   on('tool.check', async ($: Any, e: Any, next: Any) => {
     const v = await next(e)
     try { if (e.tool_use_id && (v?.ceiling || e.ceiling)) st.ceil.add(e.tool_use_id) } catch {}
+    // an image the person attached on the screen, where Fogcast keeps it: Claude opens it without a dialog. Only that file,
+    // only to read it; a deny stands, and so does an organization that wants the dialog
+    try {
+      if (e.tool === 'Read' && v?.decision === 'ask' && !v.ceiling && !e.ceiling && st.imgOk.has(String(e.input?.file_path ?? '')))
+        return { ...v, decision: 'allow', reason: 'Fogcast の画面で添付された画像' }
+    } catch {}
     return v
   })
 
