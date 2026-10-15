@@ -24,7 +24,7 @@ import { inflateRawSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
-export const VERSION = '0.6.0'
+export const VERSION = '0.6.1'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ARGS = process.argv.slice(2)
 const PORT = Number(process.env.FOGCAST_PORT) || 4317
@@ -784,7 +784,9 @@ async function projectFiles(cwd) {
   const list = (await gitFiles(cwd)) || (await walkFiles(cwd))
   const dirs = new Set()
   for (const p of list) { let i = p.lastIndexOf('/'); while (i > 0) { const d = p.slice(0, i); if (dirs.has(d)) break; dirs.add(d); i = d.lastIndexOf('/') } }
-  const files = [...list.map(p => ({ p, d: false })), ...[...dirs].map(p => ({ p, d: true }))]
+  // n: the path as typed text compares (NFC, as a name saved on a Mac may not be); l: the same in small letters
+  const entry = (p, d) => { const n = p.normalize('NFC'); return { p, d, n, l: n.toLowerCase() } }
+  const files = [...list.map(p => entry(p, false)), ...[...dirs].map(p => entry(p, true))]
   const v = { t: now(), files, mtimes: null }
   fileLists.set(cwd, v); if (fileLists.size > 20) fileLists.delete(fileLists.keys().next().value)
   return v
@@ -798,32 +800,37 @@ async function recentFiles(cwd, v, n) {
   }
   return [...v.mtimes].sort((a, b) => b[1] - a[1]).slice(0, n).map(([p]) => ({ p, d: false }))
 }
-/** How well a path answers what was typed after @: a name that starts with it first, then one that holds it, then letters in order. */
-function fileScore(f, q) {
-  const pl = f.p.toLowerCase(), base = pl.slice(pl.lastIndexOf('/') + 1)
-  if (q.includes('/')) {
-    if (pl.startsWith(q)) return 0 + pl.length / 1e4
-    if (pl.includes(q)) return 2 + pl.length / 1e4
+/** How well a path answers what was typed after @ (q in small letters, raw as typed): the name itself first (as typed, then in
+ *  any case), then the name without its extension (`仕様` for docs/仕様.md), then a name that starts with it, one that holds it,
+ *  the path that holds it, and letters in order; on a tie, the shorter path. Typed with a "/", the same over the whole path. */
+function fileScore(f, q, raw) {
+  const pl = f.l ?? f.p.toLowerCase(), k = pl.lastIndexOf('/'), len = pl.length / 1e4, path = q.includes('/')
+  const name = path ? pl : pl.slice(k + 1), dot = name.lastIndexOf('.'), stem = dot > name.lastIndexOf('/') + 1 ? name.slice(0, dot) : name
+  if (name === q) { const as = f.n ?? f.p; return ((path ? as : as.slice(as.lastIndexOf('/') + 1)) === raw ? 0 : 0.1) + len }
+  if (stem === q) return 0.5 + len
+  if (path) {
+    if (pl.startsWith(q)) return 1 + len
+    if (pl.includes(q)) return 2 + len
   } else {
-    if (base === q) return 0
-    if (base.startsWith(q)) return 1 + pl.length / 1e4
-    if (base.includes(q)) return 2 + pl.length / 1e4
-    if (pl.includes(q)) return 3 + pl.length / 1e4
+    if (name.startsWith(q)) return 1 + len
+    if (name.includes(q)) return 2 + len
+    if (pl.includes(q)) return 3 + len
   }
   let i = 0, gaps = 0, last = -1
   for (const ch of q) { const j = pl.indexOf(ch, i); if (j < 0) return -1; if (last >= 0 && j > last + 1) gaps++; last = j; i = j + 1 }
-  return 4 + gaps / 10 + pl.length / 1e4
+  return 4 + gaps / 10 + len
 }
 async function filesFor(c, q) {
   const cwd = absPath(c.cwd); if (!cwd) return null
   try { if (!statSync(cwd).isDirectory()) return null } catch { return null }
   const v = await projectFiles(cwd)
-  q = str(q, 200).trim().replace(/^@/, '').replace(/^"/, '').replace(/^\.\//, '').toLowerCase()
+  const raw = str(q, 200).trim().replace(/^@/, '').replace(/^"/, '').replace(/^\.\//, '').normalize('NFC')
+  q = raw.toLowerCase()
   if (!q) return { files: await recentFiles(cwd, v, 30), total: v.files.length, recent: true }
   const hits = []
-  for (const f of v.files) { const s = fileScore(f, q); if (s >= 0) hits.push([s, f]) }
+  for (const f of v.files) { const s = fileScore(f, q, raw); if (s >= 0) hits.push([s, f]) }
   hits.sort((a, b) => a[0] - b[0] || Number(a[1].d) - Number(b[1].d) || a[1].p.localeCompare(b[1].p))
-  return { files: hits.slice(0, 40).map(([, f]) => f), total: v.files.length, more: hits.length > 40 }
+  return { files: hits.slice(0, 40).map(([, f]) => ({ p: f.p, d: f.d })), total: v.files.length, more: hits.length > 40 }
 }
 
 /* ---------------- images the screen attaches to a message: kept here a week, for Claude to open with Read ---------------- */

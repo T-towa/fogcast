@@ -142,6 +142,8 @@ h1,h2,h3{text-wrap:balance}
   background:radial-gradient(120% 90% at 50% 38%,#0d1627 0%,#070b14 55%,#04060b 100%);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),inset 0 0 70px rgba(0,0,0,.85),inset 0 0 140px rgba(63,230,214,.05)}
 .view{position:absolute;inset:0;z-index:1;overflow:auto;padding:16px 18px 18px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
+/* while it scrolls under a resting pointer, nothing in it lights up or offers its buttons (the view itself keeps the wheel) */
+.view.scrolling > *{pointer-events:none}
 /* glass over the picture: a soft vignette and one diagonal reflection, no scanlines */
 .glare{position:absolute;inset:0;z-index:4;pointer-events:none;border-radius:inherit;
   background:linear-gradient(118deg,transparent 0 58%,rgba(255,255,255,.035) 63%,transparent 70%),radial-gradient(130% 110% at 50% 50%,transparent 62%,rgba(0,0,0,.45))}
@@ -253,6 +255,12 @@ h1,h2,h3{text-wrap:balance}
 .osdPick:disabled{opacity:.4;cursor:default}
 .osd .right{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:12px;color:var(--mute)}
 .osd .right b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+/* the magnifier: opens the search in this channel */
+.osdFind{display:inline-grid;place-items:center;width:28px;height:28px;margin-left:2px;border-radius:999px;border:1px solid rgba(63,230,214,.45);background:rgba(63,230,214,.08);color:var(--teal);cursor:pointer}
+.osdFind svg{width:15px;height:15px}
+.osdFind:hover{background:rgba(63,230,214,.18)}
+.osdFind.on{background:var(--teal);border-color:var(--teal);color:var(--teal-ink)}
+.osdFind:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .log{list-style:none;margin:0;padding:0 0 8px;display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .turn{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;min-width:0}
 .turn .full{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;min-width:0}
@@ -314,6 +322,33 @@ h1,h2,h3{text-wrap:balance}
 .toEnd.new:hover{background:#ffe46a}
 .toEnd .nw:empty{display:none}
 @keyframes toEndIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* searching the channel: a bar under its header (top set by the script, under the header as it wraps); every match lit
+   pale yellow, the one you are on solid; a folded turn or a closed box with matches in it shows how many */
+.find{position:absolute;right:18px;top:64px;z-index:5;display:flex;align-items:center;gap:2px;padding:4px 5px 4px 11px;max-width:calc(100% - 36px);
+  border-radius:12px;border:2px solid var(--teal);background:rgba(7,11,20,.95);box-shadow:4px 4px 0 #000;animation:findIn .16s cubic-bezier(.2,.9,.2,1)}
+.find[hidden]{display:none}
+.find:focus-within{border-color:var(--yolk)}
+.find.none{border-color:var(--alarm)}
+.find .fi{width:16px;height:16px;flex:none;color:var(--teal)}
+.find input{width:230px;min-width:0;flex:1 1 auto;border:0;background:transparent;color:var(--ink);font:14px/1.4 var(--f-body);padding:6px 6px 6px 7px;outline:none}
+.find input::placeholder{color:var(--faint)}
+.find .fn{flex:none;min-width:4.4em;padding:0 4px;text-align:right;font:12px/1 var(--f-mono);color:var(--mute);white-space:nowrap}
+.find.none .fn{color:#ff9d8f;font-family:var(--f-body)}
+.find button{flex:none;width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:8px;background:transparent;color:var(--ink);cursor:pointer}
+.find button svg{width:16px;height:16px}
+.find button:hover:not(:disabled),.find button:focus-visible{background:rgba(63,230,214,.16);color:var(--teal);outline:none}
+.find button:disabled{opacity:.32;cursor:default}
+@keyframes findIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+::highlight(fc-find){background-color:rgba(255,217,49,.34)}
+::highlight(fc-find-on){background-color:#ffd931;color:#15110a}
+/* on the light bubbles (yours in yellow, Claude's in white) and a picked option: the one you are on is dark instead */
+.you ::highlight(fc-find){background-color:rgba(7,11,20,.2)}
+.flow > .ans::highlight(fc-find),.flow > .ans ::highlight(fc-find){background-color:rgba(255,190,0,.5)}
+.you ::highlight(fc-find-on),.flow > .ans::highlight(fc-find-on),.flow > .ans ::highlight(fc-find-on),.qo[aria-pressed="true"] ::highlight(fc-find-on){background-color:#14110c;color:#ffd931}
+.flow > .ans pre::highlight(fc-find),.flow > .ans pre ::highlight(fc-find){background-color:rgba(255,217,49,.34)}     /* a code block in it is dark again */
+.flow > .ans pre::highlight(fc-find-on),.flow > .ans pre ::highlight(fc-find-on){background-color:#ffd931;color:#15110a}
+.turn.folded > .fold[data-find]::after,details:not([open]) > summary[data-find]::after{content:"一致 " attr(data-find);order:1;flex:none;padding:2px 8px;border-radius:999px;background:var(--yolk);color:var(--yolk-ink);font:700 11px/1.35 var(--f-body)}
+.turn.folded > .fold[data-find] .chev{order:2}
 @keyframes toEndPing{0%{box-shadow:3px 3px 0 #000,0 0 0 0 rgba(255,217,49,.55)}70%{box-shadow:3px 3px 0 #000,0 0 0 12px rgba(255,217,49,0)}100%{box-shadow:3px 3px 0 #000,0 0 0 0 rgba(255,217,49,0)}}
 /* the turn a history card went to, lit for a moment */
 .log>li.hit{border-radius:14px;animation:hit 1.7s ease-out}
@@ -975,7 +1010,9 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 .qq:has(legend small) .qo::before{border-radius:3px}
 .qo b{font-size:14.5px;line-height:1.4}
 .qo small{font-size:12px;line-height:1.5;color:var(--mute)}
-.qo:hover:not(:disabled){border-color:var(--teal);background:rgba(63,230,214,.08)}
+/* the pointer on an option lights its frame; one already picked keeps its fill under the pointer (the hover used to win,
+   leaving its dark words on the dark card, and the light seemed to move from one option to the next as the page scrolled) */
+.qo:hover:not(:disabled):not([aria-pressed="true"]){border-color:rgba(63,230,214,.75);background:rgba(63,230,214,.06)}
 .qo:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .qo[aria-pressed="true"]{border-color:var(--teal);background:var(--teal);color:var(--teal-ink)}
 .qo[aria-pressed="true"] small{color:rgba(3,19,15,.75)}
@@ -1189,6 +1226,8 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
   .osd .right .tk{display:none}   /* the rail's 今日の使用量 has them; the status stays on one line */
   .live{margin:10px -12px -16px;padding:10px 12px 12px}
   .toEnd{right:14px;bottom:52px}
+  .find{left:10px;right:10px;max-width:none}
+  .find input{width:auto}
   .op{grid-template-columns:5.6em minmax(0,1fr) auto}
   .op .num{display:none}
   .tiles{grid-template-columns:minmax(0,1fr)}
@@ -1259,6 +1298,14 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
           <div class="live" id="live"></div>
         </div>
         <div class="drop" id="drop" hidden aria-hidden="true"><span>画像を落とすと、送る文に添付します</span></div>
+        <div class="find" id="find" role="search" aria-label="このチャンネルの中を検索" hidden>
+          <svg class="fi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.4" cy="10.4" r="6.1" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15 15l5.2 5.2" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+          <input id="findIn" type="text" enterkeyhint="search" placeholder="このチャンネルの中を検索" aria-label="検索する言葉（Enter で次、Shift+Enter で前、Esc で閉じる）" autocomplete="off" spellcheck="false">
+          <span class="fn" id="findN" role="status" aria-live="polite"></span>
+          <button type="button" id="findUp" aria-label="前の一致へ（Shift+Enter）" title="前へ（Shift+Enter）" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" id="findDn" aria-label="次の一致へ（Enter）" title="次へ（Enter）" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" id="findX" aria-label="検索を閉じる（Esc）" title="閉じる（Esc）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
+        </div>
         <button class="toEnd" id="toEnd" type="button" hidden title="いちばん下（最新）へ" aria-label="いちばん下（最新）へ"><span class="nw" id="toEndN"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v12M6.5 11.5 12 17l5.5-5.5M6 20.5h12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <div class="glare" aria-hidden="true"></div>
         <div class="wipe" id="wipe" aria-hidden="true"><span class="band"><b id="wipeN"></b><small id="wipeS"></small></span></div>
@@ -1938,13 +1985,18 @@ function renderGuide(){
 }
 
 /* ================= TV: one channel ================= */
+// the magnifier at the end of the header opens the search in the channel (fc4); findOn: that bar is open
+let findOn=false;
+const FIND_ICO='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.4" cy="10.4" r="6.1" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15 15l5.2 5.2" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
+const FIND_KEY=/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent||'')? '⌘F' : 'Ctrl+F';
 function renderOsd(c){
   // the model and effort are buttons (their pickers): drawn again only when something in the line changed, so a press is never lost
   const off=c.status==='off', old=LIVE&&!c.models&&!off;      // a terminal on an earlier Fogcast: its pickers come with a restart
   const lock=off||old? ` disabled${old?' title="このターミナルの Fogcast は前の版です。claude を起動し直すと使えます"':''}` : '';
   const html=`<span class="n">ch.${c.num}</span><span class="nm">${esc(c.name)}</span><span class="meta" title="${esc(`${c.role} · ${c.cwd} · ${c.branch}`)}">${esc(c.role)} · ${esc(c.cwd)} · ${esc(c.branch)}</span>
     <span class="picks"><button class="osdPick" type="button" data-pick="model"${lock||' title="モデルを切り替える"'}>${esc(c.model||'モデル')}</button><button class="osdPick" type="button" data-pick="effort"${lock||` title="考える深さ（effort）を変える${c.effortUsed&&c.effort&&c.effortUsed!==c.effort?`。最後の返答は ${esc(c.effortUsed)}`:''}"`}>effort <b>${esc(effortLabel(c.effort))}</b></button></span>
-    <span class="right"><span class="chip ${c.status}">${stl(c)}</span><span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span class="tk"><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span></span>`;
+    <span class="right"><span class="chip ${c.status}">${stl(c)}</span><span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span class="tk"><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span>
+      <button class="osdFind${findOn?' on':''}" type="button" data-find aria-controls="find" aria-expanded="${findOn}" aria-label="このチャンネルの中を検索（${FIND_KEY}）" title="このチャンネルの中を検索（${FIND_KEY}）">${FIND_ICO}</button></span>`;
   if($('osd').dataset.k!==html){ $('osd').dataset.k=html; $('osd').innerHTML=html; }
   const el=c.status==='off'? '' : `${Math.floor((Date.now()-c.phaseAt)/1000)}s`;
   $('live').innerHTML=`<i class="dot ${c.status}"></i><span class="txt">${c.now}</span><span class="el">${el}</span>`;
@@ -2927,7 +2979,8 @@ function select(n,then){ if(n!==0&&!chN(n)) return; const changed=n!==sel; sel=n
     stick=true; endNew=0; endDraw(); askFit();          // a channel opens at its latest
     if(n){ renderOsd(chN(n)); requestAnimationFrame(()=>{ if(sel!==n) return; if(then) then(); else toEnd(false); }); }
     else { $('sfog').style.setProperty('--fog','0'); $('screen').classList.remove('off'); renderWall(); renderGuide(); }
-    if(rtab==='D') renderDetail(true); if(rtab==='S') renderSkills(true); if(rtab==='H') renderHist(true); };
+    if(rtab==='D') renderDetail(true); if(rtab==='S') renderSkills(true); if(rtab==='H') renderHist(true);
+    findSwap(n); };
   if(changed&&!reduce){ const w=$('wipe'), c=chN(n); $('wipeN').textContent= n===0? 'ch.0' : `ch.${n}`; $('wipeS').textContent= n===0? '全チャンネル' : c.name;
     w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); clearTimeout(select.t); select.t=setTimeout(swap,750); }   // mid-hold of the 1.5 s band
   else swap();
@@ -2946,7 +2999,7 @@ document.addEventListener('keydown',e=>{
   if(coKeys(e)||co) return;
   const tag=(e.target.tagName||'').toLowerCase();
   if(tag==='textarea'||tag==='input'||tag==='select'||e.metaKey||e.ctrlKey||e.altKey||!$('scrim').hidden) return;
-  if(e.key==='Escape'&&!e.isComposing){ if(act) actHide(true); if(escStop()) e.preventDefault(); return; }
+  if(e.key==='Escape'&&!e.isComposing){ if(act) actHide(true); if(findOn){ e.preventDefault(); findClose(); return; } if(escStop()) e.preventDefault(); return; }
   if(/^[0-9]$/.test(e.key)&&(+e.key===0||chN(+e.key))){ select(+e.key); e.preventDefault(); }
   if(e.key==='/'&&sel){ e.preventDefault(); cmdStart(); } });
 
@@ -2997,16 +3050,20 @@ function renderFiles(){ const L=pal.items;
   if(L.length&&!pal.wait){ $('ask').setAttribute('aria-activedescendant','po'+pal.i); const on=$('palList').querySelector('.po.on'); on&&on.scrollIntoView({block:'nearest'}); }
   else $('ask').removeAttribute('aria-activedescendant'); }
 /* the demo: its folder's files, ranked as the hub ranks them, and what a prompt's @ would attach */
-function fileScore(p,q){ const pl=p.toLowerCase(), base=pl.slice(pl.lastIndexOf('/')+1);
-  if(q.includes('/')){ if(pl.startsWith(q)) return pl.length/1e4; if(pl.includes(q)) return 2+pl.length/1e4; }
-  else { if(base===q) return 0; if(base.startsWith(q)) return 1+pl.length/1e4; if(base.includes(q)) return 2+pl.length/1e4; if(pl.includes(q)) return 3+pl.length/1e4; }
+// the name itself first (as typed, then in any case), then the name without its extension, then a name that starts with it...
+function fileScore(p,q,raw){ const pl=p.toLowerCase(), k=pl.lastIndexOf('/'), len=pl.length/1e4, path=q.includes('/');
+  const name=path? pl : pl.slice(k+1), dot=name.lastIndexOf('.'), stem=dot>name.lastIndexOf('/')+1? name.slice(0,dot) : name;
+  if(name===q) return ((path? p : p.slice(p.lastIndexOf('/')+1))===raw? 0 : .1)+len;
+  if(stem===q) return .5+len;
+  if(path){ if(pl.startsWith(q)) return 1+len; if(pl.includes(q)) return 2+len; }
+  else { if(name.startsWith(q)) return 1+len; if(name.includes(q)) return 2+len; if(pl.includes(q)) return 3+len; }
   let i=0, gaps=0, last=-1; for(const ch of q){ const j=pl.indexOf(ch,i); if(j<0) return -1; if(last>=0&&j>last+1) gaps++; last=j; i=j+1; }
-  return 4+gaps/10+pl.length/1e4; }
+  return 4+gaps/10+len; }
 function demoTree(){ const dirs=new Set(); DEMO_FILES.forEach(p=>{ let i=p.lastIndexOf('/'); while(i>0){ dirs.add(p.slice(0,i)); i=p.lastIndexOf('/',i-1); } });
   return [...DEMO_FILES.map(p=>({p,d:false})),...[...dirs].map(p=>({p,d:true}))]; }
-function demoFiles(q){ q=String(q||'').toLowerCase().replace(/^\.\//,'');
+function demoFiles(q){ const raw=String(q||'').replace(/^\.\//,''); q=raw.toLowerCase();
   if(!q) return {ok:true,recent:true,files:['hooks/register.ts','hub/hub.mjs','ui-src/fc4.js','README.md','hooks/shape.ts','ui-src/fc-head.html'].map(p=>({p,d:false}))};
-  const hits=demoTree().map(f=>[fileScore(f.p,q),f]).filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]||Number(a[1].d)-Number(b[1].d)||a[1].p.localeCompare(b[1].p));
+  const hits=demoTree().map(f=>[fileScore(f.p,q,raw),f]).filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]||Number(a[1].d)-Number(b[1].d)||a[1].p.localeCompare(b[1].p));
   return {ok:true,files:hits.slice(0,40).map(x=>x[1])}; }
 function demoAttach(text){ const out=[], re=/(^|[\s(（「『【、。，．：；])@(?:"([^"\n]+)"|([^\s"]+))/g; let m;
   text=String(text).split('\n').filter(l=>!/^\s*>/.test(l)).join('\n');          // a quote's @ names nothing
@@ -3040,7 +3097,7 @@ $('ask').addEventListener('keydown',e=>{
     if((e.key==='Enter'||e.key==='Tab')&&!e.isComposing&&pal.items.length){ e.preventDefault(); pickPal(pal.i); return; }
     if(e.key==='Escape'){ e.preventDefault(); const cmd=pal.mode==='cmd'; closePal(); if(cmd) asideBack(); return; } }
   if(e.key==='Escape'&&aside&&!e.isComposing){ e.preventDefault(); asideBack(); return; }
-  if(e.key==='Escape'&&!e.isComposing&&e.keyCode!==229){ if(act) actHide(true); if(escStop()){ e.preventDefault(); return; } }
+  if(e.key==='Escape'&&!e.isComposing&&e.keyCode!==229){ if(act) actHide(true); if(findOn){ e.preventDefault(); findClose(); return; } if(escStop()){ e.preventDefault(); return; } }
   // the suggestion in the empty box: Tab (or →) takes it, as in the terminal
   if((e.key==='Tab'&&!e.shiftKey||e.key==='ArrowRight')&&!e.isComposing&&!$('ask').value&&takeSugg()){ e.preventDefault(); return; }
   if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); $('ctl').requestSubmit(); } });
@@ -3114,6 +3171,8 @@ $('logs').addEventListener('mouseout',e=>{ if(!act||act.pick||ACT.contains(e.rel
 ACT.addEventListener('mouseenter',()=>clearTimeout(actT));
 ACT.addEventListener('mouseleave',()=>{ if(act&&!act.pick) actHide(); });
 $('chan').addEventListener('scroll',()=>{ if(act) actHide(true); },{passive:true});
+let scrollT=0;
+$('chan').addEventListener('scroll',()=>{ const v=$('chan'); if(!v.classList.contains('scrolling')) v.classList.add('scrolling'); clearTimeout(scrollT); scrollT=setTimeout(()=>v.classList.remove('scrolling'),180); },{passive:true});
 // a part of one message selected: quote just that
 function selPick(){ const s=getSelection(); if(!s||s.isCollapsed||!s.rangeCount) return null; const a=bubOf(s.anchorNode); if(!a||a!==bubOf(s.focusNode)) return null;
   const text=s.toString().trim(); return text? {el:a,text,rect:s.getRangeAt(0).getBoundingClientRect()} : null; }
@@ -3156,6 +3215,108 @@ $('logs').addEventListener('click',e=>{ const b=e.target.closest('[data-redo]');
 /* ================= Esc stops the channel's turn, as in the terminal (once nothing else is there to put away) ================= */
 function escStop(){ const c=chN(sel); if(!c||(c.status!=='work'&&c.status!=='wait')) return false;
   LIVE? liveStop(c) : stopTurn(c); const b=$('bStop'); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); return true; }
+
+/* ================= finding words in the channel: Ctrl+F (⌘F) or the magnifier in its header. Every match is lit and the one
+   you are on is bright; going to one in a folded turn or a closed box opens it. What Claude and you said, the work log and the
+   notices are searched; the labels around them (times, the turn's header and footer, buttons) are not. A second Ctrl+F in the
+   bar is the browser's own search, for the rest of the page. ================= */
+const FIND_SKIP='.fold,.meta,.aihd,.turnFt,.op .num,.qhd,.qft,.pst,.more,.pbtns,.perm .s,.linkbtn,.chev,svg,[aria-hidden="true"],[hidden],textarea,input,select,button.btn,script,style';
+// text in these runs on with the text around it; any other element is a box of its own, and a match does not cross boxes
+const FIND_INL=new Set(['B','STRONG','I','EM','CODE','A','S','DEL','INS','U','MARK','KBD','SUB','SUP','Q','ABBR','CITE']);
+const FIND_MAX=3000, FIND_HL=!!(window.CSS&&CSS.highlights&&window.Highlight);
+const fd={q:'',hits:[],cur:-1,more:false,c:null,qt:0,lt:0,back:null,badges:[]};
+// the same letters whatever their case or width (ＡＢＣ = abc); every character stays one, so places in the text still match
+const FIND_FW=/[\uFF01-\uFF5E]/g;
+function findFold(t){ let l=t.toLowerCase();
+  if(l.length!==t.length) l=[...t].map(ch=>{ const x=ch.toLowerCase(); return x.length===ch.length? x : ch; }).join('');
+  return l.replace(FIND_FW,ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0)).replace(/\u3000/g,' '); }
+function findAll(root,q){ q=findFold(q); const parts=[], segs=[]; let len=0, box=null;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT,{acceptNode:n=> n.nodeType===3? NodeFilter.FILTER_ACCEPT
+    : n.matches(FIND_SKIP)? NodeFilter.FILTER_REJECT : n.tagName==='BR'? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP});
+  for(let n=w.nextNode(); n; n=w.nextNode()){
+    if(n.nodeType===1){ parts.push('\n'); len++; box=null; continue; }
+    const t=n.data; if(!t) continue;
+    let b=n.parentElement; while(b&&b!==root&&FIND_INL.has(b.tagName)) b=b.parentElement;
+    if(box&&b!==box){ parts.push('\n'); len++; }
+    segs.push({n,s:len}); parts.push(t); len+=t.length; box=b; }
+  const hay=findFold(parts.join('')), at=p=>{ let lo=0, hi=segs.length-1; while(lo<hi){ const m=(lo+hi+1)>>1; if(segs[m].s<=p) lo=m; else hi=m-1; } return segs[lo]; };
+  const out=[]; fd.more=false;
+  for(let i=hay.indexOf(q); i>=0; i=hay.indexOf(q,i+q.length)){
+    if(out.length>=FIND_MAX){ fd.more=true; break; }
+    const a=at(i), b=at(i+q.length-1), r=document.createRange(); r.setStart(a.n,i-a.s); r.setEnd(b.n,i+q.length-b.s); out.push(r); }
+  return out; }
+// where a match is on screen: its own place, or (in a folded turn or a closed box) the place of what shows instead
+function findY(r,end){ const b=r.getBoundingClientRect(); if(b.width||b.height) return end? b.bottom : b.top;
+  for(let e=r.startContainer.parentElement; e; e=e.parentElement) if(e.getClientRects().length){ const x=e.getBoundingClientRect(); return end? x.bottom : x.top; }
+  return 0; }
+const findBand=()=>({top:$('find').getBoundingClientRect().bottom+8,bot:$('live').getBoundingClientRect().top-8});
+// the match to start from: one on screen, else the nearest above (the newest, read from the bottom), else the first below
+function findNear(){ const n=fd.hits.length, {top,bot}=findBand(); let lo=0, hi=n;
+  while(lo<hi){ const m=(lo+hi)>>1; if(findY(fd.hits[m],true)<top) lo=m+1; else hi=m; }
+  return lo<n&&findY(fd.hits[lo])<=bot? lo : lo>0? lo-1 : lo; }
+function findCount(){ const n=fd.hits.length, bar=$('find');
+  $('findN').textContent= !fd.q? '' : n? `${fd.cur<0?'–':fd.cur+1} / ${n}${fd.more?'+':''}` : '見つかりません';
+  bar.classList.toggle('none',!!fd.q&&!n); $('findUp').disabled=$('findDn').disabled=!n; }
+function findPaint(all){ if(!FIND_HL) return;
+  if(all){ const h=new Highlight(); for(const r of fd.hits) h.add(r); CSS.highlights.set('fc-find',h); }
+  const on=new Highlight(); on.priority=1; if(fd.hits[fd.cur]) on.add(fd.hits[fd.cur]); CSS.highlights.set('fc-find-on',on); }
+// a folded turn or a closed box that holds matches says how many
+function findBadges(){ fd.badges.forEach(b=>b.removeAttribute('data-find')); fd.badges=[]; const per=new Map();
+  for(const r of fd.hits){ const e=r.startContainer.parentElement; if(!e) continue;
+    const li=e.closest('li.turn'), f= li? li.querySelector(':scope > .fold') : e.closest('details')?.querySelector(':scope > summary');
+    if(f) per.set(f,(per.get(f)||0)+1); }
+  for(const [f,n] of per){ f.dataset.find=n>999? '999+' : n; fd.badges.push(f); } }
+// look again: as you type (nav: go to a match), and as the channel changes (the one you are on stays)
+function findRun(nav){ const c=chN(sel), was=fd.hits[fd.cur], k0=fd.cur; fd.c=c;
+  fd.hits= c&&fd.q? findAll(c.log,fd.q) : []; fd.cur=-1;
+  if(was){ const k=fd.hits.findIndex(r=>r.startContainer===was.startContainer&&r.startOffset===was.startOffset); if(k>=0) fd.cur=k; else if(!nav&&k0<fd.hits.length) fd.cur=k0; }
+  findBadges(); findPaint(true);
+  if(nav&&fd.hits.length) findGo(fd.cur>=0? fd.cur : findNear()); else findCount(); }
+function findGo(k){ const r=fd.hits[k]; if(!r) return; fd.cur=k;
+  const e=r.startContainer.parentElement, li=e&&e.closest('li.turn');
+  if(li&&li.classList.contains('folded')){ li.classList.remove('folded'); li.dataset.hand='1'; const f=li.querySelector(':scope > .fold'); if(f) f.setAttribute('aria-expanded','true'); }
+  for(let d=e&&e.closest('details'); d; d=d.parentElement&&d.parentElement.closest('details')) d.open=true;
+  findPaint(false); findCount();
+  const v=$('chan'), b=r.getBoundingClientRect(), {top,bot}=findBand();
+  if(b.top<top||b.bottom>bot){ endGoing=0; histPin=null; v.scrollTop+=b.top-(top+Math.max(0,bot-top)*.3); }
+  const pre=e&&e.closest('pre');                                   // a long line in a code block: across to it
+  if(pre&&pre.scrollWidth>pre.clientWidth){ const p=pre.getBoundingClientRect(); if(b.left<p.left||b.right>p.right) pre.scrollLeft+=b.left-p.left-p.width/3; } }
+function findStep(d){ if(findFlush()) return; const n=fd.hits.length; if(!n) return;
+  findGo(fd.cur<0? findNear() : (fd.cur+d+n)%n); }
+function findFlush(){ if(!fd.qt) return false; clearTimeout(fd.qt); fd.qt=0; findQuery(); return true; }
+function findQuery(){ fd.qt=0; const v=$('findIn').value; fd.q= v.trim()? v : ''; findRun(true); }
+// (a change in what is not searched, like an approval's countdown, is not a reason to look again)
+const findMo=new MutationObserver(ms=>{ const lg=fd.c&&fd.c.log; if(!findOn||!fd.q||!lg||fd.lt) return;
+  if(!ms.some(m=>{ const t=m.target.nodeType===1? m.target : m.target.parentElement; return t&&lg.contains(t)&&!t.closest(FIND_SKIP); })) return;
+  fd.lt=setTimeout(()=>{ fd.lt=0; if(findOn&&fd.q) findRun(false); },300); });
+const findCan=()=>!!(sel&&chN(sel)&&!$('chan').hidden&&$('scrim').hidden&&!co&&!stvOpen);
+function findPlace(){ $('find').style.top=Math.max(8,$('osd').offsetHeight-6)+'px'; }
+new ResizeObserver(()=>{ if(findOn) findPlace(); }).observe($('osd'));
+function findOpen(){ if(!findCan()) return; const i=$('findIn'); closePal();
+  if(!findOn){ findOn=true; const a=document.activeElement; fd.back= a&&a!==document.body&&a!==i? a : null;
+    $('find').hidden=false; findPlace(); findMo.observe($('logs'),{childList:true,subtree:true,characterData:true}); renderOsd(chN(sel));
+    if(i.value.trim()){ fd.q=i.value; findRun(true); } else findCount(); }
+  i.focus(); i.select(); }
+// closed from the bar, the keys go back where they were (the message box, most often); closed from elsewhere, they stay there
+function findClose(){ if(!findOn) return; const inBar=$('find').contains(document.activeElement);
+  findOn=false; $('find').hidden=true; findMo.disconnect(); clearTimeout(fd.qt); clearTimeout(fd.lt); fd.qt=fd.lt=0;
+  fd.hits=[]; fd.cur=-1; fd.c=null; findBadges(); if(FIND_HL){ CSS.highlights.delete('fc-find'); CSS.highlights.delete('fc-find-on'); }
+  const b=fd.back; fd.back=null; const c=chN(sel); if(c) renderOsd(c);
+  if(inBar){ if(b&&b.isConnected&&!b.disabled&&b.offsetParent) b.focus(); else document.activeElement.blur(); } }
+// another channel on screen: the same words looked for there (nothing is gone to until you press Enter); the wall closes it
+function findSwap(n){ if(!findOn) return; if(!n){ findClose(); return; } fd.hits=[]; fd.cur=-1; findPlace(); findRun(false); }
+$('findIn').addEventListener('input',()=>{ clearTimeout(fd.qt); fd.qt=setTimeout(findQuery,140); });
+$('findIn').addEventListener('keydown',e=>{ if(e.isComposing||e.keyCode===229) return;
+  if(e.key==='Enter'){ e.preventDefault(); findStep(e.shiftKey?-1:1); }
+  else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); findClose(); } });
+[['findUp',-1],['findDn',1]].forEach(([id,d])=>{ $(id).addEventListener('mousedown',e=>e.preventDefault()); $(id).addEventListener('click',()=>findStep(d)); });
+$('findX').addEventListener('click',findClose);
+$('osd').addEventListener('click',e=>{ if(e.target.closest('[data-find]')) findOn? findClose() : findOpen(); });
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&e.key.toLowerCase()==='f'){
+    if(document.activeElement===$('findIn')||!findCan()) return;             // pressed again in the bar: the browser's own search
+    e.preventDefault(); findOpen(); return; }
+  if(findOn&&(e.key==='F3'||((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='g'))){ e.preventDefault(); findStep(e.shiftKey?-1:1); } });
 
 /* ================= images that go with a message: pasted, dropped or picked; made small enough here, kept by the hub ================= */
 const IMG_EDGE=2000, IMG_BYTES=4.5e6, IMG_MAX=5, IMG_BLANK='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
@@ -3572,7 +3733,7 @@ function chanFrom(x){ let c=LV.byId.get(x.id);
   if(x.effort!==undefined) c.effort=x.effort||''; if(x.effortUsed!==undefined) c.effortUsed=x.effortUsed||''; if(x.title!==undefined) c.title=x.title||'';
   if(x.models!==undefined) c.models=x.models; if(x.efforts!==undefined) c.efforts=x.efforts||[];
   if(x.breakdown) c.breakdownRaw=x.breakdown;
-  c.log.setAttribute('aria-label',`ch.${c.num} ${c.name} の会話`);
+  const al=`ch.${c.num} ${c.name} の会話`; if(c.log.getAttribute('aria-label')!==al) c.log.setAttribute('aria-label',al);
   CH.sort((a,b)=>a.num-b.num);
   if(!LV.replaying&&LV.helloDone){
     if(was!=='wait'&&c.status==='wait'&&!c.ask&&sel!==c.num) toast('wait',`ch.${c.num} ${esc(c.name)} が承認を待っています`,`${c.now.replace(/^承認待ち：/,'')}（押すと開きます）`,c.num);

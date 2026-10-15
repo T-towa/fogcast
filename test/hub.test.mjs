@@ -691,6 +691,8 @@ test('@ in the message box lists the terminal\'s files: what git does not ignore
   const put = (rel, text = 'x', ageMin = 60) => { const f = join(proj, rel); mkdirSync(dirname(f), { recursive: true }); writeFileSync(f, text); const t = (Date.now() - ageMin * 60e3) / 1000; utimesSync(f, t, t) }
   put('README.md', '# r', 50); put('src/app.ts', 'a', 5); put('src/lib/apply.ts', 'b', 30); put('src/lib/util.ts', 'c', 40); put('docs/api.md', 'd', 20)
   put('secret.env', 's', 1); put('node_modules/pkg/index.js', 'n', 2); put('.gitignore', 'secret.env\nnode_modules/\n', 90)
+  put('docs/仕様.md'); put('仕様メモ.txt'); put('configLoader.ts'); put('config/main.json'); put('docs/guide/config.md'); put('docs/readme.md')
+  put(`docs/${'ガイド'.normalize('NFD')}.md`)                                      // a name as a Mac saves it
   const git = spawnSync('git', ['-C', proj, 'init', '-q']).status === 0
   await req('POST', '/api/mod/hello', { chan: 'chan-files', mod: '0.6.0', sid: U(30), cwd: proj })
   const files = async q => (await req('POST', '/api/ui/files', { chan: 'chan-files', q })).json
@@ -698,6 +700,14 @@ test('@ in the message box lists the terminal\'s files: what git does not ignore
   assert.equal(app.ok, true)
   assert.deepEqual(app.files.slice(0, 2).map(f => f.p), ['src/app.ts', 'src/lib/apply.ts'])     // the name that starts with it, the shorter first
   assert.equal((await files('src/l')).files[0].p, 'src/lib')                                  // a folder, by its path
+  // the name itself comes first: as typed, then without its extension, before a shorter path that only starts with it
+  assert.deepEqual((await files('仕様')).files.slice(0, 2).map(f => f.p), ['docs/仕様.md', '仕様メモ.txt'])
+  assert.deepEqual((await files('仕様.md')).files.map(f => f.p), ['docs/仕様.md'])
+  assert.deepEqual((await files('config')).files.slice(0, 3).map(f => f.p), ['config', 'docs/guide/config.md', 'configLoader.ts'])
+  assert.deepEqual((await files('readme.md')).files.slice(0, 2).map(f => f.p), ['docs/readme.md', 'README.md'])    // its own case first
+  assert.deepEqual((await files('README')).files.slice(0, 2).map(f => f.p), ['README.md', 'docs/readme.md'])
+  assert.equal((await files('docs/仕様')).files[0].p, 'docs/仕様.md')
+  assert.equal((await files('ガイド')).files[0].p, `docs/${'ガイド'.normalize('NFD')}.md`)
   assert.equal((await files('src/l')).files[0].d, true)
   const all = (await files('s')).files.map(f => f.p)
   assert.equal(all.includes('node_modules/pkg/index.js'), false)

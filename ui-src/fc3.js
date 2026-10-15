@@ -98,13 +98,18 @@ function renderGuide(){
 }
 
 /* ================= TV: one channel ================= */
+// the magnifier at the end of the header opens the search in the channel (fc4); findOn: that bar is open
+let findOn=false;
+const FIND_ICO='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.4" cy="10.4" r="6.1" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15 15l5.2 5.2" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
+const FIND_KEY=/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent||'')? '⌘F' : 'Ctrl+F';
 function renderOsd(c){
   // the model and effort are buttons (their pickers): drawn again only when something in the line changed, so a press is never lost
   const off=c.status==='off', old=LIVE&&!c.models&&!off;      // a terminal on an earlier Fogcast: its pickers come with a restart
   const lock=off||old? ` disabled${old?' title="このターミナルの Fogcast は前の版です。claude を起動し直すと使えます"':''}` : '';
   const html=`<span class="n">ch.${c.num}</span><span class="nm">${esc(c.name)}</span><span class="meta" title="${esc(`${c.role} · ${c.cwd} · ${c.branch}`)}">${esc(c.role)} · ${esc(c.cwd)} · ${esc(c.branch)}</span>
     <span class="picks"><button class="osdPick" type="button" data-pick="model"${lock||' title="モデルを切り替える"'}>${esc(c.model||'モデル')}</button><button class="osdPick" type="button" data-pick="effort"${lock||` title="考える深さ（effort）を変える${c.effortUsed&&c.effort&&c.effortUsed!==c.effort?`。最後の返答は ${esc(c.effortUsed)}`:''}"`}>effort <b>${esc(effortLabel(c.effort))}</b></button></span>
-    <span class="right"><span class="chip ${c.status}">${stl(c)}</span><span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span class="tk"><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span></span>`;
+    <span class="right"><span class="chip ${c.status}">${stl(c)}</span><span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span class="tk"><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span>
+      <button class="osdFind${findOn?' on':''}" type="button" data-find aria-controls="find" aria-expanded="${findOn}" aria-label="このチャンネルの中を検索（${FIND_KEY}）" title="このチャンネルの中を検索（${FIND_KEY}）">${FIND_ICO}</button></span>`;
   if($('osd').dataset.k!==html){ $('osd').dataset.k=html; $('osd').innerHTML=html; }
   const el=c.status==='off'? '' : `${Math.floor((Date.now()-c.phaseAt)/1000)}s`;
   $('live').innerHTML=`<i class="dot ${c.status}"></i><span class="txt">${c.now}</span><span class="el">${el}</span>`;

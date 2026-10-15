@@ -35,6 +35,14 @@
           <div class="live" id="live"></div>
         </div>
         <div class="drop" id="drop" hidden aria-hidden="true"><span>画像を落とすと、送る文に添付します</span></div>
+        <div class="find" id="find" role="search" aria-label="このチャンネルの中を検索" hidden>
+          <svg class="fi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.4" cy="10.4" r="6.1" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15 15l5.2 5.2" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+          <input id="findIn" type="text" enterkeyhint="search" placeholder="このチャンネルの中を検索" aria-label="検索する言葉（Enter で次、Shift+Enter で前、Esc で閉じる）" autocomplete="off" spellcheck="false">
+          <span class="fn" id="findN" role="status" aria-live="polite"></span>
+          <button type="button" id="findUp" aria-label="前の一致へ（Shift+Enter）" title="前へ（Shift+Enter）" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" id="findDn" aria-label="次の一致へ（Enter）" title="次へ（Enter）" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" id="findX" aria-label="検索を閉じる（Esc）" title="閉じる（Esc）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
+        </div>
         <button class="toEnd" id="toEnd" type="button" hidden title="いちばん下（最新）へ" aria-label="いちばん下（最新）へ"><span class="nw" id="toEndN"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v12M6.5 11.5 12 17l5.5-5.5M6 20.5h12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <div class="glare" aria-hidden="true"></div>
         <div class="wipe" id="wipe" aria-hidden="true"><span class="band"><b id="wipeN"></b><small id="wipeS"></small></span></div>

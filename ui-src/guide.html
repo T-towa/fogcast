@@ -215,7 +215,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
 <!-- body -->
 <div class="page" lang="ja">
   <header class="cover">
-    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.6.0</span></div>
+    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.6.1</span></div>
     <h1><span class="mark">FOGCAST</span><span class="ja">霧読み</span></h1>
     <p class="lead">Claude Code を何本ものターミナルで動かしているときに、すべての会話・道具の呼び出し・使用量を、ブラウザの 1 画面にまとめて映す Mod です。画面から依頼を送る、<code>/</code> のコマンドを実行する、ツールの実行を許可する、といった操作もできます。</p>
     <dl class="facts">
@@ -268,7 +268,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <div class="cmd"><code>node -v &amp;&amp; claude --version</code><button class="copy" type="button">コピー</button></div></li>
           <li><b class="t">zip を解凍して、ホームフォルダに置く</b>
             <p>ダウンロードフォルダにある場合は、次のコマンドで <code>~/fogcast</code> ができます。</p>
-            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.6.0.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.6.1.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>Finder でダブルクリックして、できた <code>fogcast</code> フォルダをホームフォルダに移してもかまいません。中にある <code>.claude-plugin</code> は見えないフォルダなので、中身だけを選ばずにフォルダごと移してください。</p></li>
           <li><b class="t">マーケットプレイスとして追加する</b>
             <div class="cmd"><code>claude plugin marketplace add ~/fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -295,7 +295,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td>画面</td><td>Windows のブラウザで見ます。<code>/fog</code> で Windows の既定のブラウザが開きます（0.1.2 から）。WSL2 は localhost を Windows に転送するので、<code>http://127.0.0.1:4317</code> で届きます。</td></tr>
           </tbody>
         </table></div>
-        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.6.0.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
+        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.6.1.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
         <p class="note"><span class="lb">お知らせ</span><span>Windows のブラウザでつながらないときは、PowerShell で <code>wsl --shutdown</code> を実行してから WSL を開き直すと直ることがあります。</span></p>
       </section>
 
@@ -324,7 +324,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
           <ol class="legend">
             <li><span class="k">1</span><span><b>ダイヤル</b><span><kbd>0</kbd> は全チャンネル、<kbd>1</kbd>〜<kbd>9</kbd> は各ターミナルです。右端の「＋ 追加」で、新しいチャンネルの始め方と過去のセッションの再開コマンドが出ます。</span></span></li>
             <li><span class="k">2</span><span><b>天気予報の窓</b><span>日付と、5 時間枠・週の枠の今の割合。押すと右の「天気予報」を開きます。</span></span></li>
-            <li><span class="k">3</span><span><b>テレビ</b><span>全チャンネルのタイルと番組表（直近 60 分。帯は 1 ターン、黄色の縞は承認待ちで、帯を押すとそのチャンネルへ）。チャンネルを選ぶと、その会話を映します。上に戻って読んでいるときは、右下の「↓」でいちばん下に戻れます。ブラウザの窓が横 1181px・縦 620px 以上あれば、ページ全体はスクロールせずに 1 画面に収まり、会話やレールはそれぞれの中でスクロールします。</span></span></li>
+            <li><span class="k">3</span><span><b>テレビ</b><span>全チャンネルのタイルと番組表（直近 60 分。帯は 1 ターン、黄色の縞は承認待ちで、帯を押すとそのチャンネルへ）。チャンネルを選ぶと、その会話を映します。上に戻って読んでいるときは、右下の「↓」でいちばん下に戻れます。チャンネルの見出しの右端の虫眼鏡で、そのチャンネルの中を検索できます。ブラウザの窓が横 1181px・縦 620px 以上あれば、ページ全体はスクロールせずに 1 画面に収まり、会話やレールはそれぞれの中でスクロールします。</span></span></li>
             <li><span class="k">4</span><span><b>送信欄</b><span>チャンネルを開いたときに出ます。画像の添付、<code>/</code> コマンド、送信、停止、圧縮。添付した画像と引用は、送信欄の中に小さく出ます。Claude Code の次の入力の提案があるときは、空の送信欄に薄く出て、右端に「提案を入れる」が出ます。コマンドを選ぶと、その引数が送信欄の上に出ます。終了したチャンネルでは「チャンネルを消す」になります。右端の歯車は設定です（6）。</span></span></li>
             <li><span class="k">5</span><span><b>レール</b><span>「天気予報」「コミュ」「スキル」「履歴」「詳細」の 5 つのタブです。高さはテレビとそろいます。</span></span></li>
             <li><span class="k">6</span><span><b>設定</b><span>送信欄のボタンの並びの右端の歯車のボタンです。全チャンネルのときは「全チャンネル」の見出しの右端にあります。この説明書（使い方）を開くボタンと、この画面から承認するかどうかの切り替えがあります。歯車の右上の点が承認の今の状態で、灰色はオフ、黄色の点滅は合言葉の入力待ちか、オンだがこの画面がまだつながっていないとき、水色はオンです（マウスを重ねると文字でも出ます）。</span></span></li>
@@ -348,6 +348,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td class="w">書きかけのままコマンドを使う</td><td>「<b>/</b> コマンド」を押します。書きかけの文はよけておかれ、コマンドを送るか <kbd>Esc</kbd> でやめると送信欄に戻ります。</td></tr>
             <tr><td class="w">次の入力の提案を使う</td><td>空の送信欄で <kbd>Tab</kbd>（または <kbd>→</kbd>）。送信欄の右端の「提案を入れる」を押しても入ります。</td></tr>
             <tr><td class="w">前のやりとりを読み返す</td><td>レールの「履歴」でカードを押すと、その会話の位置に飛びます。</td></tr>
+            <tr><td class="w">会話の中の言葉を探す</td><td>チャンネルを開いて <kbd>Ctrl</kbd>+<kbd>F</kbd>（Mac は <kbd>⌘</kbd>+<kbd>F</kbd>）か、チャンネルの見出しの右端の虫眼鏡。<kbd>Enter</kbd> で次、<kbd>Shift</kbd>+<kbd>Enter</kbd> で前です。</td></tr>
             <tr><td class="w">最新に戻る</td><td>右下の <b>↓</b> を押します。読み返しているあいだに届いたメッセージの数が出ます。</td></tr>
             <tr><td class="w">止める・空ける</td><td>「停止」か <kbd>Esc</kbd> で今のターンを中断、「圧縮」で会話を要約してコンテキストを空けます。</td></tr>
             <tr><td class="w">止めた依頼をもう一度送る</td><td>止めたターンの「もう一度送る」か「直して送る」。自分の吹き出しにカーソルを合わせても出ます。</td></tr>
@@ -367,11 +368,20 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <p class="muted">会話はメッセージアプリと同じ並びです。あなたの依頼は右の黄色い吹き出し（「ターミナルから」「この画面から」と、どこから送ったかの印つき）、Claude の返答は左の白い吹き出しで、そのあいだの黒い枠に道具の呼び出しが並びます。ターンの頭の見出し（ターン番号・時刻・依頼の 1 行目）を押すと「たたむ ▴」「ひらく ▾」で開け閉めできます。今のターンと、その前の 2 ターンは開いたままで、それより前のターンは新しいターンが始まると自動で畳まれます。手で開け閉めしたターンは、そのままにします。</p>
             <p class="muted">会話のいちばん下を見ているあいだは、新しいメッセージが来ると、そのまま下へ進みます。上に戻って読んでいるあいだは、何が来ても画面は動きません。代わりに右下に <b>↓</b> のボタンが出て、そのあいだに届いたメッセージ（依頼・Claude の返答・質問・承認待ち・お知らせ）があると、黄色の「新着 2」のように数が出ます。押すと、いちばん下（最新）に戻ります。自分で下までスクロールしても消えます。この画面から送ったときと、チャンネルを切り替えたときは、いちばん下から始まります。</p>
             <p class="muted">1 ターンは、あなたが 1 回送ってから、Claude が返答し終えて入力待ちに戻るまでです。道具の呼び出し、承認、Claude からの質問への回答は、そのターンの中に入ります。返答が終わってから送った修正は、次のターンになります。Claude の作業中にターミナルで送った修正は、Claude Code が作業の区切りで Claude に渡すので、同じターンの中に「作業中にターミナルから」の吹き出しで出ます（Claude がもう最後の返答を書いているときは区切りがないので、返答のあとに次のターンとして始まります）。</p>
+            <h3>チャンネルの中を検索する</h3>
+            <p class="muted">チャンネルを開いて <kbd>Ctrl</kbd>+<kbd>F</kbd>（Mac は <kbd>⌘</kbd>+<kbd>F</kbd>）を押すか、チャンネルの見出しの右端の虫眼鏡を押すと、見出しの下に検索の欄が出ます。言葉を打つと、そのチャンネルの会話の中の一致がすべて黄色の地で光り、今いる一致はいちばん濃く光ります（黄色や白の吹き出しの中では、今いる一致は黒地に黄色の文字になります）。欄には「3 / 12」のように何件目かが出て、見つからないときは「見つかりません」と出ます。</p>
+            <ul class="rules">
+              <li><kbd>Enter</kbd> か <b>∨</b> で次（下）、<kbd>Shift</kbd>+<kbd>Enter</kbd> か <b>∧</b> で前（上）に移ります（<kbd>F3</kbd>・<kbd>Shift</kbd>+<kbd>F3</kbd> でも）。打ったときは、画面に見えている一致から、なければいちばん近い上の一致（下から読んでいれば、いちばん新しいもの）から始まります。</li>
+              <li>畳まれたターンや、閉じた「再開した会話のこれまで」の中の一致は、その見出しに「一致 2」のように数が出て、そこへ移ると開きます。</li>
+              <li>大文字と小文字、全角と半角は区別しません（<code>FOG</code>・<code>fog</code>・<code>ＦＯＧ</code> は同じ）。探すのは、依頼・Claude の返答・道具の呼び出し・質問・お知らせの文で、時刻やボタンの文字は探しません。</li>
+              <li>開いているあいだに届いたメッセージも数えます。ほかのチャンネルに切り替えると、同じ言葉でそのチャンネルを探します（全チャンネルにすると閉じます）。</li>
+              <li><kbd>Esc</kbd> か × で閉じます。検索の欄で、もう一度 <kbd>Ctrl</kbd>+<kbd>F</kbd> を押すと、ブラウザのページ内検索が開きます（レールなど、会話の外も探せます）。</li>
+            </ul>
             <h3>送る</h3>
             <p class="muted">送信欄に書いて <kbd>Enter</kbd>（改行は <kbd>Shift</kbd>+<kbd>Enter</kbd>）。そのターミナルで入力したのと同じ扱いです。送った文は押した瞬間に会話のいちばん下に出て、ターミナルに渡ると「まもなく始まります」、Claude が作業中なら「順番待ち · 今の作業が終わると始まります」と出ます。ターンが始まると、そのターンの吹き出しに置き換わります。送れなかったときは赤くなり、「もう一度送る」「消す」が出ます。ほかの画面（スマホなど）から送ったものも、同じように並びます。</p>
             <p class="muted">長い文を書くと、送信欄は行に合わせて広がります。画面の高さのおよそ 3 分の 1（スマホでは 3 割）まで広がったら、それより先は送信欄の中でスクロールします。そのぶん上の画面が縮み、会話のいちばん下を見ていたなら、いちばん下が見えたままです。送ると元の高さに戻ります。</p>
             <h3>ファイルを指定する（@）</h3>
-            <p class="muted">送信欄で <kbd>@</kbd> を打つと、そのチャンネルのフォルダのファイルとフォルダの一覧が出ます（最初は最近変わったファイル。git が無視するものは出ません）。続けて名前の一部を打つと絞り込めます。<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> か <kbd>Tab</kbd> で <code>@パス</code> として入ります。フォルダを選ぶと、その中が続けて出ます。送ると、指定したファイルの中身がこの依頼といっしょに Claude に渡ります（ターミナルの <code>@</code> と同じ扱いです）。依頼の吹き出しの下には「添付」として、渡したファイルと行数が出ます。</p>
+            <p class="muted">送信欄で <kbd>@</kbd> を打つと、そのチャンネルのフォルダのファイルとフォルダの一覧が出ます（最初は最近変わったファイル。git が無視するものは出ません）。続けて名前の一部を打つと絞り込めます。打った名前とファイル名（拡張子まで）がそのまま一致するものが先頭で、次が拡張子を除いた名前が一致するもの（<code>仕様</code> と打つと <code>docs/仕様.md</code>）、そのあとに名前がその文字で始まるもの、名前にその文字があるもの、の順に並びます（同じ順位では、パスの短いものが先。<code>/</code> を含めて打つと、パス全体で同じように比べます）。<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> か <kbd>Tab</kbd> で <code>@パス</code> として入ります。フォルダを選ぶと、その中が続けて出ます。送ると、指定したファイルの中身がこの依頼といっしょに Claude に渡ります（ターミナルの <code>@</code> と同じ扱いです）。依頼の吹き出しの下には「添付」として、渡したファイルと行数が出ます。</p>
             <div class="tbl fit"><table>
               <thead><tr><th>ファイル</th><th>Claude に渡すもの</th></tr></thead>
               <tbody>
@@ -432,7 +442,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <p class="muted">Claude が選択肢で質問してくると（ターミナルに選ぶ画面が出るとき）、そのチャンネルに質問のカードが出て、タイルは「回答待ち」になります。選択肢を押すと答えになります。質問が 1 つで 1 つだけ選ぶものは、押した時点で送ります。いくつも選べるものや質問が複数あるものは、選んでから「答える」を押します。選択肢にないときは「ほかの答え」に書きます。長い答えは欄の中で折り返し、書いた分だけ 5 行まで広がって、それより長いと欄の中でスクロールします。<kbd>Enter</kbd> で答え、<kbd>Shift</kbd>+<kbd>Enter</kbd> で改行します（改行はそのまま Claude に渡ります）。</p>
             <p class="muted">ターミナルの選ぶ画面も同時に開いていて、先に答えた方が使われ、もう一方は閉じます。画面から答えると、ターミナルにも「User answered Claude's questions」と答えが残り、Claude にはターミナルで答えたのと同じ形で渡ります。承認の設定（オン・オフ）に関係なく使えます。</p>
             <h3>止める・圧縮する</h3>
-            <p class="muted">「停止」は今のターンを中断します。<kbd>Esc</kbd> でも、ターミナルと同じく 1 回で止まります。ただし、先に閉じるもの（設定などの画面、コマンドの一覧、よけておいた書きかけ）があればそちらが先で、日本語入力の変換中と、質問の答えの欄の中では止めません。</p>
+            <p class="muted">「停止」は今のターンを中断します。<kbd>Esc</kbd> でも、ターミナルと同じく 1 回で止まります。ただし、先に閉じるもの（設定などの画面、コマンドの一覧、よけておいた書きかけ、検索の欄）があればそちらが先で、日本語入力の変換中と、質問の答えの欄の中では止めません。</p>
             <p class="muted">止めたターンには「もう一度送る」（同じ文をそのまま。<code>@</code> のファイルと画像もいっしょに）と「直して送る」（送信欄に戻して、直してから送る）が出ます。自分の吹き出しにカーソルを合わせても同じボタンが出ます。止めたやりとりは会話に残るので、Claude は中断したことを知っています。</p>
             <p class="muted">「圧縮」は会話を要約してコンテキストを空けます（作業中なら、ターンが終わってから）。</p>
           </div>
@@ -538,9 +548,10 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td><kbd>/</kbd></td><td>開いているチャンネルのコマンドの一覧を出します。<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> で入れ、<kbd>Esc</kbd> で閉じます。書きかけの文は、コマンドのあとに送信欄に戻ります。<code>/resume</code>・<code>/model</code>・<code>/effort</code> は、この画面に選ぶ画面が開きます。</td></tr>
             <tr><td><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>送信 / 改行。質問のカードの「ほかの答え」でも同じです（<kbd>Enter</kbd> で答えます）。</td></tr>
             <tr><td><kbd>Tab</kbd> / <kbd>→</kbd></td><td>空の送信欄に、Claude Code の次の入力の提案を入れます。</td></tr>
-            <tr><td><kbd>@</kbd></td><td>送信欄で、そのチャンネルのフォルダのファイルの一覧を出します。</td></tr>
+            <tr><td><kbd>@</kbd></td><td>送信欄で、そのチャンネルのフォルダのファイルの一覧を出します。名前が一致するものが先頭です。</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd>（<kbd>⌘</kbd>+<kbd>F</kbd>）</td><td>開いているチャンネルの中を検索します。検索の欄で <kbd>Enter</kbd> で次、<kbd>Shift</kbd>+<kbd>Enter</kbd> で前（<kbd>F3</kbd>・<kbd>Shift</kbd>+<kbd>F3</kbd> でも）、<kbd>Esc</kbd> で閉じます。欄でもう一度押すと、ブラウザのページ内検索です。</td></tr>
             <tr><td><kbd>↑</kbd><kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd></td><td>カードの画面で輪を回します。ホイールとドラッグでも回ります。</td></tr>
-            <tr><td><kbd>Esc</kbd></td><td>カードの画面・ステータス画面・設定などを閉じます。閉じるものがなく、開いているチャンネルが作業中なら、そのターンを止めます（日本語の変換中は止めません）。</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>カードの画面・ステータス画面・設定・検索の欄などを閉じます。閉じるものがなく、開いているチャンネルが作業中なら、そのターンを止めます（日本語の変換中は止めません）。</td></tr>
           </tbody>
         </table></div>
       </section>
@@ -550,7 +561,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>新しい版に更新する</h3>
         <ol class="steps">
           <li><b class="t">新しい zip で <code>~/fogcast</code> を上書きする</b>
-            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.6.0.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.6.1.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>ファイル名は受け取った版に合わせてください。</p></li>
           <li><b class="t">版を更新する</b>
             <div class="cmd"><code>claude plugin update fogcast@fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -612,7 +623,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>仕様</h3>
         <div class="tbl"><table>
           <tbody>
-            <tr><td>版</td><td>0.6.0</td></tr>
+            <tr><td>版</td><td>0.6.1</td></tr>
             <tr><td>必要なもの</td><td>Claude Code 2.1.290 以降（Mod が使える版）、Node.js 18 以上</td></tr>
             <tr><td>日付の区切り</td><td>画面（ブラウザ）の時計に合わせます。WSL の時計が Windows と違う地域になっていても、カレンダーと連続日数は画面の日付で数えます（0.3.0 から）。</td></tr>
             <tr><td>確かめた環境</td><td>Linux。WSL は、Windows のブラウザを開くところを Linux 上で見立てて確かめました。macOS とネイティブの Windows はまだ確かめていません。</td></tr>
@@ -638,7 +649,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
     </main>
   </div>
 
-  <footer><span>Fogcast（霧読み）0.6.0 取扱説明書</span><span>画面の歯車（設定）の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
+  <footer><span>Fogcast（霧読み）0.6.1 取扱説明書</span><span>画面の歯車（設定）の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
 </div>
 <script>
 (function(){

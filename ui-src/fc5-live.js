@@ -113,7 +113,7 @@ function chanFrom(x){ let c=LV.byId.get(x.id);
   if(x.effort!==undefined) c.effort=x.effort||''; if(x.effortUsed!==undefined) c.effortUsed=x.effortUsed||''; if(x.title!==undefined) c.title=x.title||'';
   if(x.models!==undefined) c.models=x.models; if(x.efforts!==undefined) c.efforts=x.efforts||[];
   if(x.breakdown) c.breakdownRaw=x.breakdown;
-  c.log.setAttribute('aria-label',`ch.${c.num} ${c.name} の会話`);
+  const al=`ch.${c.num} ${c.name} の会話`; if(c.log.getAttribute('aria-label')!==al) c.log.setAttribute('aria-label',al);
   CH.sort((a,b)=>a.num-b.num);
   if(!LV.replaying&&LV.helloDone){
     if(was!=='wait'&&c.status==='wait'&&!c.ask&&sel!==c.num) toast('wait',`ch.${c.num} ${esc(c.name)} が承認を待っています`,`${c.now.replace(/^承認待ち：/,'')}（押すと開きます）`,c.num);

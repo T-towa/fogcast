@@ -396,7 +396,8 @@ function select(n,then){ if(n!==0&&!chN(n)) return; const changed=n!==sel; sel=n
     stick=true; endNew=0; endDraw(); askFit();          // a channel opens at its latest
     if(n){ renderOsd(chN(n)); requestAnimationFrame(()=>{ if(sel!==n) return; if(then) then(); else toEnd(false); }); }
     else { $('sfog').style.setProperty('--fog','0'); $('screen').classList.remove('off'); renderWall(); renderGuide(); }
-    if(rtab==='D') renderDetail(true); if(rtab==='S') renderSkills(true); if(rtab==='H') renderHist(true); };
+    if(rtab==='D') renderDetail(true); if(rtab==='S') renderSkills(true); if(rtab==='H') renderHist(true);
+    findSwap(n); };
   if(changed&&!reduce){ const w=$('wipe'), c=chN(n); $('wipeN').textContent= n===0? 'ch.0' : `ch.${n}`; $('wipeS').textContent= n===0? '全チャンネル' : c.name;
     w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); clearTimeout(select.t); select.t=setTimeout(swap,750); }   // mid-hold of the 1.5 s band
   else swap();
@@ -415,7 +416,7 @@ document.addEventListener('keydown',e=>{
   if(coKeys(e)||co) return;
   const tag=(e.target.tagName||'').toLowerCase();
   if(tag==='textarea'||tag==='input'||tag==='select'||e.metaKey||e.ctrlKey||e.altKey||!$('scrim').hidden) return;
-  if(e.key==='Escape'&&!e.isComposing){ if(act) actHide(true); if(escStop()) e.preventDefault(); return; }
+  if(e.key==='Escape'&&!e.isComposing){ if(act) actHide(true); if(findOn){ e.preventDefault(); findClose(); return; } if(escStop()) e.preventDefault(); return; }
   if(/^[0-9]$/.test(e.key)&&(+e.key===0||chN(+e.key))){ select(+e.key); e.preventDefault(); }
   if(e.key==='/'&&sel){ e.preventDefault(); cmdStart(); } });
 
@@ -466,16 +467,20 @@ function renderFiles(){ const L=pal.items;
   if(L.length&&!pal.wait){ $('ask').setAttribute('aria-activedescendant','po'+pal.i); const on=$('palList').querySelector('.po.on'); on&&on.scrollIntoView({block:'nearest'}); }
   else $('ask').removeAttribute('aria-activedescendant'); }
 /* the demo: its folder's files, ranked as the hub ranks them, and what a prompt's @ would attach */
-function fileScore(p,q){ const pl=p.toLowerCase(), base=pl.slice(pl.lastIndexOf('/')+1);
-  if(q.includes('/')){ if(pl.startsWith(q)) return pl.length/1e4; if(pl.includes(q)) return 2+pl.length/1e4; }
-  else { if(base===q) return 0; if(base.startsWith(q)) return 1+pl.length/1e4; if(base.includes(q)) return 2+pl.length/1e4; if(pl.includes(q)) return 3+pl.length/1e4; }
+// the name itself first (as typed, then in any case), then the name without its extension, then a name that starts with it...
+function fileScore(p,q,raw){ const pl=p.toLowerCase(), k=pl.lastIndexOf('/'), len=pl.length/1e4, path=q.includes('/');
+  const name=path? pl : pl.slice(k+1), dot=name.lastIndexOf('.'), stem=dot>name.lastIndexOf('/')+1? name.slice(0,dot) : name;
+  if(name===q) return ((path? p : p.slice(p.lastIndexOf('/')+1))===raw? 0 : .1)+len;
+  if(stem===q) return .5+len;
+  if(path){ if(pl.startsWith(q)) return 1+len; if(pl.includes(q)) return 2+len; }
+  else { if(name.startsWith(q)) return 1+len; if(name.includes(q)) return 2+len; if(pl.includes(q)) return 3+len; }
   let i=0, gaps=0, last=-1; for(const ch of q){ const j=pl.indexOf(ch,i); if(j<0) return -1; if(last>=0&&j>last+1) gaps++; last=j; i=j+1; }
-  return 4+gaps/10+pl.length/1e4; }
+  return 4+gaps/10+len; }
 function demoTree(){ const dirs=new Set(); DEMO_FILES.forEach(p=>{ let i=p.lastIndexOf('/'); while(i>0){ dirs.add(p.slice(0,i)); i=p.lastIndexOf('/',i-1); } });
   return [...DEMO_FILES.map(p=>({p,d:false})),...[...dirs].map(p=>({p,d:true}))]; }
-function demoFiles(q){ q=String(q||'').toLowerCase().replace(/^\.\//,'');
+function demoFiles(q){ const raw=String(q||'').replace(/^\.\//,''); q=raw.toLowerCase();
   if(!q) return {ok:true,recent:true,files:['hooks/register.ts','hub/hub.mjs','ui-src/fc4.js','README.md','hooks/shape.ts','ui-src/fc-head.html'].map(p=>({p,d:false}))};
-  const hits=demoTree().map(f=>[fileScore(f.p,q),f]).filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]||Number(a[1].d)-Number(b[1].d)||a[1].p.localeCompare(b[1].p));
+  const hits=demoTree().map(f=>[fileScore(f.p,q,raw),f]).filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]||Number(a[1].d)-Number(b[1].d)||a[1].p.localeCompare(b[1].p));
   return {ok:true,files:hits.slice(0,40).map(x=>x[1])}; }
 function demoAttach(text){ const out=[], re=/(^|[\s(（「『【、。，．：；])@(?:"([^"\n]+)"|([^\s"]+))/g; let m;
   text=String(text).split('\n').filter(l=>!/^\s*>/.test(l)).join('\n');          // a quote's @ names nothing
@@ -509,7 +514,7 @@ $('ask').addEventListener('keydown',e=>{
     if((e.key==='Enter'||e.key==='Tab')&&!e.isComposing&&pal.items.length){ e.preventDefault(); pickPal(pal.i); return; }
     if(e.key==='Escape'){ e.preventDefault(); const cmd=pal.mode==='cmd'; closePal(); if(cmd) asideBack(); return; } }
   if(e.key==='Escape'&&aside&&!e.isComposing){ e.preventDefault(); asideBack(); return; }
-  if(e.key==='Escape'&&!e.isComposing&&e.keyCode!==229){ if(act) actHide(true); if(escStop()){ e.preventDefault(); return; } }
+  if(e.key==='Escape'&&!e.isComposing&&e.keyCode!==229){ if(act) actHide(true); if(findOn){ e.preventDefault(); findClose(); return; } if(escStop()){ e.preventDefault(); return; } }
   // the suggestion in the empty box: Tab (or →) takes it, as in the terminal
   if((e.key==='Tab'&&!e.shiftKey||e.key==='ArrowRight')&&!e.isComposing&&!$('ask').value&&takeSugg()){ e.preventDefault(); return; }
   if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); $('ctl').requestSubmit(); } });
@@ -583,6 +588,8 @@ $('logs').addEventListener('mouseout',e=>{ if(!act||act.pick||ACT.contains(e.rel
 ACT.addEventListener('mouseenter',()=>clearTimeout(actT));
 ACT.addEventListener('mouseleave',()=>{ if(act&&!act.pick) actHide(); });
 $('chan').addEventListener('scroll',()=>{ if(act) actHide(true); },{passive:true});
+let scrollT=0;
+$('chan').addEventListener('scroll',()=>{ const v=$('chan'); if(!v.classList.contains('scrolling')) v.classList.add('scrolling'); clearTimeout(scrollT); scrollT=setTimeout(()=>v.classList.remove('scrolling'),180); },{passive:true});
 // a part of one message selected: quote just that
 function selPick(){ const s=getSelection(); if(!s||s.isCollapsed||!s.rangeCount) return null; const a=bubOf(s.anchorNode); if(!a||a!==bubOf(s.focusNode)) return null;
   const text=s.toString().trim(); return text? {el:a,text,rect:s.getRangeAt(0).getBoundingClientRect()} : null; }
@@ -625,6 +632,108 @@ $('logs').addEventListener('click',e=>{ const b=e.target.closest('[data-redo]');
 /* ================= Esc stops the channel's turn, as in the terminal (once nothing else is there to put away) ================= */
 function escStop(){ const c=chN(sel); if(!c||(c.status!=='work'&&c.status!=='wait')) return false;
   LIVE? liveStop(c) : stopTurn(c); const b=$('bStop'); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); return true; }
+
+/* ================= finding words in the channel: Ctrl+F (⌘F) or the magnifier in its header. Every match is lit and the one
+   you are on is bright; going to one in a folded turn or a closed box opens it. What Claude and you said, the work log and the
+   notices are searched; the labels around them (times, the turn's header and footer, buttons) are not. A second Ctrl+F in the
+   bar is the browser's own search, for the rest of the page. ================= */
+const FIND_SKIP='.fold,.meta,.aihd,.turnFt,.op .num,.qhd,.qft,.pst,.more,.pbtns,.perm .s,.linkbtn,.chev,svg,[aria-hidden="true"],[hidden],textarea,input,select,button.btn,script,style';
+// text in these runs on with the text around it; any other element is a box of its own, and a match does not cross boxes
+const FIND_INL=new Set(['B','STRONG','I','EM','CODE','A','S','DEL','INS','U','MARK','KBD','SUB','SUP','Q','ABBR','CITE']);
+const FIND_MAX=3000, FIND_HL=!!(window.CSS&&CSS.highlights&&window.Highlight);
+const fd={q:'',hits:[],cur:-1,more:false,c:null,qt:0,lt:0,back:null,badges:[]};
+// the same letters whatever their case or width (ＡＢＣ = abc); every character stays one, so places in the text still match
+const FIND_FW=/[\uFF01-\uFF5E]/g;
+function findFold(t){ let l=t.toLowerCase();
+  if(l.length!==t.length) l=[...t].map(ch=>{ const x=ch.toLowerCase(); return x.length===ch.length? x : ch; }).join('');
+  return l.replace(FIND_FW,ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0)).replace(/\u3000/g,' '); }
+function findAll(root,q){ q=findFold(q); const parts=[], segs=[]; let len=0, box=null;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT,{acceptNode:n=> n.nodeType===3? NodeFilter.FILTER_ACCEPT
+    : n.matches(FIND_SKIP)? NodeFilter.FILTER_REJECT : n.tagName==='BR'? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP});
+  for(let n=w.nextNode(); n; n=w.nextNode()){
+    if(n.nodeType===1){ parts.push('\n'); len++; box=null; continue; }
+    const t=n.data; if(!t) continue;
+    let b=n.parentElement; while(b&&b!==root&&FIND_INL.has(b.tagName)) b=b.parentElement;
+    if(box&&b!==box){ parts.push('\n'); len++; }
+    segs.push({n,s:len}); parts.push(t); len+=t.length; box=b; }
+  const hay=findFold(parts.join('')), at=p=>{ let lo=0, hi=segs.length-1; while(lo<hi){ const m=(lo+hi+1)>>1; if(segs[m].s<=p) lo=m; else hi=m-1; } return segs[lo]; };
+  const out=[]; fd.more=false;
+  for(let i=hay.indexOf(q); i>=0; i=hay.indexOf(q,i+q.length)){
+    if(out.length>=FIND_MAX){ fd.more=true; break; }
+    const a=at(i), b=at(i+q.length-1), r=document.createRange(); r.setStart(a.n,i-a.s); r.setEnd(b.n,i+q.length-b.s); out.push(r); }
+  return out; }
+// where a match is on screen: its own place, or (in a folded turn or a closed box) the place of what shows instead
+function findY(r,end){ const b=r.getBoundingClientRect(); if(b.width||b.height) return end? b.bottom : b.top;
+  for(let e=r.startContainer.parentElement; e; e=e.parentElement) if(e.getClientRects().length){ const x=e.getBoundingClientRect(); return end? x.bottom : x.top; }
+  return 0; }
+const findBand=()=>({top:$('find').getBoundingClientRect().bottom+8,bot:$('live').getBoundingClientRect().top-8});
+// the match to start from: one on screen, else the nearest above (the newest, read from the bottom), else the first below
+function findNear(){ const n=fd.hits.length, {top,bot}=findBand(); let lo=0, hi=n;
+  while(lo<hi){ const m=(lo+hi)>>1; if(findY(fd.hits[m],true)<top) lo=m+1; else hi=m; }
+  return lo<n&&findY(fd.hits[lo])<=bot? lo : lo>0? lo-1 : lo; }
+function findCount(){ const n=fd.hits.length, bar=$('find');
+  $('findN').textContent= !fd.q? '' : n? `${fd.cur<0?'–':fd.cur+1} / ${n}${fd.more?'+':''}` : '見つかりません';
+  bar.classList.toggle('none',!!fd.q&&!n); $('findUp').disabled=$('findDn').disabled=!n; }
+function findPaint(all){ if(!FIND_HL) return;
+  if(all){ const h=new Highlight(); for(const r of fd.hits) h.add(r); CSS.highlights.set('fc-find',h); }
+  const on=new Highlight(); on.priority=1; if(fd.hits[fd.cur]) on.add(fd.hits[fd.cur]); CSS.highlights.set('fc-find-on',on); }
+// a folded turn or a closed box that holds matches says how many
+function findBadges(){ fd.badges.forEach(b=>b.removeAttribute('data-find')); fd.badges=[]; const per=new Map();
+  for(const r of fd.hits){ const e=r.startContainer.parentElement; if(!e) continue;
+    const li=e.closest('li.turn'), f= li? li.querySelector(':scope > .fold') : e.closest('details')?.querySelector(':scope > summary');
+    if(f) per.set(f,(per.get(f)||0)+1); }
+  for(const [f,n] of per){ f.dataset.find=n>999? '999+' : n; fd.badges.push(f); } }
+// look again: as you type (nav: go to a match), and as the channel changes (the one you are on stays)
+function findRun(nav){ const c=chN(sel), was=fd.hits[fd.cur], k0=fd.cur; fd.c=c;
+  fd.hits= c&&fd.q? findAll(c.log,fd.q) : []; fd.cur=-1;
+  if(was){ const k=fd.hits.findIndex(r=>r.startContainer===was.startContainer&&r.startOffset===was.startOffset); if(k>=0) fd.cur=k; else if(!nav&&k0<fd.hits.length) fd.cur=k0; }
+  findBadges(); findPaint(true);
+  if(nav&&fd.hits.length) findGo(fd.cur>=0? fd.cur : findNear()); else findCount(); }
+function findGo(k){ const r=fd.hits[k]; if(!r) return; fd.cur=k;
+  const e=r.startContainer.parentElement, li=e&&e.closest('li.turn');
+  if(li&&li.classList.contains('folded')){ li.classList.remove('folded'); li.dataset.hand='1'; const f=li.querySelector(':scope > .fold'); if(f) f.setAttribute('aria-expanded','true'); }
+  for(let d=e&&e.closest('details'); d; d=d.parentElement&&d.parentElement.closest('details')) d.open=true;
+  findPaint(false); findCount();
+  const v=$('chan'), b=r.getBoundingClientRect(), {top,bot}=findBand();
+  if(b.top<top||b.bottom>bot){ endGoing=0; histPin=null; v.scrollTop+=b.top-(top+Math.max(0,bot-top)*.3); }
+  const pre=e&&e.closest('pre');                                   // a long line in a code block: across to it
+  if(pre&&pre.scrollWidth>pre.clientWidth){ const p=pre.getBoundingClientRect(); if(b.left<p.left||b.right>p.right) pre.scrollLeft+=b.left-p.left-p.width/3; } }
+function findStep(d){ if(findFlush()) return; const n=fd.hits.length; if(!n) return;
+  findGo(fd.cur<0? findNear() : (fd.cur+d+n)%n); }
+function findFlush(){ if(!fd.qt) return false; clearTimeout(fd.qt); fd.qt=0; findQuery(); return true; }
+function findQuery(){ fd.qt=0; const v=$('findIn').value; fd.q= v.trim()? v : ''; findRun(true); }
+// (a change in what is not searched, like an approval's countdown, is not a reason to look again)
+const findMo=new MutationObserver(ms=>{ const lg=fd.c&&fd.c.log; if(!findOn||!fd.q||!lg||fd.lt) return;
+  if(!ms.some(m=>{ const t=m.target.nodeType===1? m.target : m.target.parentElement; return t&&lg.contains(t)&&!t.closest(FIND_SKIP); })) return;
+  fd.lt=setTimeout(()=>{ fd.lt=0; if(findOn&&fd.q) findRun(false); },300); });
+const findCan=()=>!!(sel&&chN(sel)&&!$('chan').hidden&&$('scrim').hidden&&!co&&!stvOpen);
+function findPlace(){ $('find').style.top=Math.max(8,$('osd').offsetHeight-6)+'px'; }
+new ResizeObserver(()=>{ if(findOn) findPlace(); }).observe($('osd'));
+function findOpen(){ if(!findCan()) return; const i=$('findIn'); closePal();
+  if(!findOn){ findOn=true; const a=document.activeElement; fd.back= a&&a!==document.body&&a!==i? a : null;
+    $('find').hidden=false; findPlace(); findMo.observe($('logs'),{childList:true,subtree:true,characterData:true}); renderOsd(chN(sel));
+    if(i.value.trim()){ fd.q=i.value; findRun(true); } else findCount(); }
+  i.focus(); i.select(); }
+// closed from the bar, the keys go back where they were (the message box, most often); closed from elsewhere, they stay there
+function findClose(){ if(!findOn) return; const inBar=$('find').contains(document.activeElement);
+  findOn=false; $('find').hidden=true; findMo.disconnect(); clearTimeout(fd.qt); clearTimeout(fd.lt); fd.qt=fd.lt=0;
+  fd.hits=[]; fd.cur=-1; fd.c=null; findBadges(); if(FIND_HL){ CSS.highlights.delete('fc-find'); CSS.highlights.delete('fc-find-on'); }
+  const b=fd.back; fd.back=null; const c=chN(sel); if(c) renderOsd(c);
+  if(inBar){ if(b&&b.isConnected&&!b.disabled&&b.offsetParent) b.focus(); else document.activeElement.blur(); } }
+// another channel on screen: the same words looked for there (nothing is gone to until you press Enter); the wall closes it
+function findSwap(n){ if(!findOn) return; if(!n){ findClose(); return; } fd.hits=[]; fd.cur=-1; findPlace(); findRun(false); }
+$('findIn').addEventListener('input',()=>{ clearTimeout(fd.qt); fd.qt=setTimeout(findQuery,140); });
+$('findIn').addEventListener('keydown',e=>{ if(e.isComposing||e.keyCode===229) return;
+  if(e.key==='Enter'){ e.preventDefault(); findStep(e.shiftKey?-1:1); }
+  else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); findClose(); } });
+[['findUp',-1],['findDn',1]].forEach(([id,d])=>{ $(id).addEventListener('mousedown',e=>e.preventDefault()); $(id).addEventListener('click',()=>findStep(d)); });
+$('findX').addEventListener('click',findClose);
+$('osd').addEventListener('click',e=>{ if(e.target.closest('[data-find]')) findOn? findClose() : findOpen(); });
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&e.key.toLowerCase()==='f'){
+    if(document.activeElement===$('findIn')||!findCan()) return;             // pressed again in the bar: the browser's own search
+    e.preventDefault(); findOpen(); return; }
+  if(findOn&&(e.key==='F3'||((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='g'))){ e.preventDefault(); findStep(e.shiftKey?-1:1); } });
 
 /* ================= images that go with a message: pasted, dropped or picked; made small enough here, kept by the hub ================= */
 const IMG_EDGE=2000, IMG_BYTES=4.5e6, IMG_MAX=5, IMG_BLANK='data:image/gif;base64,R0lGODlhAQABAAAAACw=';

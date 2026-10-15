@@ -20,6 +20,8 @@ Fogcast を作るときに使った確認用のスクリプトです。Mod 本�
 | `e2e/demo-aside.py` | デモ版で、書きかけの文が「/ コマンド」や `/` でよけられ、`Esc`・ボタンをもう一度・`/` を消す・コマンドを送る・ほかの文を送る、のどれでも戻ること。`@` で Excel と画像を指定したときの「添付」の表示 | `python3 dev/e2e/demo-aside.py 1440x900`（`390x844` でスマホ幅） |
 | `e2e/real-msg.py` | 本物の Claude Code のターミナルを相手に、画面で添付した画像が Read で Claude に届くか（確認のダイアログが出ないか）、吹き出しに画像が出るか（読み込み直しても）、Claude の返答を引用して送れるか、Esc で止めたターンを「もう一度送る」で送り直せるかを通す | `STUB=stub-api-read.mjs CLAUDE_ARGS="--permission-mode default" python3 dev/term/run-term.py "browser:dev/e2e/real-msg.py 1440x900" tail:20:terminal stub:8`（`stub-api-read.mjs` は、依頼の直前の行に画像のパスがあると Read を頼み、返ってきた結果に画像があったかを答える） |
 | `e2e/demo-msg.py` | デモ版で、吹き出しの「引用」と選んだ部分の引用、画像（選ぶ・貼り付け・ドラッグ、大きい画像は縮める、Excel のセルの貼り付けは文字のまま）、Esc で止める、止めたターンの「もう一度送る」「直して送る」（書きかけはよけて、Esc で戻る）を通す | `python3 dev/e2e/demo-msg.py 1440x900`（`390x844` でスマホ幅） |
+| `e2e/demo-find.py` | デモ版で、チャンネルの中の検索（Ctrl+F と見出しの虫眼鏡、一致の数と移動、畳まれたターンの「一致 N」と開くこと、大文字・小文字と全角・半角、Esc で閉じても作業中のターンは止まらないこと、2 回目の Ctrl+F はブラウザの検索、チャンネルの切り替え、届いた文も数えること）を通す | `python3 dev/e2e/demo-find.py 1440x900`（`390x844` でスマホ幅、虫眼鏡から開く） |
+| `e2e/real-find.py` | 本物の Claude Code のターミナルを相手に、チャンネルの中の検索が依頼と返答の両方の言葉を大文字・小文字と全角・半角を問わず見つけ、Enter で全部を回り、開いているあいだに届いたターンも数え、読み込み直したあとも同じに探せるかを通す | `STUB=stub-api-echo.mjs python3 dev/term/run-term.py "browser:dev/e2e/real-find.py 1440x900"` |
 | `e2e/demo-end.py` | デモ版で同じこと（↓ のボタン、新着の数、チャンネル切り替え、質問の答えの欄が 5 行まで広がる） | `python3 dev/e2e/demo-end.py 1440x900`（`390x844` でスマホ幅） |
 | `e2e/live-*.py` | 本物の受け皿と模擬ターミナル（`test/simulate.mjs`）を相手に、ブラウザ（Playwright）で画面の操作を通す | `python3 dev/e2e/live-new.py` など（要 Playwright と Chromium） |
 | `e2e/demo-*.py` | デモ版の画面（`ui-src/demo.html`）の動きを撮影して確かめる | 同上 |
