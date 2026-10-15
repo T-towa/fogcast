@@ -444,7 +444,8 @@ h1,h2,h3{text-wrap:balance}
 .rt:hover span::before{background:rgba(255,255,255,.1)}
 .rt[aria-selected="true"] span{color:var(--yolk-ink)}
 .rt[aria-selected="true"] span::before{background:var(--yolk);border-color:var(--yolk);box-shadow:3px 3px 0 #000}
-.pane{overflow:auto;min-height:0;display:grid;gap:12px;align-content:start;padding:2px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
+.pane{overflow:auto;min-height:0;display:grid;gap:12px;align-content:start;padding:2px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent;
+  overflow-anchor:none}   /* its contents are drawn again as the counts change: the browser's keeping a part in place pulled the wheel back up */
 .blk{display:grid;gap:9px;padding:12px 13px;border-radius:16px;background:var(--well);border:1px solid rgba(255,255,255,.07);min-width:0}
 .blk h3{margin:0;font:700 14.5px/1.35 var(--f-body);letter-spacing:.04em;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 10px}
 .blk h3 small{font-size:12px;font-weight:500;color:var(--faint);letter-spacing:0;text-align:left}
@@ -629,7 +630,7 @@ h1,h2,h3{text-wrap:balance}
 .coBack:hover{background:var(--yolk);color:#000;border-color:#000;box-shadow:4px 4px 0 #fff}
 .coSub{font-size:12px;color:var(--mute)}
 .coKeys{margin-left:auto;font-size:11.5px;color:var(--faint)}
-.coBody{position:absolute;z-index:2;left:0;top:0;bottom:0;right:var(--ww);display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:24px 36px;padding:var(--top,76px) 32px 30px 54px;overflow:auto;scrollbar-width:thin}
+.coBody{position:absolute;z-index:2;left:0;top:0;bottom:0;right:var(--ww);display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:24px 36px;padding:var(--top,76px) 32px 30px 54px;overflow:auto;scrollbar-width:thin;overflow-anchor:none}
 .coFil{display:flex;gap:7px;flex-wrap:wrap}
 .coFil button{border:2px solid #fff;background:#000;color:#fff;font:400 12.5px/1 var(--f-disp);letter-spacing:.04em;padding:7px 11px 6px;transform:skewX(-10deg);box-shadow:3px 3px 0 rgba(0,0,0,.55);cursor:pointer;white-space:nowrap}
 .coFil button>span{display:inline-flex;gap:6px;align-items:baseline;transform:skewX(10deg)}
@@ -1121,7 +1122,7 @@ button.day:hover{transform:translateY(-2px);border-color:var(--yolk)}
 .howList li{display:grid;grid-template-columns:5.2em minmax(0,1fr);gap:4px 12px;align-items:baseline;padding:10px 12px;border-radius:12px;background:var(--well);border:1px solid rgba(255,255,255,.07);font-size:13px;line-height:1.7}
 .howList b{font:700 12.5px/1.5 var(--f-body);color:var(--yolk)}
 .sheet.how{width:min(680px,100%)}
-.stvBody{position:absolute;z-index:2;inset:0;padding:78px 40px 28px;overflow:auto;scrollbar-width:thin;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1.05fr);gap:20px 30px;align-content:start;align-items:start}
+.stvBody{position:absolute;z-index:2;inset:0;padding:78px 40px 28px;overflow:auto;scrollbar-width:thin;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1.05fr);gap:20px 30px;align-content:start;align-items:start;overflow-anchor:none}
 .stCol{display:grid;gap:16px;min-width:0;align-content:start}
 .stvBody .blk{background:rgba(0,0,0,.42);border-color:rgba(255,255,255,.12);animation:coIn .45s cubic-bezier(.2,.9,.25,1) both}
 .stLv{display:grid;gap:18px;padding:6px 0 4px 8px}
@@ -2095,24 +2096,35 @@ function buildDeck(){
 function deckItems(){ const q=deckQ.trim().toLowerCase();
   return LINKS.filter(l=>(deckFilter==='all'||(deckFilter==='unused'? isUnused(l) : l.kind===deckFilter))&&(!q||l.label.toLowerCase().includes(q)||String(l.arc).includes(q)||KIND[l.kind].includes(q))).sort(SORTS[deckSort]); }
 let deckOrderKey='', listKey='', unusedKey='';
+// while the pane is being scrolled, the cards keep their places: a new order (the counts moved it) waits until it stops
+let deckHold=0, deckHoldT=0;
+const deckBusy=()=>performance.now()-deckHold<1200;
+['scroll','wheel','touchmove'].forEach(k=>$('pL').addEventListener(k,()=>{ deckHold=performance.now(); },{passive:true}));
+addEventListener('scroll',()=>{ if(rtab==='L') deckHold=performance.now(); },{passive:true});      // the page, where the rail sits under the TV
+function deckLater(){ if(!deckHoldT) deckHoldT=setTimeout(()=>{ deckHoldT=0; dirty=true; },1300); }
+function deckUser(){ deckHold=0; updateDeck(); }            // what the person chose shows at once
+const setText=(el,t)=>{ if(el.textContent!==t) el.textContent=t; };
 function rankText(l){ return l.kind==='core'? `ターン ${l.uses}` : l.uses? `R${l.rank} · ${l.uses}回` : '未使用'; }
 function updateDeck(){
   const items=deckItems(), ids=new Set(items.map(l=>l.id)), carded=LINKS.filter(l=>l.card).length;
-  $('deckCount').textContent=`${items.length} 件を表示（全 ${LINKS.length} 件 · カード ${carded} 枚）`;
+  setText($('deckCount'),`${items.length} 件を表示（全 ${LINKS.length} 件 · カード ${carded} 枚）`);
   $('deck').hidden= deckView!=='card'; $('dlist').hidden= deckView!=='list';
   if(deckView==='card'){
     const order=items.filter(l=>cardEls[l.id]).map(l=>l.id), key=order.join(',');
-    if(key!==deckOrderKey){ deckOrderKey=key; order.forEach(id=>$('deck').appendChild(cardEls[id].el)); Object.values(cardEls).forEach(o=>{ o.el.hidden=!ids.has(o.el.dataset.id); o.need=true; }); requestAnimationFrame(sizeDeck); }
+    if(key!==deckOrderKey){
+      if(deckOrderKey&&deckBusy()) deckLater();
+      else { deckOrderKey=key; order.forEach(id=>$('deck').appendChild(cardEls[id].el)); Object.values(cardEls).forEach(o=>{ o.el.hidden=!ids.has(o.el.dataset.id); o.need=true; }); requestAnimationFrame(sizeDeck); } }
     const noCard=items.filter(l=>!l.card).length;
-    $('deckNote').textContent= noCard? `カードのない ${noCard} 件は「一覧」に並びます。` : '';
+    setText($('deckNote'), noCard? `カードのない ${noCard} 件は「一覧」に並びます。` : '');
     LINKS.forEach(l=>{ const o=cardEls[l.id]; if(!o) return; const el=o.el;
       el.classList.toggle('on',l.live.size>0); el.classList.toggle('locked',l.kind!=='core'&&l.uses===0);
-      el.querySelector('.rk').textContent=rankText(l);
+      setText(el.querySelector('.rk'),rankText(l));
       el.querySelectorAll('.pips i').forEach((p,i)=>p.classList.toggle('on',i<l.rank)); });
   } else {
-    $('deckNote').textContent='';
+    setText($('deckNote'),'');
     const key=items.map(l=>l.id+l.uses+(l.live.size?'*':'')).join(',');
-    if(key!==listKey){ listKey=key;
+    if(key!==listKey&&listKey&&deckBusy()) deckLater();
+    else if(key!==listKey){ listKey=key;
       $('dlist').innerHTML=`<div class="lhead" aria-hidden="true"><span>番号</span><span>名前</span><span>ランク</span><span>最後</span><span>負担</span></div><ul>`+items.map(l=>`<li><button class="lrow k-${l.kind}${l.live.size?' on':''}" type="button" data-id="${l.id}"><span class="ln">${esc(l.num)}</span><span class="lnm"><b>${esc(l.label)}</b><small>${KIND[l.kind]} · ${esc(l.src)}</small></span><span class="lrk">${l.kind==='core'?'':`<span class="pips">${[...Array(10)].map((_,i)=>`<i class="${i<l.rank?'on':''}"></i>`).join('')}</span>`}<small>${rankText(l)}</small></span><span class="llast">${l.live.size?'使用中':ago(l.last)}</span><span class="ltok">${l.dt?fmt(l.dt):'—'}</span></button></li>`).join('')+`</ul>`; }
   }
   renderUnused();
@@ -2128,9 +2140,9 @@ function renderUnused(){
 }
 function sizeCanvas(cv){ if(!cv) return; const r=cv.getBoundingClientRect(), d=Math.min(devicePixelRatio||1,2); cv.width=Math.max(1,Math.round(r.width*d)); cv.height=Math.max(1,Math.round(r.height*d)); cv._d=d; }
 function sizeDeck(){ Object.values(cardEls).forEach(o=>{ if(!o.el.hidden){ sizeCanvas(o.cv); o.need=true; } }); }
-$('dq').addEventListener('input',e=>{ deckQ=e.target.value; updateDeck(); });
-$('ds').addEventListener('change',e=>{ deckSort=e.target.value; updateDeck(); });
-$('dview').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ deckView=b.dataset.v; $('dview').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); listKey=''; updateDeck(); }));
+$('dq').addEventListener('input',e=>{ deckQ=e.target.value; deckUser(); });
+$('ds').addEventListener('change',e=>{ deckSort=e.target.value; deckUser(); });
+$('dview').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ deckView=b.dataset.v; $('dview').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); listKey=''; deckUser(); }));
 $('dlist').addEventListener('click',e=>{ const b=e.target.closest('.lrow'); if(b) openCard(b.dataset.id); });
 
 /* ================= rail: details ================= */
@@ -2636,8 +2648,8 @@ function foldHTML(n,t,preview,k){ return `<button class="fold" type="button" ari
 /* a turn's header opens and closes it; one the person opened or closed by hand stays as they left it */
 function foldBind(li){ const b=li.querySelector('.fold'); b.setAttribute('aria-expanded',String(!li.classList.contains('folded')));
   b.addEventListener('click',()=>{ const f=li.classList.toggle('folded'); b.setAttribute('aria-expanded',String(!f)); li.dataset.hand='1'; }); }
-/* the latest turns stay open (the new one and the two before it); a new turn folds the one that falls out */
-const KEEP_OPEN=3;
+/* the latest turns stay open (the new one and the nine before it); a new turn folds the one that falls out, ten turns on */
+const KEEP_OPEN=10;
 function foldOld(c){ const ts=[...c.log.querySelectorAll('.turn')];
   ts.slice(0,Math.max(0,ts.length-(KEEP_OPEN-1))).forEach(li=>{ if(li.dataset.hand||li.classList.contains('folded')) return;
     li.classList.add('folded'); const b=li.querySelector('.fold'); if(b) b.setAttribute('aria-expanded','false'); }); }
@@ -2989,7 +3001,7 @@ function setTab(k){ rtab=k; [['F','tF','pF'],['L','tL','pL'],['S','tS','pS'],['H
   if(k==='F') renderForecast(); if(k==='L'){ deckOrderKey=''; listKey=''; updateDeck(); requestAnimationFrame(sizeDeck); } if(k==='D') renderDetail(true); if(k==='S') renderSkills(true); if(k==='H') renderHist(true); }
 [['tF','F'],['tL','L'],['tS','S'],['tH','H'],['tD','D']].forEach(([id,k])=>$(id).addEventListener('click',()=>setTab(k)));
 $('filters').querySelectorAll('.fbtn').forEach(b=>b.addEventListener('click',()=>{ deckFilter=b.dataset.k;
-  $('filters').querySelectorAll('.fbtn').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); updateDeck(); }));
+  $('filters').querySelectorAll('.fbtn').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); deckUser(); }));
 $('knob').addEventListener('click',()=>{ const nums=[0,...CH.map(c=>c.num)]; select(nums[(nums.indexOf(sel)+1)%nums.length]); });
 $('hud').addEventListener('click',()=>{ setTab('F'); if(innerWidth<=1180) document.querySelector('.rail').scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'}); });
 $('guide').addEventListener('click',e=>{ const t=e.target.closest('[data-n]'); if(t) select(+t.dataset.n); });

@@ -208,24 +208,35 @@ function buildDeck(){
 function deckItems(){ const q=deckQ.trim().toLowerCase();
   return LINKS.filter(l=>(deckFilter==='all'||(deckFilter==='unused'? isUnused(l) : l.kind===deckFilter))&&(!q||l.label.toLowerCase().includes(q)||String(l.arc).includes(q)||KIND[l.kind].includes(q))).sort(SORTS[deckSort]); }
 let deckOrderKey='', listKey='', unusedKey='';
+// while the pane is being scrolled, the cards keep their places: a new order (the counts moved it) waits until it stops
+let deckHold=0, deckHoldT=0;
+const deckBusy=()=>performance.now()-deckHold<1200;
+['scroll','wheel','touchmove'].forEach(k=>$('pL').addEventListener(k,()=>{ deckHold=performance.now(); },{passive:true}));
+addEventListener('scroll',()=>{ if(rtab==='L') deckHold=performance.now(); },{passive:true});      // the page, where the rail sits under the TV
+function deckLater(){ if(!deckHoldT) deckHoldT=setTimeout(()=>{ deckHoldT=0; dirty=true; },1300); }
+function deckUser(){ deckHold=0; updateDeck(); }            // what the person chose shows at once
+const setText=(el,t)=>{ if(el.textContent!==t) el.textContent=t; };
 function rankText(l){ return l.kind==='core'? `ターン ${l.uses}` : l.uses? `R${l.rank} · ${l.uses}回` : '未使用'; }
 function updateDeck(){
   const items=deckItems(), ids=new Set(items.map(l=>l.id)), carded=LINKS.filter(l=>l.card).length;
-  $('deckCount').textContent=`${items.length} 件を表示（全 ${LINKS.length} 件 · カード ${carded} 枚）`;
+  setText($('deckCount'),`${items.length} 件を表示（全 ${LINKS.length} 件 · カード ${carded} 枚）`);
   $('deck').hidden= deckView!=='card'; $('dlist').hidden= deckView!=='list';
   if(deckView==='card'){
     const order=items.filter(l=>cardEls[l.id]).map(l=>l.id), key=order.join(',');
-    if(key!==deckOrderKey){ deckOrderKey=key; order.forEach(id=>$('deck').appendChild(cardEls[id].el)); Object.values(cardEls).forEach(o=>{ o.el.hidden=!ids.has(o.el.dataset.id); o.need=true; }); requestAnimationFrame(sizeDeck); }
+    if(key!==deckOrderKey){
+      if(deckOrderKey&&deckBusy()) deckLater();
+      else { deckOrderKey=key; order.forEach(id=>$('deck').appendChild(cardEls[id].el)); Object.values(cardEls).forEach(o=>{ o.el.hidden=!ids.has(o.el.dataset.id); o.need=true; }); requestAnimationFrame(sizeDeck); } }
     const noCard=items.filter(l=>!l.card).length;
-    $('deckNote').textContent= noCard? `カードのない ${noCard} 件は「一覧」に並びます。` : '';
+    setText($('deckNote'), noCard? `カードのない ${noCard} 件は「一覧」に並びます。` : '');
     LINKS.forEach(l=>{ const o=cardEls[l.id]; if(!o) return; const el=o.el;
       el.classList.toggle('on',l.live.size>0); el.classList.toggle('locked',l.kind!=='core'&&l.uses===0);
-      el.querySelector('.rk').textContent=rankText(l);
+      setText(el.querySelector('.rk'),rankText(l));
       el.querySelectorAll('.pips i').forEach((p,i)=>p.classList.toggle('on',i<l.rank)); });
   } else {
-    $('deckNote').textContent='';
+    setText($('deckNote'),'');
     const key=items.map(l=>l.id+l.uses+(l.live.size?'*':'')).join(',');
-    if(key!==listKey){ listKey=key;
+    if(key!==listKey&&listKey&&deckBusy()) deckLater();
+    else if(key!==listKey){ listKey=key;
       $('dlist').innerHTML=`<div class="lhead" aria-hidden="true"><span>番号</span><span>名前</span><span>ランク</span><span>最後</span><span>負担</span></div><ul>`+items.map(l=>`<li><button class="lrow k-${l.kind}${l.live.size?' on':''}" type="button" data-id="${l.id}"><span class="ln">${esc(l.num)}</span><span class="lnm"><b>${esc(l.label)}</b><small>${KIND[l.kind]} · ${esc(l.src)}</small></span><span class="lrk">${l.kind==='core'?'':`<span class="pips">${[...Array(10)].map((_,i)=>`<i class="${i<l.rank?'on':''}"></i>`).join('')}</span>`}<small>${rankText(l)}</small></span><span class="llast">${l.live.size?'使用中':ago(l.last)}</span><span class="ltok">${l.dt?fmt(l.dt):'—'}</span></button></li>`).join('')+`</ul>`; }
   }
   renderUnused();
@@ -241,9 +252,9 @@ function renderUnused(){
 }
 function sizeCanvas(cv){ if(!cv) return; const r=cv.getBoundingClientRect(), d=Math.min(devicePixelRatio||1,2); cv.width=Math.max(1,Math.round(r.width*d)); cv.height=Math.max(1,Math.round(r.height*d)); cv._d=d; }
 function sizeDeck(){ Object.values(cardEls).forEach(o=>{ if(!o.el.hidden){ sizeCanvas(o.cv); o.need=true; } }); }
-$('dq').addEventListener('input',e=>{ deckQ=e.target.value; updateDeck(); });
-$('ds').addEventListener('change',e=>{ deckSort=e.target.value; updateDeck(); });
-$('dview').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ deckView=b.dataset.v; $('dview').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); listKey=''; updateDeck(); }));
+$('dq').addEventListener('input',e=>{ deckQ=e.target.value; deckUser(); });
+$('ds').addEventListener('change',e=>{ deckSort=e.target.value; deckUser(); });
+$('dview').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ deckView=b.dataset.v; $('dview').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); listKey=''; deckUser(); }));
 $('dlist').addEventListener('click',e=>{ const b=e.target.closest('.lrow'); if(b) openCard(b.dataset.id); });
 
 /* ================= rail: details ================= */

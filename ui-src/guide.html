@@ -215,7 +215,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
 <!-- body -->
 <div class="page" lang="ja">
   <header class="cover">
-    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.6.1</span></div>
+    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.6.2</span></div>
     <h1><span class="mark">FOGCAST</span><span class="ja">霧読み</span></h1>
     <p class="lead">Claude Code を何本ものターミナルで動かしているときに、すべての会話・道具の呼び出し・使用量を、ブラウザの 1 画面にまとめて映す Mod です。画面から依頼を送る、<code>/</code> のコマンドを実行する、ツールの実行を許可する、といった操作もできます。</p>
     <dl class="facts">
@@ -268,7 +268,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <div class="cmd"><code>node -v &amp;&amp; claude --version</code><button class="copy" type="button">コピー</button></div></li>
           <li><b class="t">zip を解凍して、ホームフォルダに置く</b>
             <p>ダウンロードフォルダにある場合は、次のコマンドで <code>~/fogcast</code> ができます。</p>
-            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.6.1.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.6.2.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>Finder でダブルクリックして、できた <code>fogcast</code> フォルダをホームフォルダに移してもかまいません。中にある <code>.claude-plugin</code> は見えないフォルダなので、中身だけを選ばずにフォルダごと移してください。</p></li>
           <li><b class="t">マーケットプレイスとして追加する</b>
             <div class="cmd"><code>claude plugin marketplace add ~/fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -295,7 +295,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td>画面</td><td>Windows のブラウザで見ます。<code>/fog</code> で Windows の既定のブラウザが開きます（0.1.2 から）。WSL2 は localhost を Windows に転送するので、<code>http://127.0.0.1:4317</code> で届きます。</td></tr>
           </tbody>
         </table></div>
-        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.6.1.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
+        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.6.2.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
         <p class="note"><span class="lb">お知らせ</span><span>Windows のブラウザでつながらないときは、PowerShell で <code>wsl --shutdown</code> を実行してから WSL を開き直すと直ることがあります。</span></p>
       </section>
 
@@ -365,7 +365,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <p class="muted">VS Code で新しいターミナルを開き、<code>claude</code> を起動するだけです。自動で ch.2、ch.3… として並びます。同じリポジトリで並行して作業するときは、<code>git worktree</code> で作業フォルダを分けるとファイルの変更がぶつかりません。</p>
             <h3>見る</h3>
             <p class="muted"><kbd>0</kbd> で全チャンネル、<kbd>1</kbd>〜<kbd>9</kbd> でそのチャンネル。タイルや番組表の帯を押しても開きます。</p>
-            <p class="muted">会話はメッセージアプリと同じ並びです。あなたの依頼は右の黄色い吹き出し（「ターミナルから」「この画面から」と、どこから送ったかの印つき）、Claude の返答は左の白い吹き出しで、そのあいだの黒い枠に道具の呼び出しが並びます。ターンの頭の見出し（ターン番号・時刻・依頼の 1 行目）を押すと「たたむ ▴」「ひらく ▾」で開け閉めできます。今のターンと、その前の 2 ターンは開いたままで、それより前のターンは新しいターンが始まると自動で畳まれます。手で開け閉めしたターンは、そのままにします。</p>
+            <p class="muted">会話はメッセージアプリと同じ並びです。あなたの依頼は右の黄色い吹き出し（「ターミナルから」「この画面から」と、どこから送ったかの印つき）、Claude の返答は左の白い吹き出しで、そのあいだの黒い枠に道具の呼び出しが並びます。ターンの頭の見出し（ターン番号・時刻・依頼の 1 行目）を押すと「たたむ ▴」「ひらく ▾」で開け閉めできます。新しいほうから 10 ターン（今のターンと、その前の 9 ターン）は開いたままで、それより前のターンは自動で畳まれます（10 ターン経つと畳まれます）。手で開け閉めしたターンは、そのままにします。</p>
             <p class="muted">会話のいちばん下を見ているあいだは、新しいメッセージが来ると、そのまま下へ進みます。上に戻って読んでいるあいだは、何が来ても画面は動きません。代わりに右下に <b>↓</b> のボタンが出て、そのあいだに届いたメッセージ（依頼・Claude の返答・質問・承認待ち・お知らせ）があると、黄色の「新着 2」のように数が出ます。押すと、いちばん下（最新）に戻ります。自分で下までスクロールしても消えます。この画面から送ったときと、チャンネルを切り替えたときは、いちばん下から始まります。</p>
             <p class="muted">1 ターンは、あなたが 1 回送ってから、Claude が返答し終えて入力待ちに戻るまでです。道具の呼び出し、承認、Claude からの質問への回答は、そのターンの中に入ります。返答が終わってから送った修正は、次のターンになります。Claude の作業中にターミナルで送った修正は、Claude Code が作業の区切りで Claude に渡すので、同じターンの中に「作業中にターミナルから」の吹き出しで出ます（Claude がもう最後の返答を書いているときは区切りがないので、返答のあとに次のターンとして始まります）。</p>
             <h3>チャンネルの中を検索する</h3>
@@ -462,7 +462,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <p class="muted">「今日の使用量」は、今日使ったトークンと料金を、チャンネル（フォルダの名前）ごとに出します。受け皿の日ごとの記録から出すので、<code>/clear</code>、<code>claude</code> の起動し直し、チャンネルの片付け、受け皿の再起動があっても残り、日付が変わると 0 から数えます。同じフォルダのチャンネルは同じ行に足され、今は開いていないフォルダの行には、番号の代わりに「—」が出ます。</p>
             <p class="muted">画面の背景も天気を映しています。背景の雨の強さが今のペース、背景の霧が週の枠の近さです。チャンネルを開いているときにテレビの下から立つ霧は、そのチャンネルのコンテキストの埋まり具合で、圧縮すると晴れます。</p>
             <h3>コミュ</h3>
-            <p class="muted">使ったツール・スキル・エージェント・MCP がカードになり、全セッション通算の使用回数でランクが上がります。いま使われているカードは光ります。カード（「一覧」なら行）を押すと右端の輪の画面になり、最近の使い方とどのチャンネルで使ったかが見られます。<kbd>↑</kbd><kbd>↓</kbd>・ホイール・ドラッグで回して、<kbd>Esc</kbd> で戻ります。種類で絞り込めて、よく使う順・種類ごと・最近使った順・ランク順・毎回の負担が大きい順・名前順で並べ替えられます。</p>
+            <p class="muted">使ったツール・スキル・エージェント・MCP がカードになり、全セッション通算の使用回数でランクが上がります。いま使われているカードは光ります。並びは使用回数などで入れ替わりますが、コミュのタブをスクロールしているあいだは入れ替えず、止まってから並べ直します。カード（「一覧」なら行）を押すと右端の輪の画面になり、最近の使い方とどのチャンネルで使ったかが見られます。<kbd>↑</kbd><kbd>↓</kbd>・ホイール・ドラッグで回して、<kbd>Esc</kbd> で戻ります。種類で絞り込めて、よく使う順・種類ごと・最近使った順・ランク順・毎回の負担が大きい順・名前順で並べ替えられます。</p>
             <p class="muted">「このカードについて」には、スキルなら SKILL.md の <code>description</code>、エージェントなら定義ファイルの <code>description</code> が、改行も含めてそのまま出ます。Claude Code の一覧から読むもので、Claude のコンテキストは使いません（本文は読みません）。組み込みのエージェントとツールには、Fogcast の短い説明が出ます。</p>
             <p class="muted">コミュに加わるのは、次のときです。</p>
             <ul class="rules">
@@ -561,7 +561,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>新しい版に更新する</h3>
         <ol class="steps">
           <li><b class="t">新しい zip で <code>~/fogcast</code> を上書きする</b>
-            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.6.1.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.6.2.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>ファイル名は受け取った版に合わせてください。</p></li>
           <li><b class="t">版を更新する</b>
             <div class="cmd"><code>claude plugin update fogcast@fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -623,7 +623,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>仕様</h3>
         <div class="tbl"><table>
           <tbody>
-            <tr><td>版</td><td>0.6.1</td></tr>
+            <tr><td>版</td><td>0.6.2</td></tr>
             <tr><td>必要なもの</td><td>Claude Code 2.1.290 以降（Mod が使える版）、Node.js 18 以上</td></tr>
             <tr><td>日付の区切り</td><td>画面（ブラウザ）の時計に合わせます。WSL の時計が Windows と違う地域になっていても、カレンダーと連続日数は画面の日付で数えます（0.3.0 から）。</td></tr>
             <tr><td>確かめた環境</td><td>Linux。WSL は、Windows のブラウザを開くところを Linux 上で見立てて確かめました。macOS とネイティブの Windows はまだ確かめていません。</td></tr>
@@ -649,7 +649,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
     </main>
   </div>
 
-  <footer><span>Fogcast（霧読み）0.6.1 取扱説明書</span><span>画面の歯車（設定）の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
+  <footer><span>Fogcast（霧読み）0.6.2 取扱説明書</span><span>画面の歯車（設定）の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
 </div>
 <script>
 (function(){

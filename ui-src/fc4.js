@@ -53,8 +53,8 @@ function foldHTML(n,t,preview,k){ return `<button class="fold" type="button" ari
 /* a turn's header opens and closes it; one the person opened or closed by hand stays as they left it */
 function foldBind(li){ const b=li.querySelector('.fold'); b.setAttribute('aria-expanded',String(!li.classList.contains('folded')));
   b.addEventListener('click',()=>{ const f=li.classList.toggle('folded'); b.setAttribute('aria-expanded',String(!f)); li.dataset.hand='1'; }); }
-/* the latest turns stay open (the new one and the two before it); a new turn folds the one that falls out */
-const KEEP_OPEN=3;
+/* the latest turns stay open (the new one and the nine before it); a new turn folds the one that falls out, ten turns on */
+const KEEP_OPEN=10;
 function foldOld(c){ const ts=[...c.log.querySelectorAll('.turn')];
   ts.slice(0,Math.max(0,ts.length-(KEEP_OPEN-1))).forEach(li=>{ if(li.dataset.hand||li.classList.contains('folded')) return;
     li.classList.add('folded'); const b=li.querySelector('.fold'); if(b) b.setAttribute('aria-expanded','false'); }); }
@@ -406,7 +406,7 @@ function setTab(k){ rtab=k; [['F','tF','pF'],['L','tL','pL'],['S','tS','pS'],['H
   if(k==='F') renderForecast(); if(k==='L'){ deckOrderKey=''; listKey=''; updateDeck(); requestAnimationFrame(sizeDeck); } if(k==='D') renderDetail(true); if(k==='S') renderSkills(true); if(k==='H') renderHist(true); }
 [['tF','F'],['tL','L'],['tS','S'],['tH','H'],['tD','D']].forEach(([id,k])=>$(id).addEventListener('click',()=>setTab(k)));
 $('filters').querySelectorAll('.fbtn').forEach(b=>b.addEventListener('click',()=>{ deckFilter=b.dataset.k;
-  $('filters').querySelectorAll('.fbtn').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); updateDeck(); }));
+  $('filters').querySelectorAll('.fbtn').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); deckUser(); }));
 $('knob').addEventListener('click',()=>{ const nums=[0,...CH.map(c=>c.num)]; select(nums[(nums.indexOf(sel)+1)%nums.length]); });
 $('hud').addEventListener('click',()=>{ setTab('F'); if(innerWidth<=1180) document.querySelector('.rail').scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'}); });
 $('guide').addEventListener('click',e=>{ const t=e.target.closest('[data-n]'); if(t) select(+t.dataset.n); });
