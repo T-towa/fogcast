@@ -79,9 +79,16 @@ function spend(c,d,inCtx,st){ const a=d*1000;
   [['five','5時間枠',G.five],['seven','週の枠',G.seven]].forEach(([k,lab,o])=>[80,90].forEach(th=>{ const key=k+th; if(o.pc>=th&&!G.warned[key]){ G.warned[key]=1; toast('wx',`${lab}が ${th}% を超えました`,`全チャンネル合計の値です。リセットは ${k==='five'?hm(o.resetAt):md(o.resetAt)+'（'+wkd(o.resetAt)+'）'}。`); } }));
   if(pct(c)>=85&&!c.warned85){ c.warned85=true; const tl=turnsLeft(c); toast('info',`ch.${c.num} ${esc(c.name)} のコンテキストが ${pct(c)}% です`,`${tl!=null?`あと約 ${tl} ターンで自動で圧縮されます。`:''}「圧縮」で先に空けられます。`,c.num); }
   dirty=true; }
+const cmpxHTML=trigger=>`<b><i class="spin" aria-hidden="true"></i>${trigger==='auto'?'コンテキストがいっぱいに近いので、自動で圧縮しています':'会話を圧縮しています'}</b><span>これまでの会話を要約しています。終わるまで少しかかります。</span>`;
 function osdFlash(html){ const o=$('osdBig'); o.innerHTML=html; o.classList.add('on'); clearTimeout(osdFlash.t); osdFlash.t=setTimeout(()=>o.classList.remove('on'),1100); }
-function compact(c,manual){ const before=pct(c); c.ctx=Math.round(WIN*(.05+Math.random()*.03)); c.warned85=false;
-  add(c,`<div class="sys"><b>${manual?'圧縮しました':'自動で圧縮しました'}</b><span>コンテキストを ${before}% から ${pct(c)}% まで空けました。これまでの要点は要約として残っています。</span></div>`);
+async function compact(c,manual){ if(c.compacting) return; const before=pct(c);
+  let box=null;
+  if(manual){ c.compacting={t:Date.now(),trigger:'manual'}; const idle=c.status==='idle'; if(idle) setStatus(c,'work','会話を圧縮しています'); else c.now='会話を圧縮しています';
+    box=add(c,`<div class="sys cmpx">${cmpxHTML('manual')}</div>`).querySelector('.sys'); dirty=true;
+    await sleep(2600); c.compacting=null; if(idle&&c.status==='work') setStatus(c,'idle','入力待ち'); }
+  c.ctx=Math.round(WIN*(.05+Math.random()*.03)); c.warned85=false;
+  const done=`<b>${manual?'圧縮しました':'自動で圧縮しました'}</b><span>コンテキストを ${before}% から ${pct(c)}% まで空けました。これまでの要点は要約として残っています。</span>`;
+  if(box){ box.innerHTML=done; box.classList.add('done'); } else add(c,`<div class="sys cmpx done">${done}</div>`);
   toast('compact',`ch.${c.num} ${esc(c.name)} を圧縮しました`,`コンテキスト ${before}% → ${pct(c)}%`,sel===c.num?null:c.num);
   if(sel===c.num&&!reduce) osdFlash(`${before}%<small>→ ${pct(c)}%　霧が晴れました</small>`); dirty=true; }
 let cutAt=0; const cut={cv:null,l:null,until:0};
@@ -369,6 +376,7 @@ $('osd').addEventListener('click',e=>{ const b=e.target.closest('[data-pick]'); 
 
 async function loop(c){ const lid=++c.loopId; await sleep(c.delay);
   while(lid===c.loopId&&c.status!=='off'){
+    while(c.compacting&&lid===c.loopId) await sleep(150);          // a compaction the person asked for finishes first
     let w=0; const patience=60+Math.random()*70;
     while(!c.queue.length&&w<patience){ await sleep(100); w++; if(lid!==c.loopId) return; }
     const it=c.queue.shift();
@@ -430,14 +438,14 @@ function openPal(){ const c=chN(sel); if(!c||c.status==='off') return; const q=p
   $('palSub').textContent=`ch.${c.num} ${c.name} で使えるもの ${all.length} 件（起動したフォルダで変わります）`;
   $('palFt').textContent=`↑↓ で選ぶ · Enter で入れる · Esc で${aside&&aside.v.trim()?'やめて、書きかけに戻る':'閉じる'}`;
   renderPal(); $('pal').hidden=false; pal.open=true; $('ask').setAttribute('aria-expanded','true'); }
-function closePal(){ const was=pal.open; $('pal').hidden=true; pal.open=false; pal.seq++; $('ask').setAttribute('aria-expanded','false'); $('ask').removeAttribute('aria-activedescendant'); if(was) ctlHint(); }
+function closePal(){ const was=pal.open; $('pal').hidden=true; pal.open=false; pal.seq++; askAttr('aria-expanded','false'); askAttr('aria-activedescendant',null); if(was) ctlHint(); }
 function renderPal(){ if(pal.mode==='file'){ renderFiles(); return; } let g='', html='';
   const groups={}; pal.items.forEach(x=>{ groups[x.g]=(groups[x.g]||0)+1; });
   const order=['組み込み','スキル','プラグイン','MCP']; const items=[...pal.items].sort((a,b)=>order.indexOf(a.g)-order.indexOf(b.g)); pal.items=items;
   items.forEach((x,i)=>{ if(x.g!==g){ g=x.g; html+=`<li class="pg" role="presentation">${g}（${groups[g]}）</li>`; }
     html+=`<li role="option" id="po${i}" class="po${i===pal.i?' on':''}" aria-selected="${i===pal.i}" data-i="${i}"><code>/${esc(x.n)}</code><span class="h">${esc(x.h)}</span><span class="d">${esc(x.d)}</span><span class="kd k-${x.k}">${CKIND[x.k]}</span></li>`; });
   $('palList').innerHTML=html||'<li class="pg" role="presentation">一致するコマンドはありません</li>';
-  if(items.length){ $('ask').setAttribute('aria-activedescendant','po'+pal.i); const on=$('palList').querySelector('.po.on'); on&&on.scrollIntoView({block:'nearest'}); } }
+  if(items.length){ askAttr('aria-activedescendant','po'+pal.i); const on=$('palList').querySelector('.po.on'); on&&on.scrollIntoView({block:'nearest'}); } }
 function pickPal(i){ if(pal.mode==='file'){ pickFile(i); return; } const x=pal.items[i]; if(!x) return; $('ask').value='/'+x.n+' '; closePal(); $('ask').focus(); askFit(); ctlHint(); }
 
 /* @ in the message box: the channel's files, as the terminal's @ offers them; sent, what they hold goes to Claude */
@@ -464,8 +472,8 @@ function renderFiles(){ const L=pal.items;
     : !L.length? '<li class="pg" role="presentation">一致するファイルはありません</li>'
     : (pal.recent?'<li class="pg" role="presentation">最近変わったファイル（続けて打つと名前で探します）</li>':'')+L.map((x,i)=>{ const k=x.p.lastIndexOf('/'), dir=k>=0? x.p.slice(0,k+1) : '', base=x.p.slice(k+1);
       return `<li role="option" id="po${i}" class="po pf${i===pal.i?' on':''}" aria-selected="${i===pal.i}" data-i="${i}"><code><span class="dp">@${esc(dir)}</span>${esc(base)}${x.dir?'/':''}</code><span class="kd k-${x.dir?'dir':'file'}">${x.dir?'フォルダ':'ファイル'}</span></li>`; }).join('');
-  if(L.length&&!pal.wait){ $('ask').setAttribute('aria-activedescendant','po'+pal.i); const on=$('palList').querySelector('.po.on'); on&&on.scrollIntoView({block:'nearest'}); }
-  else $('ask').removeAttribute('aria-activedescendant'); }
+  if(L.length&&!pal.wait){ askAttr('aria-activedescendant','po'+pal.i); const on=$('palList').querySelector('.po.on'); on&&on.scrollIntoView({block:'nearest'}); }
+  else askAttr('aria-activedescendant',null); }
 /* the demo: its folder's files, ranked as the hub ranks them, and what a prompt's @ would attach */
 // the name itself first (as typed, then in any case), then the name without its extension, then a name that starts with it...
 function fileScore(p,q,raw){ const pl=p.toLowerCase(), k=pl.lastIndexOf('/'), len=pl.length/1e4, path=q.includes('/');
@@ -544,14 +552,22 @@ $('ctl').addEventListener('submit',e=>{ e.preventDefault(); const c=chN(sel), v=
 /* the message box grows with what is typed, a line at a time, up to a share of the window; past that it scrolls inside.
    The screen above gives up the room it takes (down to a floor), and a channel read to its end stays at its end */
 const ASK_MIN=44;
+let askLen=0;
+// an attribute of the message box, written only when it changes (null: taken off)
+function askAttr(k,v){ const a=$('ask'); if(a.getAttribute(k)===v) return; if(v==null) a.removeAttribute(k); else a.setAttribute(k,v); }
+const setStyle=(el,k,v)=>{ if(el.style.getPropertyValue(k)!==v) el.style.setProperty(k,v); };
 function askFit(){ const a=$('ask'), root=document.documentElement;
-  if($('ctl').hidden){ root.style.setProperty('--askGrow','0px'); return; }
+  if($('ctl').hidden){ setStyle(root,'--askGrow','0px'); return; }
   const max=Math.round(Math.max(120,Math.min(innerHeight*(innerWidth<=620? .3 : .36),360)));
   const view=$('chan'), atEnd=!view.hidden&&stick, strip=$('ctlAtt').hidden? 0 : $('ctlAtt').offsetHeight;
-  a.style.height='auto'; const want=Math.max(ASK_MIN,a.scrollHeight), h=Math.min(want,max);
-  a.style.height=h+'px'; a.style.overflowY= want>max? 'auto' : 'hidden';
-  root.style.setProperty('--askGrow',Math.max(0,h-ASK_MIN+strip)+'px');
-  if(atEnd) view.scrollTop=view.scrollHeight; }
+  // as text is added the box only grows, so it is measured as it stands; it is folded to be measured only when text went
+  // away (folding it at every key redrew what was being converted)
+  const shrink=a.value.length<askLen||!a.style.height; askLen=a.value.length;
+  if(shrink) a.style.height='auto';
+  const want=Math.max(ASK_MIN,a.scrollHeight), h=Math.min(want,max);
+  setStyle(a,'height',h+'px'); setStyle(a,'overflow-y',want>max? 'auto' : 'hidden');
+  setStyle(root,'--askGrow',Math.max(0,h-ASK_MIN+strip)+'px');
+  if(atEnd&&view.scrollTop<view.scrollHeight-view.clientHeight) view.scrollTop=view.scrollHeight; }
 addEventListener('resize',askFit);
 
 /* ================= what goes with the message being written: quotes from the conversation, and images ================= */
@@ -672,8 +688,8 @@ function findNear(){ const n=fd.hits.length, {top,bot}=findBand(); let lo=0, hi=
   while(lo<hi){ const m=(lo+hi)>>1; if(findY(fd.hits[m],true)<top) lo=m+1; else hi=m; }
   return lo<n&&findY(fd.hits[lo])<=bot? lo : lo>0? lo-1 : lo; }
 function findCount(){ const n=fd.hits.length, bar=$('find');
-  $('findN').textContent= !fd.q? '' : n? `${fd.cur<0?'–':fd.cur+1} / ${n}${fd.more?'+':''}` : '見つかりません';
-  bar.classList.toggle('none',!!fd.q&&!n); $('findUp').disabled=$('findDn').disabled=!n; }
+  setText($('findN'), !fd.q? '' : n? `${fd.cur<0?'–':fd.cur+1} / ${n}${fd.more?'+':''}` : '見つかりません');
+  bar.classList.toggle('none',!!fd.q&&!n); setProp($('findUp'),'disabled',!n); setProp($('findDn'),'disabled',!n); }
 function findPaint(all){ if(!FIND_HL) return;
   if(all){ const h=new Highlight(); for(const r of fd.hits) h.add(r); CSS.highlights.set('fc-find',h); }
   const on=new Highlight(); on.priority=1; if(fd.hits[fd.cur]) on.add(fd.hits[fd.cur]); CSS.highlights.set('fc-find-on',on); }
@@ -871,7 +887,7 @@ function ctlHint(){ const c=chN(sel), h=$('ctlHint'), sb=$('bSugg');
   const v=$('ask').value, on=!pal.open&&document.activeElement===$('ask'), m=/^\/(\S+)(\s*)$/.exec(v), cmd=on&&m&&commandsFor(c).find(x=>x.n===m[1]);
   const html=(cmd&&cmd.h? `<div class="ar"><span class="hk">引数</span><code>/${esc(cmd.n)}</code> <span class="ah">${esc(cmd.h)}</span>${cmd.d?` <span class="ad">${esc(cmd.d)}</span>`:''}</div>` : '')
     +(on&&aside&&aside.v.trim()? `<div class="ar"><span class="hk t">書きかけ</span><span class="aw">${esc(cut1(aside.v,90))}</span><span class="ad">${v.startsWith('/')?'コマンドを送るか、Esc でやめると戻ります':'送ると戻ります'}</span></div>` : '');
-  if(h.dataset.key!==html){ h.dataset.key=html; h.innerHTML=html; } h.hidden=!html;
+  if(h.dataset.key!==html){ h.dataset.key=html; h.innerHTML=html; } setProp(h,'hidden',!html);
   const sg=!v&&!!c.suggest&&c.status==='idle'; if(sb.hidden===sg){ sb.hidden=!sg; $('ctl').classList.toggle('sg',sg); } }
 $('bSugg').addEventListener('click',()=>{ takeSugg(); });
 function takeSugg(){ const c=chN(sel); if(!c||!c.suggest||$('ask').value) return false; $('ask').value=c.suggest; $('ask').focus(); $('ask').setSelectionRange(c.suggest.length,c.suggest.length); askFit(); ctlHint(); return true; }

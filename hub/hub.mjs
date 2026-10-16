@@ -24,7 +24,7 @@ import { inflateRawSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
-export const VERSION = '0.6.2'
+export const VERSION = '0.6.3'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ARGS = process.argv.slice(2)
 const PORT = Number(process.env.FOGCAST_PORT) || 4317
@@ -162,11 +162,19 @@ function pub(c) {
     blocks: c.blocks, tasks: c.tasks, files: c.files, agents: c.agents, ops: c.ops, active: c.active,
     turn: c.turn && { id: c.turn.id, t0: c.turn.t0, ops: c.turn.ops }, turnNo: c.turnNo,
     ask: c.q ? c.q.id : null, pending: c.pending, suggest: c.suggest, effort: c.effort, effortUsed: c.effortUsed, title: c.title,
+    compacting: c.compacting ? { t: c.compacting.t, trigger: c.compacting.trigger } : null,
   }
 }
 // what the terminal loaded at start: sent with the channel's first view and when it changes
 const meta = c => ({ loaded: c.loaded, commands: c.commands, breakdown: c.breakdown, models: c.models, efforts: c.efforts })
 function setStatus(c, st, text, t = now()) { if (c.status !== st) c.since = t; c.status = st; c.now = text }
+// a compaction over (done, or not done): a channel that was only compacting is waiting for input again; a turn goes on
+function compactDone(c, t, said) {
+  if (!c.compacting) return
+  c.compacting = null
+  if (c.status === 'work' && !c.turn) { endBlock(c, t); setStatus(c, 'idle', '入力待ち', t) }
+  else if (c.status === 'work') c.now = `${said} · 作業を続けています`
+}
 function block(c, k, label, t = now()) { const b = c.blocks[c.blocks.length - 1]; if (b && !b.e) b.e = t; c.blocks.push({ s: t, e: null, k, label: str(label, 80) }); trimBlocks(c) }
 function endBlock(c, t = now()) { const b = c.blocks[c.blocks.length - 1]; if (b && !b.e) b.e = t }
 function trimBlocks(c) { const cut = now() - 3 * 3600e3; c.blocks = c.blocks.filter(b => !b.e || b.e > cut).slice(-200) }
@@ -414,7 +422,7 @@ function apply(c, ev) {
     }
     case 'user': e.text = str(ev.text, 8000); break
     case 'say': e.text = str(ev.text, 12000); if (c.status === 'work' && !ev.agent) c.now = '返答を書いています'; break
-    case 'mode': if (c.status === 'work' && TOOLS_NOW[ev.mode]) c.now = TOOLS_NOW[ev.mode]; return null
+    case 'mode': if (c.status === 'work' && !c.compacting && TOOLS_NOW[ev.mode]) c.now = TOOLS_NOW[ev.mode]; return null
     case 'tool': {
       const l = link(ev.link)
       e.name = str(ev.name, 120); e.input = str(ev.input, 400); e.link = l ? l.id : null
@@ -534,7 +542,20 @@ function apply(c, ev) {
       if (!e.items.length) return null
       break
     }
-    case 'compact': { const l = link({ id: 'compact', kind: 'core', label: '圧縮', src: '組み込み' }); use(l.id, c, ev.trigger === 'auto' ? '自動' : '手動', '', t); break }
+    // a compaction: while it runs the channel says so (outside a turn it is the channel's work, a block in the guide of its own)
+    case 'compacting': {
+      e.trigger = ev.trigger === 'auto' ? 'auto' : 'manual'; if (ev.via === 'screen') e.via = 'screen'; else delete e.via
+      c.compacting = { t, trigger: e.trigger }
+      if (c.status === 'idle') { setStatus(c, 'work', '会話を圧縮しています', t); block(c, 'work', '圧縮', t) }
+      else if (c.status === 'work') c.now = '会話を圧縮しています'
+      break
+    }
+    case 'compactOff': {
+      if (!c.compacting) return null
+      e.reason = str(ev.reason, 200); compactDone(c, t, '圧縮しませんでした')
+      break
+    }
+    case 'compact': { const l = link({ id: 'compact', kind: 'core', label: '圧縮', src: '組み込み' }); use(l.id, c, ev.trigger === 'auto' ? '自動' : '手動', '', t); compactDone(c, t, '圧縮しました'); break }
     case 'turnEnd': {
       const u = ev.usage || {}
       c.tok += num(u.in) + num(u.cw) + num(u.out)
@@ -563,7 +584,7 @@ function apply(c, ev) {
     }
     case 'end': {
       c.resume = str(ev.resume, 100) || c.sid
-      endBlock(c, t); c.endedAt = t; setStatus(c, 'off', 'セッションは終了しています', t)
+      endBlock(c, t); c.endedAt = t; c.compacting = null; setStatus(c, 'off', 'セッションは終了しています', t)
       for (const [, lt] of c.liveTools || []) if (lt.link) live(lt.link, c, false)
       c.liveTools = new Map(); c.waits.clear(); askGoneAll(c); c.q = null; c.suggest = ''
       // what was waiting to be sent goes with the terminal
@@ -595,6 +616,7 @@ function apply(c, ev) {
         e.error = str(ev.error, 300)
         const p = c.pending.find(x => x.id === ev.cid); if (p) p.err = e.error || '送れませんでした'
       }
+      if (ev.what === 'compact' && ev.ok === false) compactDone(c, t, '圧縮しませんでした')
       break
     }
     case 'note': e.text = str(ev.text, 600); break
@@ -1427,6 +1449,7 @@ setInterval(() => {
       chanDirty.add(c.id)
     }
     if (c.status === 'off' && c.endedAt && t - c.endedAt > KEEP_ENDED_MS) { chans.delete(c.id); broadcast({ type: 'gone', chan: c.id }) }
+    if (c.compacting && t - c.compacting.t > 30 * 60e3) { compactDone(c, t, '圧縮'); chanDirty.add(c.id) }
     trimBlocks(c)
   }
   if (Object.keys(S.nums).length > 40) pruneNums()

@@ -20,7 +20,9 @@ const CH=[]; let sel=0, rtab='F', dirty=true;
 const chN=n=>CH.find(c=>c.num===n);
 const STL={work:'作業中',wait:'承認待ち',idle:'入力待ち',off:'終了'};
 /* a channel waiting on a question (AskUserQuestion) waits for an answer, not an approval */
-const stl=c=> c.status==='wait'&&c.ask? '回答待ち' : STL[c.status];
+const stl=c=> c.status==='wait'&&c.ask? '回答待ち' : c.compacting&&c.status!=='off'? '圧縮中' : STL[c.status];
+// compacting: the terminal said it is (or this screen asked a moment ago and the terminal has not said yet)
+const compactingNow=c=> c.status!=='off'&&!!(c.compacting||(c.compactAsk&&Date.now()-c.compactAsk<8000));
 const pct=c=>Math.round(c.ctx/(c.win||WIN)*100);
 function mkChannel(o){
   const P=PROJECTS[o.cwd];
@@ -111,13 +113,16 @@ function renderOsd(c){
     <span class="right"><span class="chip ${c.status}">${stl(c)}</span><span>${sig(c)} コンテキスト <b>${pct(c)}%</b></span><span class="tk"><b>${fmt(c.tok)}</b> tokens</span><span><b>$${c.cost.toFixed(2)}</b></span>
       <button class="osdFind${findOn?' on':''}" type="button" data-find aria-controls="find" aria-expanded="${findOn}" aria-label="このチャンネルの中を検索（${FIND_KEY}）" title="このチャンネルの中を検索（${FIND_KEY}）">${FIND_ICO}</button></span>`;
   if($('osd').dataset.k!==html){ $('osd').dataset.k=html; $('osd').innerHTML=html; }
-  const el=c.status==='off'? '' : `${Math.floor((Date.now()-c.phaseAt)/1000)}s`;
-  $('live').innerHTML=`<i class="dot ${c.status}"></i><span class="txt">${c.now}</span><span class="el">${el}</span>`;
+  const el=c.status==='off'? '' : `${Math.floor((Date.now()-c.phaseAt)/1000)}s`, cmp=compactingNow(c);
+  $('live').innerHTML=`<i class="dot ${cmp&&c.status==='idle'?'work':c.status}"></i><span class="txt">${cmp&&!c.compacting? '圧縮を頼んでいます…' : c.now}</span><span class="el">${el}</span>`;
   const busy=c.status==='work'||c.status==='wait';
-  $('ask').disabled=off; $('bSend').disabled=off; $('bStop').disabled=!busy; $('bCompact').disabled=off; $('bForget').hidden=!off; $('bSend').hidden=off;
+  // while compacting, the button says so (a compaction outside a turn is not stopped from here). All of it is written only
+  // when it changes: a write, even of the same words, redraws the box, and Japanese being converted in it flickered with it
+  setProp($('ask'),'disabled',off); setProp($('bSend'),'disabled',off); setProp($('bStop'),'disabled',!busy||(cmp&&!c.turnOn)); setProp($('bForget'),'hidden',!off); setProp($('bSend'),'hidden',off);
+  setProp($('bCompact'),'disabled',off||cmp); $('bCompact').classList.toggle('busy',cmp); setText($('bCompact'),cmp? '圧縮中…' : '圧縮');
   // the dim suggestion sits in the empty box, as in the terminal
-  $('ask').placeholder= off? 'このセッションは終了しています。「詳細」から再開コマンドをコピーできます' : c.suggest&&c.status==='idle'? c.suggest : `ch.${c.num} ${c.name} に送る（Enter で送信、Shift+Enter で改行）`;
-  $('sfog').style.setProperty('--fog',(fogOf(c)*.8).toFixed(2)); $('screen').classList.toggle('off',off);
+  setProp($('ask'),'placeholder', off? 'このセッションは終了しています。「詳細」から再開コマンドをコピーできます' : c.suggest&&c.status==='idle'? c.suggest : `ch.${c.num} ${c.name} に送る（Enter で送信、Shift+Enter で改行）`);
+  const fog=(fogOf(c)*.8).toFixed(2); if($('sfog').style.getPropertyValue('--fog')!==fog) $('sfog').style.setProperty('--fog',fog); $('screen').classList.toggle('off',off);
 }
 
 /* ================= rail: forecast ================= */
@@ -216,6 +221,7 @@ addEventListener('scroll',()=>{ if(rtab==='L') deckHold=performance.now(); },{pa
 function deckLater(){ if(!deckHoldT) deckHoldT=setTimeout(()=>{ deckHoldT=0; dirty=true; },1300); }
 function deckUser(){ deckHold=0; updateDeck(); }            // what the person chose shows at once
 const setText=(el,t)=>{ if(el.textContent!==t) el.textContent=t; };
+const setProp=(el,k,v)=>{ if(el[k]!==v) el[k]=v; };
 function rankText(l){ return l.kind==='core'? `ターン ${l.uses}` : l.uses? `R${l.rank} · ${l.uses}回` : '未使用'; }
 function updateDeck(){
   const items=deckItems(), ids=new Set(items.map(l=>l.id)), carded=LINKS.filter(l=>l.card).length;

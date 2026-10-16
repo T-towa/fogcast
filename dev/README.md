@@ -22,6 +22,7 @@ Fogcast を作るときに使った確認用のスクリプトです。Mod 本�
 | `e2e/demo-msg.py` | デモ版で、吹き出しの「引用」と選んだ部分の引用、画像（選ぶ・貼り付け・ドラッグ、大きい画像は縮める、Excel のセルの貼り付けは文字のまま）、Esc で止める、止めたターンの「もう一度送る」「直して送る」（書きかけはよけて、Esc で戻る）を通す | `python3 dev/e2e/demo-msg.py 1440x900`（`390x844` でスマホ幅） |
 | `e2e/demo-find.py` | デモ版で、チャンネルの中の検索（Ctrl+F と見出しの虫眼鏡、一致の数と移動、畳まれたターンの「一致 N」と開くこと、大文字・小文字と全角・半角、Esc で閉じても作業中のターンは止まらないこと、2 回目の Ctrl+F はブラウザの検索、チャンネルの切り替え、届いた文も数えること）を通す | `python3 dev/e2e/demo-find.py 1440x900`（`390x844` でスマホ幅、虫眼鏡から開く） |
 | `e2e/real-find.py` | 本物の Claude Code のターミナルを相手に、チャンネルの中の検索が依頼と返答の両方の言葉を大文字・小文字と全角・半角を問わず見つけ、Enter で全部を回り、開いているあいだに届いたターンも数え、読み込み直したあとも同じに探せるかを通す | `STUB=stub-api-echo.mjs python3 dev/term/run-term.py "browser:dev/e2e/real-find.py 1440x900"` |
+| `e2e/real-compact.py` | 本物の Claude Code のターミナルを相手に、画面の「圧縮」を押すと、すぐにボタンが「圧縮中…」になり、会話に「会話を圧縮しています」の枠と見出し・タイルの「圧縮中」が出て、終わると「圧縮しました」と「入力待ち」に戻ること、途中で読み込み直しても同じに出ることを通す | `STUB=stub-api-echo.mjs STUB_COMPACT_MS=6000 python3 dev/term/run-term.py "browser:dev/e2e/real-compact.py 1440x900"`（`STUB_COMPACT_MS` は偽の API が圧縮の要約にかける時間） |
 | `e2e/demo-end.py` | デモ版で同じこと（↓ のボタン、新着の数、チャンネル切り替え、質問の答えの欄が 5 行まで広がる） | `python3 dev/e2e/demo-end.py 1440x900`（`390x844` でスマホ幅） |
 | `e2e/live-commu.py` | 本物の受け皿（コミュに多くのスキル・エージェント・MCP がある記録）と模擬ターミナルを相手に、ブラウザのなめらかなスクロールで「コミュ」を少しずつ下へ回し、数が変わり続けても勝手に上へ戻らないこと、いちばん下で止まったままなことを確かめる | `python3 dev/e2e/live-commu.py 1440x900`（`list` で一覧、`1100x800` でページ全体がスクロールする幅） |
 | `e2e/live-*.py` | 本物の受け皿と模擬ターミナル（`test/simulate.mjs`）を相手に、ブラウザ（Playwright）で画面の操作を通す | `python3 dev/e2e/live-new.py` など（要 Playwright と Chromium） |

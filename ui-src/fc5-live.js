@@ -108,6 +108,8 @@ function chanFrom(x){ let c=LV.byId.get(x.id);
   for(const k of ['perTurn','blocks','tasks','files','agents','ops']) if(x[k]) c[k]=x[k];
   if('active' in x) c.active=x.active;
   if(x.endedAt!==undefined) c.endedAt=x.endedAt; if(x.resume!==undefined) c.resume=x.resume; if(x.sid) c.sid=x.sid;
+  if('compacting' in x){ c.compacting=x.compacting||null; if(c.compacting) c.compactAsk=0; }
+  if('turn' in x) c.turnOn=!!x.turn;
   if(x.loaded) c.loaded=liveLoaded(x.loaded);
   if(x.commands) c.commands=x.commands;
   if(x.effort!==undefined) c.effort=x.effort||''; if(x.effortUsed!==undefined) c.effortUsed=x.effortUsed||''; if(x.title!==undefined) c.title=x.title||'';
@@ -187,6 +189,9 @@ function mdTables(p){ const L=p.split('\n'), out=[]; let buf=[];
 function mdLite(t){ const parts=String(t||'').split(/```[^\n]*\n?/); return parts.map((p,i)=> i%2? `<pre>${esc(p.replace(/\n$/,''))}</pre>` : mdTables(p)).join(''); }
 const stripAnsi=s=>String(s||'').replace(/\x1b\[[0-9;]*[A-Za-z]/g,'');
 function flowOf(c){ if(c.cur) return c.cur.flow; const li=document.createElement('li'); li.className='solo'; const f=document.createElement('div'); f.className='flow'; li.appendChild(f); c.log.appendChild(li); return f; }
+// a compaction over: the channel shows it at once (the hub's word follows within a moment)
+function cmpxOver(c){ c.compactAsk=0; c.compacting=null; if(c.status==='work'&&!c.turnOn){ c.status='idle'; c.now='入力待ち'; c.phaseAt=Date.now(); } if(sel===c.num) renderOsd(c); }
+function cmpxEnd(c,html,bad){ const d=c.log.querySelector('.sys.cmpx:not(.done)'); if(d){ d.innerHTML=html; d.classList.add('done'); if(bad) d.classList.add('bad'); } else { const n=sysBox(c,html); n.classList.add('cmpx','done'); if(bad) n.classList.add('bad'); } }
 function sysBox(c,html){ const d=document.createElement('div'); d.className='sys'; d.innerHTML=html; if(c.cur) c.cur.flow.appendChild(d); else { const li=document.createElement('li'); li.appendChild(d); c.log.appendChild(li); } return d; }
 function permBox(c,id,name,input){ let p=c.log.querySelector(`.perm[data-id="${cssq(id)}"]`);
   if(!p){ p=document.createElement('div'); p.className='perm'; p.dataset.id=id; flowOf(c).appendChild(p); }
@@ -255,7 +260,10 @@ const EVH={
   hist(c,ev){ if(ev.label){ const r=[...c.log.querySelectorAll('.swap .rt')].pop(); if(r&&!r.textContent) r.textContent=`：${cut1(ev.label,80)}`; if(!c.role) c.role=clip1(ev.label,28); }
     histTurns(c,ev.items||[],ev.more||0); },
   model(c,ev){ const was=modelName(ev.from), to=modelName(ev.to); c.model=to; modelBox(c,{from:was,to,src:ev.src}); },
-  compact(c,ev,replay){ sysBox(c,`<b>${ev.trigger==='auto'?'自動で圧縮しました':'圧縮しました'}</b><span>これまでの要点は要約として残っています。</span>`);
+  // a compaction: its box says it is going on, and then that it is done (or why it was not)
+  compacting(c,ev){ c.compactAsk=0; const d=sysBox(c,cmpxHTML(ev.trigger)); d.classList.add('cmpx'); },
+  compactOff(c,ev,replay){ if(!replay) cmpxOver(c); cmpxEnd(c,`<b>圧縮しませんでした</b>${ev.reason?`<span>${esc(ev.reason)}</span>`:''}`,true); },
+  compact(c,ev,replay){ if(!replay) cmpxOver(c); cmpxEnd(c,`<b>${ev.trigger==='auto'?'自動で圧縮しました':'圧縮しました'}</b><span>これまでの要点は要約として残っています。</span>`);
     if(!replay){ toast('compact',`ch.${c.num} ${esc(c.name)} を圧縮しました`,'コンテキストが空きました。',sel===c.num?null:c.num); if(sel===c.num&&!reduce) osdFlash(`${pct(c)}%<small>霧が晴れました</small>`); } },
   turnEnd(c,ev){ const t=c.cur; if(!t) return;
     t.li.querySelectorAll('.op.run').forEach(li=>{ if(!li.classList.contains('sub')||ev.aborted){ li.classList.remove('run'); li.querySelector('.r').textContent=ev.aborted?'中断':li.querySelector('.r').textContent; } });
@@ -267,7 +275,8 @@ const EVH={
   clear(c){ c.cur=null; sysBox(c,'<b>会話をリセットしました（/clear）</b><span>新しいセッションとして続きます。前の会話は「＋ 追加」の過去のセッションから再開できます。</span>'); },
   end(c,ev){ c.cur=null; const cmd=ev.resume? `cd ${esc(c.cwd)} && claude --resume ${esc(ev.resume)}` : '';
     sysBox(c,`<b>${ev.reason==='lost'?'このターミナルからの報告が途絶えました':`セッションは ${hm(ev.t)} に終了しました`}</b>${cmd?`<span>続きから始めるには、ターミナルで <code>${cmd}</code> を実行します。「詳細」からコピーできます。</span>`:''}`); },
-  did(c,ev,replay){ if(!replay&&ev.ok===false) toast('info',`ch.${c.num}：${ev.what==='command'?'コマンド':ev.what==='compact'?'圧縮':'操作'}を実行できませんでした`,esc(ev.error||'')); },
+  did(c,ev,replay){ if(ev.what==='compact'&&ev.ok===false){ c.compactAsk=0; if(c.log.querySelector('.sys.cmpx:not(.done)')) cmpxEnd(c,`<b>圧縮できませんでした</b>${ev.error?`<span>${esc(ev.error)}</span>`:''}`,true); }
+    if(!replay&&ev.ok===false) toast('info',`ch.${c.num}：${ev.what==='command'?'コマンド':ev.what==='compact'?'圧縮':'操作'}を実行できませんでした`,esc(ev.error||'')); },
   note(c,ev){ sysBox(c,`<span>${esc(ev.text)}</span>`); },
 };
 function turnFoot(li,grew){ const d=li.dataset, ab=d.ab==='1';
@@ -322,8 +331,10 @@ function liveCommand(c,name,args,cmd){ api('/api/ui/command',{chan:c.id,name,arg
     else if(r.queued) toast('queue',`/${esc(name)} を予約しました`,`ch.${c.num} ${esc(c.name)} の今のターンが終わったら実行します。`); })
   .catch(err=>toast('info',`/${esc(name)} を送れませんでした`,esc(err.message))); }
 function liveStop(c){ if(c.status!=='work'&&c.status!=='wait') return; api('/api/ui/stop',{chan:c.id}).catch(err=>toast('info','止められませんでした',esc(err.message))); }
-function liveCompact(c){ api('/api/ui/compact',{chan:c.id}).then(r=>{ if(r.queued) toast('queue','圧縮を予約しました',`ch.${c.num} ${esc(c.name)} の今のターンが終わったら圧縮します。`); })
-  .catch(err=>toast('info','圧縮を送れませんでした',esc(err.message))); }
+// pressed while the channel waits for input: the button says 圧縮中… at once; while it works, the compaction is booked
+function liveCompact(c){ if(c.status==='idle'){ c.compactAsk=Date.now(); if(sel===c.num) renderOsd(c); }
+  api('/api/ui/compact',{chan:c.id}).then(r=>{ if(r.queued){ c.compactAsk=0; dirty=true; toast('queue','圧縮を予約しました',`ch.${c.num} ${esc(c.name)} の今のターンが終わったら圧縮します。`); } })
+  .catch(err=>{ c.compactAsk=0; dirty=true; toast('info','圧縮を送れませんでした',esc(err.message)); }); }
 function liveSettings(){
   const live=()=>CH.filter(c=>c.status!=='off').map(c=>`ch.${c.num} ${esc(c.name)}`).join('、');
   openSheet(`<div class="hd"><span class="tag" id="sheetT">設定</span><button class="btn small" type="button" data-close>閉じる</button></div>

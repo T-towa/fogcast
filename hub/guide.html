@@ -222,7 +222,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
 <body>
 <div class="page" lang="ja">
   <header class="cover">
-    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.6.2</span></div>
+    <div class="top"><span class="tag">取扱説明書</span><span class="ver">VERSION 0.6.3</span></div>
     <h1><span class="mark">FOGCAST</span><span class="ja">霧読み</span></h1>
     <p class="lead">Claude Code を何本ものターミナルで動かしているときに、すべての会話・道具の呼び出し・使用量を、ブラウザの 1 画面にまとめて映す Mod です。画面から依頼を送る、<code>/</code> のコマンドを実行する、ツールの実行を許可する、といった操作もできます。</p>
     <dl class="facts">
@@ -275,7 +275,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <div class="cmd"><code>node -v &amp;&amp; claude --version</code><button class="copy" type="button">コピー</button></div></li>
           <li><b class="t">zip を解凍して、ホームフォルダに置く</b>
             <p>ダウンロードフォルダにある場合は、次のコマンドで <code>~/fogcast</code> ができます。</p>
-            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.6.2.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip ~/Downloads/fogcast-0.6.3.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>Finder でダブルクリックして、できた <code>fogcast</code> フォルダをホームフォルダに移してもかまいません。中にある <code>.claude-plugin</code> は見えないフォルダなので、中身だけを選ばずにフォルダごと移してください。</p></li>
           <li><b class="t">マーケットプレイスとして追加する</b>
             <div class="cmd"><code>claude plugin marketplace add ~/fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -302,7 +302,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <tr><td>画面</td><td>Windows のブラウザで見ます。<code>/fog</code> で Windows の既定のブラウザが開きます（0.1.2 から）。WSL2 は localhost を Windows に転送するので、<code>http://127.0.0.1:4317</code> で届きます。</td></tr>
           </tbody>
         </table></div>
-        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.6.2.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
+        <div class="cmd"><code>unzip "/mnt/c/Users/&lt;Windowsのユーザー名&gt;/Downloads/fogcast-0.6.3.zip" -d ~</code><button class="copy" type="button">コピー</button></div>
         <p class="note"><span class="lb">お知らせ</span><span>Windows のブラウザでつながらないときは、PowerShell で <code>wsl --shutdown</code> を実行してから WSL を開き直すと直ることがあります。</span></p>
       </section>
 
@@ -451,7 +451,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
             <h3>止める・圧縮する</h3>
             <p class="muted">「停止」は今のターンを中断します。<kbd>Esc</kbd> でも、ターミナルと同じく 1 回で止まります。ただし、先に閉じるもの（設定などの画面、コマンドの一覧、よけておいた書きかけ、検索の欄）があればそちらが先で、日本語入力の変換中と、質問の答えの欄の中では止めません。</p>
             <p class="muted">止めたターンには「もう一度送る」（同じ文をそのまま。<code>@</code> のファイルと画像もいっしょに）と「直して送る」（送信欄に戻して、直してから送る）が出ます。自分の吹き出しにカーソルを合わせても同じボタンが出ます。止めたやりとりは会話に残るので、Claude は中断したことを知っています。</p>
-            <p class="muted">「圧縮」は会話を要約してコンテキストを空けます（作業中なら、ターンが終わってから）。</p>
+            <p class="muted">「圧縮」は会話を要約してコンテキストを空けます（作業中なら、ターンが終わってから）。圧縮しているあいだは、会話に「会話を圧縮しています」の枠が出て、「圧縮」のボタンが「圧縮中…」に、見出しとタイルが「圧縮中」になります。ターミナルで <code>/compact</code> したときや、コンテキストがいっぱいに近づいて自動で圧縮されるときも同じです。終わると枠が「圧縮しました」に変わります（取りやめになったときは、その理由が出ます）。</p>
           </div>
           <div>
             <h3>ステータス</h3>
@@ -568,7 +568,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>新しい版に更新する</h3>
         <ol class="steps">
           <li><b class="t">新しい zip で <code>~/fogcast</code> を上書きする</b>
-            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.6.2.zip -d ~</code><button class="copy" type="button">コピー</button></div>
+            <div class="cmd"><code>unzip -o ~/Downloads/fogcast-0.6.3.zip -d ~</code><button class="copy" type="button">コピー</button></div>
             <p>ファイル名は受け取った版に合わせてください。</p></li>
           <li><b class="t">版を更新する</b>
             <div class="cmd"><code>claude plugin update fogcast@fogcast</code><button class="copy" type="button">コピー</button></div></li>
@@ -630,7 +630,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
         <h3>仕様</h3>
         <div class="tbl"><table>
           <tbody>
-            <tr><td>版</td><td>0.6.2</td></tr>
+            <tr><td>版</td><td>0.6.3</td></tr>
             <tr><td>必要なもの</td><td>Claude Code 2.1.290 以降（Mod が使える版）、Node.js 18 以上</td></tr>
             <tr><td>日付の区切り</td><td>画面（ブラウザ）の時計に合わせます。WSL の時計が Windows と違う地域になっていても、カレンダーと連続日数は画面の日付で数えます（0.3.0 から）。</td></tr>
             <tr><td>確かめた環境</td><td>Linux。WSL は、Windows のブラウザを開くところを Linux 上で見立てて確かめました。macOS とネイティブの Windows はまだ確かめていません。</td></tr>
@@ -656,7 +656,7 @@ footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-si
     </main>
   </div>
 
-  <footer><span>Fogcast（霧読み）0.6.2 取扱説明書</span><span>画面の歯車（設定）の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
+  <footer><span>Fogcast（霧読み）0.6.3 取扱説明書</span><span>画面の歯車（設定）の「使い方」からも開けます（<code>http://127.0.0.1:4317/guide</code>）</span></footer>
 </div>
 <script>
 (function(){

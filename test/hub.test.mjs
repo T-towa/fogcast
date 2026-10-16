@@ -241,6 +241,45 @@ test('each day keeps its turns, tokens, cost and what was used; a terminal\'s re
   assert.deepEqual(snap.chans.find(c => c.id === 'chan-day-2').events.map(e => e.k), ['turn', 'tool', 'toolEnd', 'turnEnd'])
 })
 
+test('a compaction shows on its channel while it runs: begun, done, not done, inside a turn', async () => {
+  await req('POST', '/api/mod/hello', { chan: 'chan-cmp', mod: '0.6.3', sid: U(50), cwd: '/home/me/dev/cmp' })
+  const s = stream('screen-cmp'); await s.wait(m => m.type === 'hello')
+  const t = Date.now(), chan = async (pred, from) => { const i = from ?? s.msgs.length; return s.wait(m => s.msgs.indexOf(m) >= i && m.type === 'chan' && m.chan.id === 'chan-cmp' && pred(m.chan)) }
+  // /compact in the terminal: the channel says so, and the spinner's word meanwhile does not cover it
+  await req('POST', '/api/mod/sync', { chan: 'chan-cmp', events: [{ k: 'compacting', trigger: 'manual', t }] })
+  const on1 = await chan(x => !!x.compacting, 0)
+  assert.deepEqual([on1.chan.status, on1.chan.now, on1.chan.compacting.trigger], ['work', '会話を圧縮しています', 'manual'])
+  assert.equal((await s.wait(m => m.type === 'ev' && m.ev.k === 'compacting')).ev.trigger, 'manual')
+  await req('POST', '/api/mod/sync', { chan: 'chan-cmp', events: [{ k: 'mode', mode: 'requesting', t: t + 50 }] })
+  await sleep(450)
+  assert.equal(s.msgs.filter(m => m.type === 'chan' && m.chan.id === 'chan-cmp').pop().chan.now, '会話を圧縮しています')
+  let at = s.msgs.length
+  await req('POST', '/api/mod/sync', { chan: 'chan-cmp', events: [{ k: 'compact', trigger: 'manual', t: t + 3000 }] })
+  const off1 = await chan(x => !x.compacting, at)
+  assert.deepEqual([off1.chan.status, off1.chan.now], ['idle', '入力待ち'])
+  // one that did not happen: said why, and the channel waits for input again
+  at = s.msgs.length
+  await req('POST', '/api/mod/sync', { chan: 'chan-cmp', events: [{ k: 'compacting', trigger: 'manual', via: 'screen', t: t + 4000 }, { k: 'compactOff', reason: 'kept whole', t: t + 4100 }] })
+  const off2 = await s.wait(m => s.msgs.indexOf(m) >= at && m.type === 'ev' && m.ev.k === 'compactOff')
+  assert.equal(off2.ev.reason, 'kept whole')
+  assert.equal((await chan(x => !x.compacting, at)).chan.status, 'idle')
+  // the threshold, inside a turn: the turn goes on after it
+  at = s.msgs.length
+  await req('POST', '/api/mod/sync', { chan: 'chan-cmp', events: [{ k: 'turn', t: t + 5000, id: 'tc1', text: '続けて' }, { k: 'compacting', trigger: 'auto', t: t + 5100 }] })
+  const on3 = await chan(x => !!x.compacting, at)
+  assert.deepEqual([on3.chan.status, on3.chan.now, on3.chan.compacting.trigger], ['work', '会話を圧縮しています', 'auto'])
+  at = s.msgs.length
+  await req('POST', '/api/mod/sync', { chan: 'chan-cmp', events: [{ k: 'compact', trigger: 'auto', t: t + 8000 }] })
+  const off3 = await chan(x => !x.compacting, at)
+  assert.deepEqual([off3.chan.status, off3.chan.now], ['work', '圧縮しました · 作業を続けています'])
+  // a word that it was not done, with no compaction going on, is not a line of the conversation
+  at = s.msgs.length
+  await req('POST', '/api/mod/sync', { chan: 'chan-cmp', events: [{ k: 'compactOff', reason: 'x', t: t + 9000 }, { k: 'note', text: 'ここまで', t: t + 9001 }] })
+  await s.wait(m => s.msgs.indexOf(m) >= at && m.type === 'ev' && m.ev.k === 'note')
+  assert.equal(s.msgs.slice(at).some(m => m.type === 'ev' && m.ev.k === 'compactOff'), false)
+  s.stop()
+})
+
 test('today\'s usage goes on across sessions: a session begun under this hub counts from nothing, a resume\'s restored cost is not counted', async () => {
   const d = new Date(), today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   const ctx = { tokens: 1000, window: 200000, percent: 1 }, t = Date.now()

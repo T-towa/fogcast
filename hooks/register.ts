@@ -10,7 +10,7 @@ import { linkFor, verb, summarize, outline, fileChange, todosOf, textOf, srcLabe
 type Any = any
 
 /** Keep in step with .claude-plugin/plugin.json and hub/hub.mjs (a test checks). */
-export const VERSION = '0.6.2'
+export const VERSION = '0.6.3'
 const DEFAULT_PORT = 4317
 /** Claude Code drops a toast asked to stay longer than this (0.1.0 lost its pairing notice that way). */
 const TOAST_MAX = 60000
@@ -356,10 +356,11 @@ function perform($: Any, c: Any) {
       // this module's own compaction runs through every hook but its own (session.compact): it is told here.
       // A hook that vetoed it says why in the terminal; the screen hears it did not happen
       const go = () => {
+        push({ k: 'compacting', trigger: 'manual', via: 'screen' })
         void $.session.compact(c.instructions ? { instructions: String(c.instructions) } : undefined).then((r: Any) => {
-          if (r?.skip) push({ k: 'did', cid: c.id, what: 'compact', ok: false, error: clip(String(r.skip), 200) })
+          if (r?.skip) { push({ k: 'compactOff', reason: clip(String(r.skip), 200) }); push({ k: 'did', cid: c.id, what: 'compact', ok: false, error: clip(String(r.skip), 200) }) }
           else push({ k: 'compact', trigger: 'manual', via: 'screen' })
-        }).catch(fail)
+        }).catch((err: unknown) => { push({ k: 'compactOff', reason: clip(String((err as Any)?.message ?? err), 200) }); fail(err) })
       }
       if (st.turnId) st.afterTurn.push(go); else go()
     } else if (c.type === 'toast') {
@@ -854,9 +855,13 @@ export const register: Register = (on) => {
     return r
   })
 
+  // the screen says the conversation is being compacted while it is (a summary made ahead of time is not shown)
   on('session.compact', async ($: Any, e: Any, next: Any) => {
-    const r = await next(e)
-    try { if (st.on && !e.agentId && e.trigger !== 'precompute' && !r?.skip) push({ k: 'compact', trigger: e.trigger }) } catch {}
+    const shown = st.on && !e.agentId && e.trigger !== 'precompute'
+    if (shown) push({ k: 'compacting', trigger: e.trigger })
+    let r: Any
+    try { r = await next(e) } catch (err) { if (shown) push({ k: 'compactOff', reason: clip(String((err as Any)?.message ?? err), 200) }); throw err }
+    try { if (shown) push(r?.skip ? { k: 'compactOff', reason: clip(String(r.skip), 200) } : { k: 'compact', trigger: e.trigger }) } catch {}
     return r
   })
 

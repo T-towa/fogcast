@@ -24,7 +24,9 @@ http.createServer((req, res) => {
     // STUB_FIND: a text to look for in each request (whether a row the mod added reached the model)
     const find = process.env.STUB_FIND ? ` find=${body.includes(process.env.STUB_FIND)}` : ''
     appendFileSync(LOG, `${req.method} ${path} ${body.length}b${find} model=${j.model} effort=${JSON.stringify(j.output_config?.effort ?? j.thinking?.effort ?? null)} thinking=${JSON.stringify(j.thinking?.type ?? null)} main=${main} said=${JSON.stringify(said.slice(0, 50))}\n`)
-    if (req.method === 'POST' && path.endsWith('/v1/messages')) return setTimeout(answer, /SLOW/.test(said) && main ? 9000 : Number(process.env.STUB_DELAY_MS || 0))
+    // STUB_COMPACT_MS: how long a compaction's summary takes (to see the screen while it runs)
+    const compactReq = /^CRITICAL: Respond with TEXT ONLY/.test(said) || /summary of the conversation/i.test(said)
+    if (req.method === 'POST' && path.endsWith('/v1/messages')) return setTimeout(answer, compactReq && process.env.STUB_COMPACT_MS ? Number(process.env.STUB_COMPACT_MS) : /SLOW/.test(said) && main ? 9000 : Number(process.env.STUB_DELAY_MS || 0))
     res.writeHead(404, { 'content-type': 'application/json' }); res.end('{}')
     function answer() {
       // a request to compact the conversation gets a summary in the shape Claude Code reads back

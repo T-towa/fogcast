@@ -81,7 +81,7 @@ function hub(on: Any, opts: { approvals?: boolean; decision?: string; wait?: () 
     const body = e.init?.body ? JSON.parse(e.init.body) : null
     const ok = (v: unknown) => ({ value: { status: 200, ok: true, headers: {}, text: JSON.stringify(v) } })
     if (path === '/api/health') {
-      const v = opts.version ? opts.version() : '0.6.2'
+      const v = opts.version ? opts.version() : '0.6.3'
       return v === null ? { value: { status: 502, ok: false, headers: {}, text: '' } } : ok({ ok: true, app: 'fogcast', version: v })
     }
     if (e.init?.headers?.['x-fogcast-token'] !== TOKEN) return { value: { status: 401, ok: false, headers: {}, text: '{}' } }
@@ -440,7 +440,7 @@ test('a hub left running from an older version is stopped once, and this version
   on('process.run', (_$: Any, e: Any) => {
     runs.push([...e.argv])
     if (e.argv.includes('--stop')) version = null
-    if (e.argv.includes('--daemon')) version = '0.6.2'
+    if (e.argv.includes('--daemon')) version = '0.6.3'
     return { value: { exitCode: 0, stdout: 'main\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   hub(on, { version: () => version })
@@ -757,6 +757,33 @@ test('a compaction asked for on the screen is told once it is done (its own hook
   await clock.advance(2100); await clock.settle(); await clock.advance(2100)
   expect(h.events.filter(e => e.k === 'compact').length).toBe(1)
   expect(h.events.find(e => e.k === 'did')).toEqual(expect.objectContaining({ cid: 'k2', what: 'compact', ok: false, error: 'a plugin keeps this conversation whole' }))
+  // each began with word that it was going on, so the screen could say so meanwhile
+  expect(h.events.filter(e => /^compact/.test(e.k)).map(e => [e.k, e.via ?? e.reason])).toEqual([
+    ['compacting', 'screen'], ['compact', 'screen'], ['compacting', 'screen'], ['compactOff', 'a plugin keeps this conversation whole']])
+})
+
+test('a compaction in the terminal (by /compact, the threshold or another plugin) is told while it runs, then that it is done or did not happen', async ($: Any, on: Any) => {
+  const clock = mock.clock(on, { now: 1_800_000_000_000 })
+  engine(on); const h = hub(on)
+  const kinds = () => h.events.filter(e => /^compact/.test(e.k)).map(e => e.k)
+  // the engine's summary takes a while: what the hub had heard by the time it was written
+  let veto = ''; const meanwhile: string[][] = []
+  on('session.messages', () => ({ value: [{ role: 'user', text: '依頼', toolUses: [] }, { role: 'assistant', text: '答え', toolUses: [] }] }))
+  on('session.compact', async () => { await clock.advance(700); meanwhile.push(kinds()); return veto ? { skip: veto } : { messages: [{ role: 'user', text: '要約', toolUses: [] }], tokensBefore: 50000, tokensAfter: 4000 } })
+  await started($, on, clock)
+  // as the engine raises it for /compact and for the threshold (a test's own call carries only what it is given)
+  const raise = (trigger: string) => ($.session.compact as Any)({ trigger, messages: [{ role: 'user', text: '依頼', toolUses: [] }] })
+  await raise('manual'); await clock.advance(700); await clock.settle(); await clock.advance(700)
+  expect(meanwhile[0]).toEqual(['compacting'])                                  // told while the summary was being written
+  expect(kinds()).toEqual(['compacting', 'compact'])
+  expect(h.events.filter(e => /^compact/.test(e.k)).map(e => e.trigger)).toEqual(['manual', 'manual'])
+  veto = 'kept whole'
+  await raise('auto'); await clock.advance(700); await clock.settle(); await clock.advance(700)
+  expect(kinds()).toEqual(['compacting', 'compact', 'compacting', 'compactOff'])
+  expect(h.events.find(e => e.k === 'compactOff').reason).toBe('kept whole')
+  // one made ahead of time (to be swapped in at the threshold) is not shown
+  await raise('precompute'); await clock.advance(700); await clock.settle(); await clock.advance(700)
+  expect(kinds().length).toBe(4)
 })
 
 test('a command that starts no turn does not lend its name to the prompt typed next', async ($: Any, on: Any) => {

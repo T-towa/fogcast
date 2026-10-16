@@ -1039,6 +1039,14 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 .pst b{color:var(--alarm)}
 .pend.queued .pst span{color:var(--yolk)}
 .spin{width:10px;height:10px;border-radius:50%;border:2px solid var(--yolk);border-right-color:transparent;animation:spin .9s linear infinite}
+/* a compaction going on: its box in the conversation, and the button (striped, still readable while it cannot be pressed) */
+.sys.cmpx:not(.done){border-style:solid;border-color:rgba(255,217,49,.5);background:rgba(255,217,49,.07)}
+.sys.cmpx:not(.done) b{display:inline-flex;align-items:center;gap:9px;color:var(--yolk)}
+.sys.cmpx:not(.done) b .spin{flex:none}
+.sys.cmpx.bad{border-style:solid;border-color:rgba(255,106,85,.55)}
+.btn.busy,.btn.busy:disabled{opacity:1;cursor:progress;color:var(--yolk);border-color:rgba(255,217,49,.6);
+  background:repeating-linear-gradient(-45deg,rgba(255,217,49,.2) 0 6px,rgba(255,217,49,.05) 6px 12px);background-size:17px 17px;animation:busyBar .9s linear infinite}
+@keyframes busyBar{to{background-position:17px 0}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion: reduce){ .spin{animation:none;border-right-color:var(--yolk)} }
 
